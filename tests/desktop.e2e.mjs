@@ -9,12 +9,19 @@ const directory = await mkdtemp(join(tmpdir(), 'ideadock-e2e-'));
 const errors = [];
 let application;
 async function launch() {
+  const environment = { ...process.env, IDEADOCK_DATA_DIR: directory };
+  delete environment.ELECTRON_RUN_AS_NODE;
   application = await electron.launch({
     executablePath: process.env.IDEADOCK_EXECUTABLE_PATH || electronPath,
     args: process.env.IDEADOCK_EXECUTABLE_PATH ? [] : [resolve('.')],
-    env: { ...process.env, IDEADOCK_DATA_DIR: directory, ELECTRON_RUN_AS_NODE: '' },
+    env: environment,
+  });
+  await application.evaluate(({ app, BrowserWindow }) => {
+    app.focus({ steal: true });
+    BrowserWindow.getAllWindows()[0].focus();
   });
   const page = await application.firstWindow();
+  await page.setViewportSize({ width: 920, height: 650 });
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   const tool = page.frameLocator('iframe');
@@ -89,7 +96,13 @@ try {
   if (page) {
     await mkdir('artifacts', { recursive: true });
     await page.screenshot({ path: 'artifacts/failure.png' }).catch(() => {});
-    for (const frame of page.frames()) console.error('FRAME', frame.url(), await frame.locator('body').innerText().catch(() => 'unavailable'));
+    for (const frame of page.frames()) {
+      console.error('FRAME', frame.url(), await frame.locator('body').innerText().catch(() => 'unavailable'));
+      console.error('FORM', await frame.locator('form').evaluateAll(forms => forms.map(form => ({
+        valid: form.checkValidity(),
+        fields: [...form.querySelectorAll('input,textarea')].map(field => ({ type: field.type, value: field.value, validity: field.validationMessage })),
+      }))).catch(() => []));
+    }
   }
   console.error('Renderer errors:', errors);
   throw error;
