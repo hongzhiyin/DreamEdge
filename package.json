@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "description": "A local desktop home for small, evolving tools",
+  "author": "hongzhiyin",
+  "license": "UNLICENSED",
   "main": "dist/desktop/desktop/main.js",
   "engines": {
     "node": ">=22.13.0"
@@ -13,7 +15,10 @@
     "build:tool": "node scripts/build.mjs --tool",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:e2e": "npm run build && node tests/desktop.e2e.mjs"
+    "test:e2e": "npm run build && node tests/desktop.e2e.mjs",
+    "package": "npm run build && electron-builder --publish never",
+    "test:desktop": "node tests/desktop.e2e.mjs",
+    "test:packaged": "node scripts/test-packaged.mjs"
   },
   "dependencies": {
     "lucide-react": "1.49.0",
@@ -25,6 +30,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "electron": "44.5.1",
+    "electron-builder": "26.15.3",
     "playwright": "1.63.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2",

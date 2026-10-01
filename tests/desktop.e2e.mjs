@@ -10,7 +10,8 @@ const errors = [];
 let application;
 async function launch() {
   application = await electron.launch({
-    executablePath: electronPath, args: [resolve('.')],
+    executablePath: process.env.IDEADOCK_EXECUTABLE_PATH || electronPath,
+    args: process.env.IDEADOCK_EXECUTABLE_PATH ? [] : [resolve('.')],
     env: { ...process.env, IDEADOCK_DATA_DIR: directory, ELECTRON_RUN_AS_NODE: '' },
   });
   const page = await application.firstWindow();

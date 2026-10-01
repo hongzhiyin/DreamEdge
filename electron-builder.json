@@ -1,0 +1,22 @@
+{
+  "appId": "io.github.hongzhiyin.ideadock",
+  "productName": "IdeaDock",
+  "directories": { "output": "release" },
+  "files": ["dist/**/*", "package.json"],
+  "asar": true,
+  "npmRebuild": false,
+  "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+  "mac": {
+    "category": "public.app-category.productivity",
+    "identity": "-",
+    "target": ["dmg", "zip"]
+  },
+  "win": { "target": ["nsis"] },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "deleteAppDataOnUninstall": false
+  }
+}

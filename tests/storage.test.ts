@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { ToolStorage } from '../desktop/storage';
 import { assetPath } from '../desktop/assets';
@@ -50,8 +50,9 @@ test('storage rejects invalid operations, identifiers and payloads without chang
 });
 
 test('asset loader serves only registered local roots', () => {
-  assert.equal(assetPath('/app/dist', 'ideadock://reading-log/index.html'), '/app/dist/tools/reading-log/index.html');
+  const dist = resolve('test-dist');
+  assert.equal(assetPath(dist, 'ideadock://reading-log/index.html'), join(dist, 'tools', 'reading-log', 'index.html'));
   for (const url of ['file:///etc/passwd', 'ideadock://unknown/index.html', 'ideadock://shell/%2e%2e%2fsecret']) {
-    assert.throws(() => assetPath('/app/dist', url));
+    assert.throws(() => assetPath(dist, url));
   }
 });
