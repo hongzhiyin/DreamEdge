@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["desktop", "shared", "shell", "tool-sdk", "tools", "tests/**/*.ts"]
+  "include": ["desktop", "shared", "shell", "tool-sdk", "tools", "mobile", "tests/**/*.ts", "capacitor.config.ts"]
 }

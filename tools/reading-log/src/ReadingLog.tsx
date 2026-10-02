@@ -3,9 +3,10 @@ import { EntryForm } from './EntryForm';
 import { EntryList } from './EntryList';
 import { summarize } from './model';
 import { useEntries } from './useEntries';
+import type { StorageClient } from '../../../tool-sdk/storage-client';
 
-export function ReadingLog() {
-  const { entries, loading, ready, busy, error, notice, add, remove, load } = useEntries();
+export function ReadingLog({ store }: { store?: StorageClient } = {}) {
+  const { entries, loading, ready, busy, error, notice, add, remove, load } = useEntries(store);
   const summary = summarize(entries);
   const stats = [
     { label: '阅读记录', value: summary.count, unit: '条', icon: BookOpen },

@@ -1,9 +1,11 @@
 import { SHELL_ORIGIN, TOOL_CHANNEL, type Json, type StoredRecord, type StorageRequest } from '../shared/contracts';
+import { createId } from '../shared/create-id';
 
 type Pending = { resolve(value: StoredRecord[] | void): void; reject(error: Error): void; timer: number };
 const pending = new Map<string, Pending>();
 
 window.addEventListener('keydown', event => {
+  if (window.parent === window) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
     window.parent.postMessage({ channel: TOOL_CHANNEL, type: 'toggle-assistant' }, SHELL_ORIGIN);
@@ -24,7 +26,7 @@ window.addEventListener('message', event => {
 
 function request(payload: StorageRequest): Promise<StoredRecord[] | void> {
   return new Promise((resolve, reject) => {
-    const requestId = crypto.randomUUID();
+    const requestId = createId();
     const timer = window.setTimeout(() => {
       pending.delete(requestId);
       reject(new Error('存储响应超时，请重新加载工具后核对记录。'));

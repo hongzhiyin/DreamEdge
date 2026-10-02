@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { StoredRecord, StorageRequest } from '../shared/contracts';
-import { identifier, validateStorage } from './validation';
+import { identifier, validateStorage } from '../shared/storage-validation';
 
 export class ToolStorage {
   private readonly db: DatabaseSync;

@@ -1,0 +1,74 @@
+name: iPhone build and verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'ios/**'
+      - 'shared/**'
+      - 'tool-sdk/**'
+      - 'tools/**'
+      - 'scripts/build-mobile.mjs'
+      - 'scripts/configure-ios.mjs'
+      - 'scripts/test-ios-simulator.sh'
+      - 'tests/mobile.e2e.mjs'
+      - 'tests/native-storage-smoke.swift'
+      - 'capacitor.config.ts'
+      - 'package*.json'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iphone-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: Build and test iPhone simulator
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.22.2'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build mobile assets and sync native project
+        run: npm run ios:sync
+      - name: Verify mobile WebKit behavior
+        run: |
+          npx playwright install webkit
+          npm run test:mobile
+      - name: Verify native SQLite implementation
+        run: |
+          mkdir -p artifacts
+          swiftc ios/App/App/RecordDatabase.swift tests/native-storage-smoke.swift -o artifacts/native-storage-smoke
+          artifacts/native-storage-smoke
+      - name: Build and verify installed simulator application
+        run: bash scripts/test-ios-simulator.sh
+      - name: Upload simulator app
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ideadock-ios-simulator
+          path: artifacts/IdeaDock-iOS-simulator.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload iPhone diagnostics
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: iphone-test-results
+          path: |
+            artifacts/ios-tests.xcresult
+            artifacts/iphone-simulator.png
+            artifacts/mobile/*.png
+          if-no-files-found: ignore
+          retention-days: 7

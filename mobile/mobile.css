@@ -1,0 +1,51 @@
+:root { color-scheme: light; font: -apple-system-body; }
+.mobile-root { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+.mobile-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: calc(16px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 16px max(20px, env(safe-area-inset-left)); background: #fafbf8; border-bottom: 1px solid #dfe5df; }
+.mobile-brand { display: flex; gap: 10px; align-items: center; color: #275c4b; font-size: 22px; font-weight: 650; letter-spacing: -.5px; }
+.mobile-brand small { display: block; color: #68746b; font-size: 12px; font-weight: 400; letter-spacing: .5px; margin-top: 3px; }
+.mobile-ai-button { min-width: 80px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #d3dcd2; border-radius: 8px; background: #fff; color: #275c4b; font-size: 14px; }
+.mobile-ai-button:active { background: #eaf0e6; }
+.mobile-root .reading-page { max-width: 820px; padding: 28px max(20px, env(safe-area-inset-right)) 24px max(20px, env(safe-area-inset-left)); }
+.mobile-root .eyebrow { font-size: 10px; letter-spacing: 1.6px; }
+.mobile-root h1 { font-size: 30px; }
+.mobile-root h1 span { display: block; margin: 12px 0 0; font-size: 14px; line-height: 1.6; }
+.mobile-root .page-heading > p { font-size: 13px; }
+.mobile-root .stats { gap: 8px; margin: 24px 0; }
+.mobile-root .stat { padding: 14px 12px; }
+.mobile-root .stat > div { font-size: 12px; }
+.mobile-root .stat svg { display: none; }
+.mobile-root .stat p { gap: 5px; margin-top: 14px; flex-wrap: wrap; }
+.mobile-root .stat strong { font-size: 28px; }
+.mobile-root .entry-card { padding: 20px 16px; }
+.mobile-root .section-heading > span, .mobile-root .form-bottom > span { display: none; }
+.mobile-root .section-heading h2 { font-size: 16px; }
+.mobile-root label { font-size: 14px; }
+.mobile-root input, .mobile-root textarea { font-size: 16px; }
+.mobile-root input { min-height: 46px; min-width: 0; }
+.mobile-root .form-row { gap: 12px; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.mobile-root .minute-input > span { top: 15px; right: 14px; }
+.mobile-root .minute-input input { padding-right: 52px; }
+.mobile-root textarea { min-height: 110px; }
+.mobile-root textarea::placeholder { font-size: 14px; }
+.mobile-root .primary-button { width: 100%; min-height: 46px; font-size: 15px; }
+.mobile-root .form-bottom { display: block; }
+.mobile-root .save-status { min-height: 20px; font-size: 13px; }
+.mobile-root .entry-content p { font-size: 15px; }
+.mobile-root .delete-button { width: 44px; height: 44px; }
+.mobile-root .delete-confirm button, .mobile-root .error-message button { min-height: 44px; }
+.mobile-root .duration { font-size: 12px; }
+.mobile-root .empty p { font-size: 13px; }
+.mobile-root .page-footer { font-size: 11px; flex-wrap: wrap; }
+.mobile-root .page-footer > span:last-child { display: none; }
+.mobile-root label, .mobile-root .entry-content p { font-size: .9rem; }
+.mobile-root input, .mobile-root textarea { font-size: 1rem; }
+.mobile-ai-button { font-size: .875rem; }
+.assistant-sheet { width: min(100%, 440px); max-height: 92dvh; padding: 0; border: 1px solid #dfe5df; border-radius: 20px; background: #fff; overflow-y: auto; }
+.assistant-sheet::backdrop { background: #16302680; }
+.assistant-sheet .ai-panel { width: 100%; min-height: min(700px, 88dvh); border: 0; padding: 20px; position: static; }
+.assistant-sheet .icon-button { width: 44px; height: 44px; }
+.assistant-sheet .ai-intro p, .assistant-sheet .phase-note p { font-size: 14px; }
+.assistant-sheet .phase-note .next-step { font-size: 13px; }
+.assistant-sheet .ai-context { font-size: 13px; }
+@media (max-width: 360px) { .mobile-root .reading-page { padding-inline: 16px; } .mobile-root .entry-date { width: 62px; } .mobile-root .entry { gap: 12px; } }
+@media (max-width: 440px) { .mobile-root .form-row { grid-template-columns: minmax(0, 1fr); } }

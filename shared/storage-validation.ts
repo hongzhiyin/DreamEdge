@@ -1,4 +1,4 @@
-import type { Json, StorageRequest } from '../shared/contracts';
+import type { Json, StorageRequest } from './contracts';
 
 export function identifier(value: unknown): asserts value is string {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(value)) {
@@ -24,7 +24,7 @@ export function validateStorage(input: unknown): asserts input is StorageRequest
   }
   if (request.operation !== 'list') identifier(request.id);
   if (request.operation === 'put') {
-    if (!isJson(request.value) || Buffer.byteLength(JSON.stringify(request.value)) > 64 * 1024) {
+    if (!isJson(request.value) || new TextEncoder().encode(JSON.stringify(request.value)).byteLength > 64 * 1024) {
       throw new Error('记录必须是有效 JSON，且不超过 64 KB。');
     }
   }

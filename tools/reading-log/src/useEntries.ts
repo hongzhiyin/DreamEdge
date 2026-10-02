@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { storage } from '../../../tool-sdk/storage';
+import type { StorageClient } from '../../../tool-sdk/storage-client';
+import { createId } from '../../../shared/create-id';
 import { readEntry, sortEntries, validateEntry, type EntryInput, type ReadingEntry } from './model';
 
-export function useEntries() {
+export function useEntries(store: StorageClient = storage) {
   const [entries, setEntries] = useState<ReadingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
@@ -13,22 +15,22 @@ export function useEntries() {
   async function load() {
     setLoading(true); setReady(false); setError('');
     try {
-      const rows = await storage.list('entries');
+      const rows = await store.list('entries');
       setEntries(sortEntries(rows.map(row => readEntry(row.id, row.value))));
       setReady(true);
     } catch (error) {
       setError(error instanceof Error ? error.message : '无法读取记录。');
     } finally { setLoading(false); }
   }
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [store]);
 
   async function add(input: EntryInput): Promise<boolean> {
     const invalid = validateEntry(input);
     if (invalid) { setError(invalid); return false; }
     setBusy(true); setError(''); setNotice('');
-    const entry: ReadingEntry = { ...input, content: input.content.trim(), id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    const entry: ReadingEntry = { ...input, content: input.content.trim(), id: createId(), createdAt: new Date().toISOString() };
     try {
-      await storage.put('entries', entry.id, { ...entry });
+      await store.put('entries', entry.id, { ...entry });
       setEntries(current => sortEntries([...current, entry]));
       setNotice('记录已保存到本机。');
       return true;
@@ -41,7 +43,7 @@ export function useEntries() {
   async function remove(id: string) {
     setBusy(true); setError(''); setNotice('');
     try {
-      await storage.remove('entries', id);
+      await store.remove('entries', id);
       setEntries(current => current.filter(entry => entry.id !== id));
       setNotice('记录已删除。');
     } catch (error) {

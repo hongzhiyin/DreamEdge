@@ -2,7 +2,7 @@
 
 IdeaDock 是一个内置 AI 开发能力的小工具运行框架。用户在框架中通过对话创建工具，直接使用工具，并在使用过程中继续通过对话修改界面、业务逻辑和数据结构。
 
-本文记录需求、架构和开发顺序，供新的项目会话继续工作。第一阶段已进入实现，采用 Electron、React、TypeScript、Vite 和 SQLite；后续阶段中的设计仍是规划。
+本文记录需求、架构和开发顺序，供新的项目会话继续工作。第一阶段采用 React、TypeScript、Vite 和 SQLite，桌面宿主使用 Electron，iPhone 宿主使用 Capacitor；后续阶段中的设计仍是规划。
 
 整理日期：2026 年 10 月 2 日。项目目录：`/Users/chihoyo/Project/IdeaDock`。
 
@@ -27,6 +27,19 @@ npm run build:tool -- reading-log  # 仅重建阅读工具，随后点击宿主�
 ```
 
 端到端测试使用临时数据库，截图保存在 `artifacts/`。实现边界、公共接口和后续起点见 [第一阶段架构](docs/architecture.md)。
+
+## iPhone 端
+
+已建立 Capacitor iOS 工程，复用阅读工具，支持手机布局与本机 SQLite 存储。当前只加载随应用打包的手工样例，不提供手机上的 AI 代码修改或跨设备同步。需要 iOS 16 或更新版本。
+
+```bash
+npm run ios:sync           # 构建手机界面并同步原生工程
+npm run ios:open           # 使用完整 Xcode 打开工程
+npm run mobile:preview     # 浏览器预览手机界面（先运行 build:mobile）
+npm run test:mobile        # WebKit 手机界面验收
+```
+
+完整 Xcode 26 或更新版本可运行 iPhone 模拟器。真机安装还需要开发团队与设备签名配置；当前没有 TestFlight/App Store 分发或真机 IPA。[iPhone 实现与运行说明](docs/iphone.md) 记录存储边界、模拟器 CI 和安装步骤。
 
 ## 源码仓库
 
@@ -196,6 +209,7 @@ npm start
 - 已检查默认窗口、AI 面板及 920×650 内容视口截图；运行时没有 renderer 错误。测试截图位于 `artifacts/`。
 - 已初始化 Git 并建立 GitHub 私有远程仓库，使用 `main` 分支管理源码。
 - 已配置三平台安装包、自动测试与 Release 草稿流程；Apple Silicon Mac、Intel Mac 和 Windows x64 均已通过源码及打包应用验收，运行记录见 [Actions](https://github.com/hongzhiyin/IdeaDock/actions/runs/36913574730)。
+- 已增加 Capacitor iPhone 宿主、系统 SQLite 插件及手机 WebKit 验收；完整 iOS 原生构建与模拟器 UI 验收由独立工作流执行。
 - 尚未接入真实模型、实现候选版本/恢复/迁移、开发者证书签名或自动更新。
 - 尚未进行性能测试；当前仅为第一阶段本地开发版本。
 
