@@ -7,6 +7,7 @@ async function invoke<T>(channel: string, ...arguments_: unknown[]): Promise<T> 
   return response.result as T;
 }
 const api: HostApi = {
+  workspace: request => invoke('host:workspace', request),
   info: () => invoke('host:info'),
   service: (toolId, service, method, input) => invoke('host:service', toolId, service, method, input),
   tools: () => invoke('host:tools'),

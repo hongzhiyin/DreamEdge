@@ -5,6 +5,7 @@ import { ToolStorage } from './storage';
 import { loadApplication, applicationDataDirectory } from './project';
 import { createServices } from './services';
 import { SHELL_URL } from '../shared/contracts';
+import { WorkspaceApi } from './workspace/api';
 export function startApp(): void {
   const root = app.getAppPath();
   const manifest = loadApplication(root);
@@ -15,6 +16,7 @@ export function startApp(): void {
   app.setPath('userData', dataDirectory);
   app.setAppUserModelId(manifest.appId);
   const services = createServices(manifest, root, dataDirectory);
+  const workspace = manifest.capabilities.includes('workspace') ? new WorkspaceApi(dataDirectory, root) : undefined;
   protocol.registerSchemesAsPrivileged([{ scheme: 'dreamedge', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
   let storage: ToolStorage | undefined;
   function createWindow() {
@@ -48,6 +50,11 @@ export function startApp(): void {
     }
     handle('host:info', event => { trust(event); return manifest; });
     handle('host:tools', event => { trust(event); return catalog; });
+    handle('host:workspace', (event, request) => {
+      trust(event);
+      if (!workspace) throw new Error('当前应用未启用工程开发能力。');
+      return workspace.execute(request);
+    });
     handle('host:storage', (event, toolId, request) => {
       if (toolId !== manifest.id) throw new Error('应用身份无效。');
       trust(event, toolId);

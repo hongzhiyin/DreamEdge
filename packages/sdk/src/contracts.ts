@@ -1,4 +1,6 @@
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
+export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFile, WorkspaceRequest, WorkspaceResult } from './workspace.js';
 export interface ToolManifest {
   id: string; name: string; description: string; version: string; entry: string; capabilities: string[];
 }
@@ -21,6 +23,7 @@ export type BridgeRequest =
   | { kind: 'storage'; payload: StorageRequest }
   | { kind: 'service'; service: string; method: string; input: Json };
 export interface HostApi {
+  workspace(request: WorkspaceRequest): Promise<WorkspaceResult>;
   info(): Promise<AppManifest>;
   tools(): Promise<ToolManifest[]>;
   storage(toolId: string, request: StorageRequest): Promise<StoredRecord[] | void>;

@@ -7,6 +7,7 @@ import electronPath from 'electron';
 import { SHELL_ORIGIN, TOOL_CHANNEL } from '../packages/sdk/dist/contracts.js';
 
 const directory = await mkdtemp(join(tmpdir(), 'dreamedge-framework-'));
+const sourceDirectory = await mkdtemp(join(tmpdir(), 'dreamedge-source-'));
 const errors = [];
 let application;
 async function launch() {
@@ -40,6 +41,15 @@ try {
   assert.equal(await application.evaluate(({ app }) => app.getName()), 'DreamEdge');
   assert.equal(await content.locator('body').evaluate(() => typeof window.dreamEdge), 'undefined');
   assert.equal(await content.locator('body').evaluate(() => typeof window.require), 'undefined');
+  assert.equal(await content.locator('body').evaluate(() => {
+    try { return typeof window.parent.dreamEdge; } catch { return 'blocked'; }
+  }), 'blocked');
+  const project = await page.evaluate(directory => window.dreamEdge.workspace({ operation: 'create', directory, name: 'HelloWorld fixture' }), join(sourceDirectory, 'project'));
+  const original = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
+  await page.evaluate(({ projectId, hash }) => window.dreamEdge.workspace({ operation: 'writeFile', projectId, path: 'main.ts', content: "document.body.textContent = 'Updated HelloWorld';", expectedHash: hash }), { projectId: project.definition.id, hash: original.hash });
+  await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'save', projectId, name: 'Saved framework fixture' }), project.definition.id);
+  await assert.rejects(page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: '../outside' }), project.definition.id));
+  await assert.rejects(page.evaluate(directory => window.dreamEdge.workspace({ operation: 'create', directory, name: 'Forbidden' }), resolve('forbidden-project')));
   await storage(content, { operation: 'put', collection: 'framework-test', id: 'record', value: { message: 'persisted' } });
   await assert.rejects(storage(content, { operation: 'put', collection: '../outside', id: 'record', value: {} }));
   assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.storage('other-app', { operation: 'list', collection: 'framework-test' }); return false; } catch { return true; } }));
@@ -53,17 +63,25 @@ try {
   await page.screenshot({ path: 'artifacts/hello-world-desktop.png' });
   await application.close();
   ({ page, content } = await launch());
+  const restored = await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }));
+  assert.equal(restored.project.definition.id, project.definition.id);
+  assert.equal(restored.project.definition.name, 'Saved framework fixture');
+  const restoredFile = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
+  assert.ok(restoredFile.content.includes('Updated HelloWorld'));
+  await page.evaluate(() => window.dreamEdge.workspace({ operation: 'close' }));
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
   await storage(content, { operation: 'remove', collection: 'framework-test', id: 'record' });
   await application.close();
   ({ page, content } = await launch());
+  assert.equal((await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project, null);
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), []);
   assert.deepEqual(errors, []);
-  console.log('PASS: minimal framework shell, isolated bridge, capability checks, reload and durable storage across restart.');
+  console.log('PASS: HelloWorld shell, host-only workspace creation/edit/save, source boundaries and restart recovery.');
 } finally {
   if (application) {
     const closed = await Promise.race([application.close().then(() => true).catch(() => true), new Promise(resolve => setTimeout(() => resolve(false), 5000))]);
     if (!closed) application.process().kill('SIGKILL');
   }
   await rm(directory, { recursive: true, force: true });
+  await rm(sourceDirectory, { recursive: true, force: true });
 }
