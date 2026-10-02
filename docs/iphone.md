@@ -40,6 +40,8 @@ npm run mobile:preview
 
 浏览器版仅用于预览，用 IndexedDB 保留数据；iPhone 安装版使用系统 SQLite。二者不会互相共享记录。手机界面目前固定浅色外观，适配触控、安全区域和较大字体。
 
+预览地址固定为 `http://127.0.0.1:43117/`，使用独立端口避免复用其他项目的浏览器/离线缓存。`127.0.0.1` 指运行服务的这台 Mac，不能直接在另一台 iPhone 上使用此地址。
+
 ## 验证
 
 `npm run test:mobile` 在 WebKit 中检查记录添加、重载、浏览器进程重启、删除、手机尺寸/横屏、大字体、浅色外观与助手面板。`tests/native-storage-smoke.swift` 检查与 iPhone 共用的原生数据库代码。
