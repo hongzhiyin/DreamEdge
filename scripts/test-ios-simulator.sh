@@ -23,7 +23,5 @@ test -f "$database"
 record=$(sqlite3 "$database" "SELECT json_extract(value, '\$.content') FROM records WHERE tool_id='reading-log' AND collection='entries' LIMIT 1;")
 test "$record" = 'iPhone persistence verification'
 echo 'PASS: the iPhone UI wrote and recovered the record through native SQLite.'
-xcrun simctl launch "$simulator_id" io.github.hongzhiyin.ideadock
-sleep 3
-xcrun simctl io "$simulator_id" screenshot artifacts/iphone-simulator.png
+xcrun xcresulttool export attachments --path artifacts/ios-tests.xcresult --output-path artifacts/ios-screenshots
 ditto -c -k --sequesterRsrc --keepParent artifacts/ios-build/Build/Products/Debug-iphonesimulator/App.app artifacts/IdeaDock-iOS-simulator.zip

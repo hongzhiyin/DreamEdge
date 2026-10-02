@@ -1,5 +1,6 @@
 :root { color-scheme: light; font: -apple-system-body; }
 .mobile-root { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+.mobile-root::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 50; background: #fafbf8; pointer-events: none; }
 .mobile-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: calc(16px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 16px max(20px, env(safe-area-inset-left)); background: #fafbf8; border-bottom: 1px solid #dfe5df; }
 .mobile-brand { display: flex; gap: 10px; align-items: center; color: #275c4b; font-size: 22px; font-weight: 650; letter-spacing: -.5px; }
 .mobile-brand small { display: block; color: #68746b; font-size: 12px; font-weight: 400; letter-spacing: .5px; margin-top: 3px; }
@@ -22,6 +23,8 @@
 .mobile-root label { font-size: 14px; }
 .mobile-root input, .mobile-root textarea { font-size: 16px; }
 .mobile-root input { min-height: 46px; min-width: 0; }
+.mobile-root input[type="date"] { display: block; appearance: none; -webkit-appearance: none; max-width: 100%; min-inline-size: 0; }
+.mobile-root input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 .mobile-root .form-row { gap: 12px; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
 .mobile-root .minute-input > span { top: 15px; right: 14px; }
 .mobile-root .minute-input input { padding-right: 52px; }

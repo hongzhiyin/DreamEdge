@@ -68,7 +68,7 @@ jobs:
           name: iphone-test-results
           path: |
             artifacts/ios-tests.xcresult
-            artifacts/iphone-simulator.png
+            artifacts/ios-screenshots/
             artifacts/mobile/*.png
           if-no-files-found: ignore
           retention-days: 7
