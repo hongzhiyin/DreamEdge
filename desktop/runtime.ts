@@ -6,6 +6,8 @@ import { loadApplication, applicationDataDirectory } from './project';
 import { createServices } from './services';
 import { SHELL_URL } from '../shared/contracts';
 import { WorkspaceApi } from './workspace/api';
+import { DevelopmentApi } from './development/api';
+import { configuredModel } from './development/responses';
 export function startApp(): void {
   const root = app.getAppPath();
   const manifest = loadApplication(root);
@@ -17,6 +19,7 @@ export function startApp(): void {
   app.setAppUserModelId(manifest.appId);
   const services = createServices(manifest, root, dataDirectory);
   const workspace = manifest.capabilities.includes('workspace') ? new WorkspaceApi(dataDirectory, root) : undefined;
+  const development = workspace ? new DevelopmentApi(workspace, configuredModel(process.env)) : undefined;
   protocol.registerSchemesAsPrivileged([{ scheme: 'dreamedge', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
   let storage: ToolStorage | undefined;
   function createWindow() {
@@ -55,6 +58,11 @@ export function startApp(): void {
       if (!workspace) throw new Error('当前应用未启用工程开发能力。');
       return workspace.execute(request);
     });
+    handle('host:development', (event, request) => {
+      trust(event);
+      if (!development) throw new Error('当前应用未启用工程开发能力。');
+      return development.execute(request);
+    });
     handle('host:storage', (event, toolId, request) => {
       if (toolId !== manifest.id) throw new Error('应用身份无效。');
       trust(event, toolId);
@@ -70,4 +78,10 @@ export function startApp(): void {
   }).catch(error => { dialog.showErrorBox(`${manifest.name} 无法启动`, String(error)); app.quit(); });
   app.on('window-all-closed', () => app.quit());
   app.on('will-quit', () => storage?.close());
+  let closing = false;
+  app.on('before-quit', event => {
+    if (!development || closing) return;
+    event.preventDefault(); closing = true;
+    void development.dispose().finally(() => app.quit());
+  });
 }
