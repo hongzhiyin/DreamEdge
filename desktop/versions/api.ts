@@ -13,7 +13,7 @@ export class VersionsApi {
   private readonly jobs = new Map<string, Job>();
   private closed = false;
   constructor(private readonly workspace: WorkspaceApi, private readonly dataDirectory: string,
-    private readonly hook?: SaveHook, private readonly timeoutMs = 30000) {}
+    private readonly hook?: SaveHook, private readonly timeoutMs = 30000, private readonly changed: () => void = () => {}) {}
   async execute(input: unknown): Promise<VersionResult> {
     if (this.closed) throw new Error('版本服务已关闭。');
     const request = structuredClone(input) as VersionRequest;
@@ -76,6 +76,7 @@ export class VersionsApi {
     } finally {
       clearTimeout(timer); operation.finishedAt = new Date().toISOString();
       await this.workspace.exclusive(async () => { await this.store.saveOperation(project, operation).catch(() => {}); this.jobs.delete(operation.id); });
+      if (operation.status === 'completed') this.changed();
     }
   }
   private async cancel(projectId: string, id: string): Promise<VersionOperation> {

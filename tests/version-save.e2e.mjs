@@ -16,6 +16,7 @@ export async function verifyVersionSave(page, project, buildId) {
   const original = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), projectId);
   const started = await page.evaluate(({ projectId, buildId }) => window.dreamEdge.versions({ operation: 'confirm', projectId, buildId, label: 'Confirmed candidate' }), { projectId, buildId });
   const saved = await waitOperation(page, projectId, started);
+  await page.frameLocator('iframe').getByText('Candidate HelloWorld', { exact: true }).waitFor();
   assert.ok(saved.versionId); assert.ok(saved.checkpointId);
   const changed = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), projectId);
   assert.ok(changed.content.includes('Candidate HelloWorld'));
@@ -28,6 +29,7 @@ export async function verifyVersionSave(page, project, buildId) {
   const restored = await waitOperation(page, projectId, pending);
   const file = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), projectId);
   assert.equal(file.content, original.content);
+  await page.frameLocator('iframe').locator('body').filter({ hasText: original.content.includes('Updated HelloWorld') ? 'Updated HelloWorld' : 'HelloWorld' }).waitFor();
   await assert.rejects(page.evaluate(({ projectId, buildId }) => window.dreamEdge.versions({ operation: 'confirm', projectId, buildId, label: 'Stale replay' }), { projectId, buildId }));
   return restored;
 }

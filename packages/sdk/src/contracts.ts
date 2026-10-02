@@ -14,6 +14,7 @@ export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFil
 export interface ToolManifest {
   id: string; name: string; description: string; version: string; entry: string; capabilities: string[];
   contextId?: string;
+  projectView?: { status: 'loading' | 'ready' | 'failed'; error: string | null };
 }
 export interface AppManifest extends ToolManifest {
   appId: string;
@@ -35,6 +36,7 @@ export type BridgeRequest =
   | { kind: 'service'; service: string; method: string; input: Json };
 import type { ModelSettingsRequest, ModelSettingsResult } from './model-settings.js';
 export interface HostApi {
+  reloadProjectView(): Promise<void>;
   modelSettings(request: ModelSettingsRequest): Promise<ModelSettingsResult>;
   onModelSettingsChanged(listener: () => void): () => void;
   projectAction(action: ProjectAction): Promise<ProjectWindow | null>;

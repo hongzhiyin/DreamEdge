@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { WindowBounds } from '../../shared/contracts';
 import { serveAsset } from '../assets';
 import { WindowContext } from './context';
+import { DISPLAY_PREFIX } from '../display/store';
 
 export function restoredBounds(saved: WindowBounds | null): WindowBounds {
   const area = saved ? screen.getDisplayMatching(saved).workArea : screen.getPrimaryDisplay().workArea;
@@ -15,7 +16,9 @@ export function createHostWindow(context: WindowContext, id: string, root: strin
   const scopedSession = session.fromPartition(`persist:dreamedge-window-${id}`);
   scopedSession.protocol.handle('dreamedge', request => {
     const tools = context.tools(); const aliases = new Map([[tools[0].id, resourceId]]);
-    const host = new URL(request.url).hostname;
+    const url = new URL(request.url); const host = url.hostname;
+    if (host === tools[0].id && url.pathname.startsWith(`/${DISPLAY_PREFIX}/`)) return context.serveProject(request.url);
+    if (host === tools[0].id && tools[0].projectView) return new Response('工程显示地址已过期。', { status: 404 });
     return serveAsset(join(root, 'dist'), request.url, tools, aliases, host === 'shell' ? 'dreamedge:' : undefined);
   });
   scopedSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));

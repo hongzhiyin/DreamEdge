@@ -11,6 +11,7 @@ export function registerWindowIpc(windows: ProjectWindows, manifest: AppManifest
       catch (error) { return { ok: false, error: error instanceof Error ? error.message : '应用操作失败，请重试。' }; }
     });
   }
+  handle('host:reload-project-view', context => context.reloadDisplay());
   handle('host:model-settings', (context, request) => {
     context.assertAvailable(); if (!context.workspace) throw new Error('当前应用未启用模型配置。');
     return modelSettings.execute(request);

@@ -13,6 +13,7 @@ import { VersionsApi } from '../versions/api';
 import { WindowState } from './state';
 import { windowSelection } from './selection';
 import { Capacity } from './capacity';
+import { SavedProjectDisplay } from '../display/current';
 
 export interface ContextOptions {
   id: string; manifest: AppManifest; root: string; profile: string; frameworkRoot: string;
@@ -21,6 +22,7 @@ export interface ContextOptions {
 }
 export class WindowContext {
   readonly workspace?: WorkspaceApi;
+  private readonly display?: SavedProjectDisplay;
   development?: DevelopmentApi;
   builds?: CandidateBuildApi;
   versions?: VersionsApi;
@@ -37,6 +39,9 @@ export class WindowContext {
         windowSelection(options.id, options.windows, options.catalog, project => {
           this.selected = project; this.contextId = randomUUID(); options.changed();
         }));
+      this.display = new SavedProjectDisplay(this.workspace, options.engine, options.buildCapacity, () => {
+        this.contextId = randomUUID(); options.changed();
+      });
       this.startTasks();
     }
   }
@@ -44,13 +49,14 @@ export class WindowContext {
     if (this.workspace) {
       const status = await this.workspace.execute({ operation: 'current' });
       this.selected = 'project' in status ? status.project : null;
+      this.display?.refresh();
     }
   }
   private startTasks(): void {
     if (!this.workspace) return;
     this.development = new DevelopmentApi(this.workspace, this.options.provider);
     this.builds = new CandidateBuildApi(this.workspace, this.options.engine, this.options.openPreview, 300000, this.options.buildCapacity);
-    this.versions = new VersionsApi(this.workspace, this.options.profile);
+    this.versions = new VersionsApi(this.workspace, this.options.profile, undefined, 30000, () => { if (!this.disposed && !this.transitioning) this.display?.refresh(); });
   }
   assertAvailable(): void {
     if (this.disposed || this.transitioning) throw new Error('开发窗口正在切换工程或关闭，请稍后再试。');
@@ -59,7 +65,8 @@ export class WindowContext {
     const { manifest, id } = this.options;
     const logicalId = this.workspace ? (this.selected ? `p${this.selected.definition.id.replaceAll('-', '')}` : `blank-${id}`) : manifest.id;
     return [{ ...manifest, id: logicalId, appId: this.selected?.definition.appId ?? manifest.appId,
-      version: this.selected?.definition.version ?? manifest.version, contextId: this.contextId }];
+      version: this.selected?.definition.version ?? manifest.version, contextId: this.contextId,
+      ...(this.selected ? { entry: this.display?.entry ?? manifest.entry, projectView: this.display?.status ?? { status: 'loading' as const, error: null } } : {}) }];
   }
   async info(): Promise<ProjectWindow> {
     const status = this.workspace ? await this.workspace.execute({ operation: 'current' }) : { project: null, recoveryError: null };
@@ -72,18 +79,24 @@ export class WindowContext {
     this.assertAvailable();
     if (!this.workspace) throw new Error('当前应用未启用工程开发能力。');
     const transition = ['create', 'open', 'close'].includes(request?.operation);
-    if (!transition) return this.workspace.execute(request);
+    if (!transition) {
+      const result = await this.workspace.execute(request);
+      if (request.operation === 'save') this.display?.refresh();
+      return result;
+    }
     this.transitioning = true;
     const result = (async () => {
       try {
-        await this.stopTasks(); this.options.closePreviews();
+        await this.stopTasks(); await this.display?.stop(); this.options.closePreviews();
         if (this.disposed) throw new Error('开发窗口正在关闭。');
         return await this.workspace!.execute(request);
-      } finally { if (!this.disposed) this.startTasks(); this.transitioning = false; }
+      } finally { if (!this.disposed) this.startTasks(); this.transitioning = false; if (!this.disposed) this.display?.refresh(); }
     })();
     this.transition = result;
     try { return await result; } finally { this.transition = null; }
   }
+  reloadDisplay(): void { this.assertAvailable(); if (!this.display) throw new Error('当前应用没有工程显示能力。'); this.display.refresh(); }
+  serveProject(rawUrl: string): Promise<Response> { return this.display?.serve(rawUrl) ?? Promise.resolve(new Response('工程不存在。', { status: 404 })); }
   private assertContent(toolId: string, contextId?: string): void {
     this.assertAvailable();
     if (toolId !== this.tools()[0].id || (this.workspace || contextId !== undefined) && contextId !== this.contextId) {
@@ -119,7 +132,7 @@ export class WindowContext {
   async dispose(): Promise<void> {
     this.disposed = true;
     await this.transition?.catch(() => {});
-    await this.stopTasks(); this.options.closePreviews();
+    await this.stopTasks(); await this.display?.dispose(); this.options.closePreviews();
     for (const database of this.databases.values()) database.close();
     this.databases.clear(); this.services.clear();
   }

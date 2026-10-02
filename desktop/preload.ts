@@ -7,6 +7,7 @@ async function invoke<T>(channel: string, ...arguments_: unknown[]): Promise<T> 
   return response.result as T;
 }
 const api: HostApi = {
+  reloadProjectView: () => invoke('host:reload-project-view'),
   modelSettings: request => invoke('host:model-settings', request),
   onModelSettingsChanged: listener => {
     const receive = () => listener(); ipcRenderer.on('host:model-settings-changed', receive);

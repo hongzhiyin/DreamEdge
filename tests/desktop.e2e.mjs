@@ -12,7 +12,7 @@ const directory = await mkdtemp(join(tmpdir(), 'dreamedge-framework-'));
 const sourceDirectory = await mkdtemp(join(tmpdir(), 'dreamedge-source-'));
 const errors = [];
 let application;
-async function launch() {
+async function launch(expected = 'HelloWorld') {
   const env = { ...process.env, DREAMEDGE_DATA_DIR: directory };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.DREAMEDGE_AI_API_KEY;
@@ -23,7 +23,7 @@ async function launch() {
   const page = await application.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
   const content = page.frameLocator('iframe');
-  await content.getByText('HelloWorld', { exact: true }).waitFor();
+  await content.getByText(expected, { exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: '打开开发侧栏' }).count(), 1);
   assert.equal(await page.getByRole('complementary').count(), 0);
   assert.equal(await content.getByRole('button').count(), 0);
@@ -75,14 +75,14 @@ try {
   assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.storage('other-app', { operation: 'list', collection: 'framework-test' }); return false; } catch { return true; } }));
   assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.service('hello-world', 'unknown', 'read', null); return false; } catch { return true; } }));
   await page.reload();
-  await content.getByText('HelloWorld', { exact: true }).waitFor();
+  await content.getByText('Updated HelloWorld', { exact: true }).waitFor();
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
   assert.equal(await page.getByRole('complementary').count(), 0);
   await mkdir('artifacts', { recursive: true });
   await page.screenshot({ path: 'artifacts/hello-world-desktop.png' });
   await application.close();
-  ({ page, content } = await launch());
+  ({ page, content } = await launch('Updated HelloWorld'));
   const restored = await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }));
   assert.equal(restored.project.definition.id, project.definition.id);
   assert.equal(restored.project.definition.name, 'Saved framework fixture');
@@ -102,7 +102,7 @@ try {
   await content.getByText('HelloWorld', { exact: true }).waitFor();
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), []);
   await page.evaluate(directory => window.dreamEdge.workspace({ operation: 'open', directory }), project.rootDirectory);
-  await content.getByText('HelloWorld', { exact: true }).waitFor();
+  await content.getByText('Updated HelloWorld', { exact: true }).waitFor();
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
   await storage(content, { operation: 'remove', collection: 'framework-test', id: 'record' });
   await page.evaluate(() => window.dreamEdge.workspace({ operation: 'close' }));

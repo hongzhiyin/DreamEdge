@@ -17,6 +17,7 @@ export function DevelopmentSidebar() {
   const [current, setCurrent] = useState<ProjectWindow>();
   const [busy, setBusy] = useState<ProjectAction | null>(null);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [model, setModel] = useState<ModelSettingsState>();
   const toggle = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
@@ -27,8 +28,8 @@ export function DevelopmentSidebar() {
     const load = async () => {
       try {
         const result = await window.dreamEdge.windows({ operation: 'current' }) as ProjectWindow;
-        if (alive) { setCurrent(result); setError(''); }
-      } catch (error) { if (alive) setError(error instanceof Error ? error.message : '无法读取工程状态。'); }
+        if (alive) { setCurrent(result); setLoadError(''); }
+      } catch (error) { if (alive) setLoadError(error instanceof Error ? error.message : '无法读取工程状态。'); }
     };
     void load();
     const unsubscribe = window.dreamEdge.onContextChanged(() => { void load(); });
@@ -78,6 +79,7 @@ export function DevelopmentSidebar() {
         <div className="sidebar-feedback" aria-live="polite">
           {busy && <p role="status">{busy === 'new' ? '正在打开新窗口…' : '正在选择工程…'}</p>}
           {error && <p role="alert" className="sidebar-error">{error}</p>}
+          {loadError && <p role="alert" className="sidebar-error">{loadError}</p>}
         </div>
         <ModelSettingsPanel changed={setModel} />
         {current?.project && <AiConversation key={current.project.id} projectId={current.project.id} configured={!!model?.hasKey && !!model.model} />}

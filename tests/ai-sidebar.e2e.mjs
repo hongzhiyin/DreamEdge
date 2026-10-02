@@ -8,13 +8,13 @@ import electronPath from 'electron';
 const profile = await mkdtemp(join(tmpdir(), 'dreamedge-ai-profile-'));
 const source = await mkdtemp(join(tmpdir(), 'dreamedge-ai-source-'));
 const key = 'fixture-ai-private-key'; let application; const errors = [];
-async function launch() {
+async function launch(expected = 'HelloWorld') {
   const env = { ...process.env, DREAMEDGE_DATA_DIR: profile };
   for (const field of ['ELECTRON_RUN_AS_NODE', 'DREAMEDGE_AI_API_KEY', 'DREAMEDGE_AI_MODEL', 'DREAMEDGE_AI_BASE_URL']) delete env[field];
   application = await electron.launch({ executablePath: process.env.DREAMEDGE_EXECUTABLE_PATH || electronPath,
     args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')], env });
   const page = await application.firstWindow(); page.on('pageerror', error => errors.push(error.message));
-  await page.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor(); return page;
+  await page.frameLocator('iframe').getByText(expected, { exact: true }).waitFor(); return page;
 }
 async function mockModel() {
   await application.evaluate((_electron, key) => {
@@ -82,6 +82,7 @@ try {
   await candidate.getByRole('button', { name: '确认保存', exact: true }).click();
   await candidate.getByText('候选已保存到工程，源码版本已更新。', { exact: true }).waitFor();
   assert.match(await readFile(join(project.sourceDirectory, 'main.ts'), 'utf8'), /Hello AI/);
+  await page.frameLocator('iframe').getByText('Hello AI', { exact: true }).waitFor();
   await mkdir('artifacts', { recursive: true }); await candidate.scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'artifacts/dreamedge-ai-conversation.png' });
   const nextWindow = application.waitForEvent('window'); await page.getByRole('button', { name: '新窗口', exact: true }).click();
@@ -100,7 +101,8 @@ try {
   await chat.getByRole('alert').filter({ hasText: 'HTTP 401' }).waitFor();
   assert.ok(!(await chat.textContent()).includes(key));
   await scanPlaintext(profile); await scanPlaintext(source);
-  await application.close(); page = await launch();
+  await application.close(); page = await launch('Hello AI');
+  await page.frameLocator('iframe').getByText('Hello AI', { exact: true }).waitFor();
   const restored = await page.evaluate(() => window.dreamEdge.modelSettings({ operation: 'get' })); assert.equal(restored.hasKey, persisted);
   const histories = await page.evaluate(id => window.dreamEdge.development({ operation: 'listSummaries', projectId: id }), project.definition.id);
   assert.equal(histories[0].turnCount, 3); assert.deepEqual(errors, []);
