@@ -6,10 +6,9 @@ import { spawnSync } from 'node:child_process';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
 
-const business = process.argv[2] && resolve(process.argv[2]);
-if (!business) throw new Error('请传入独立业务项目目录。');
 const temporary = await mkdtemp(join(tmpdir(), 'dreamedge-derived-'));
-const second = join(temporary, 'project');
+const second = join(temporary, 'second');
+const firstProject = join(temporary, 'first');
 const id = `io.example.p${Date.now()}`;
 const apps = [];
 const profiles = [];
@@ -18,7 +17,7 @@ function run(command, args, cwd = process.cwd()) {
   if (result.status !== 0) throw new Error(`${command} failed`);
 }
 async function launch(path) {
-  const env = { ...process.env, CODEX_USAGE_EXECUTABLE: join(business, 'tests/fake-codex.cjs') };
+  const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.DREAMEDGE_DATA_DIR;
   const app = await electron.launch({ executablePath: electronPath, args: [path], env });
@@ -29,18 +28,20 @@ async function launch(path) {
   return { app, page, identity };
 }
 try {
-  run(process.execPath, ['packages/cli/bin/cli.mjs', 'create', second, '--name', 'Isolation Check', '--id', id,
-    '--runtime', resolve('artifacts/framework/dreamedge-desktop-0.1.1.tgz'),
-    '--sdk', resolve('artifacts/framework/dreamedge-sdk-0.1.1.tgz'),
-    '--cli', resolve('artifacts/framework/dreamedge-cli-0.1.1.tgz')]);
-  run('npm', ['install', '--offline', '--ignore-scripts'], second);
-  run('npm', ['run', 'build'], second);
-  const a = await launch(business);
+  for (const [project, suffix] of [[firstProject, 'a'], [second, 'b']]) {
+    run(process.execPath, ['packages/cli/bin/cli.mjs', 'create', project, '--name', `Framework fixture ${suffix}`, '--id', `${id}${suffix}`,
+      '--runtime', resolve('artifacts/framework/dreamedge-desktop-0.1.1.tgz'),
+      '--sdk', resolve('artifacts/framework/dreamedge-sdk-0.1.1.tgz'),
+      '--cli', resolve('artifacts/framework/dreamedge-cli-0.1.1.tgz')]);
+    run('npm', ['install', '--offline', '--ignore-scripts'], project);
+    run('npm', ['run', 'build'], project);
+  }
+  const a = await launch(firstProject);
   const b = await launch(second);
   assert.notEqual(a.identity.appId, b.identity.appId);
   const aProfile = await a.app.evaluate(({ app }) => app.getPath('userData'));
   const bProfile = await b.app.evaluate(({ app }) => app.getPath('userData'));
-  profiles.push(bProfile);
+  profiles.push(aProfile, bProfile);
   assert.notEqual(aProfile, bProfile);
   assert.ok(aProfile.endsWith(a.identity.appId));
   assert.ok(bProfile.endsWith(b.identity.appId));

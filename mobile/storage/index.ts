@@ -3,5 +3,7 @@ import { createToolStore } from './backend';
 import { createBrowserBackend } from './browser';
 import { nativeBackend } from './native';
 
-export const readingStore = createToolStore('reading-log',
-  Capacitor.isNativePlatform() ? nativeBackend : createBrowserBackend());
+export function createFrameworkStore(applicationId: string) {
+  return createToolStore(applicationId,
+    Capacitor.isNativePlatform() ? nativeBackend : createBrowserBackend());
+}

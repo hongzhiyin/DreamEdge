@@ -1,15 +1,8 @@
 import { SHELL_ORIGIN, TOOL_CHANNEL, type BridgeRequest, type Json, type StoredRecord } from './contracts.js';
-export type { Json, AppManifest, ToolManifest, StoredRecord, StorageRequest } from './contracts.js';
+export type { Json, AppManifest, ToolManifest, StoredRecord, StorageRequest, StorageClient } from './contracts.js';
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: number };
 const pending = new Map<string, Pending>();
 if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', event => {
-    if (window.parent === window) return;
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      window.parent.postMessage({ channel: TOOL_CHANNEL, type: 'toggle-assistant' }, SHELL_ORIGIN);
-    }
-  });
   window.addEventListener('message', event => {
     if (event.source !== window.parent || event.origin !== SHELL_ORIGIN) return;
     const data = event.data;

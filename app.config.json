@@ -1,11 +1,11 @@
 {
-  "id": "reading-log",
+  "id": "hello-world",
   "appId": "io.github.hongzhiyin.dreamedge",
   "name": "DreamEdge",
-  "description": "阅读记录 · 基建回归样例",
+  "description": "DreamEdge 框架原型",
   "version": "0.1.1",
   "entry": "index.html",
-  "renderer": "tools/reading-log",
+  "renderer": "examples/hello-world",
   "capabilities": [
     "storage"
   ]

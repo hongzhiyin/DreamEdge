@@ -53,7 +53,7 @@ test('content policy admits only the current application frame', async () => {
     const response = await serveAsset(root, 'dreamedge://shell/index.html', [manifest]);
     assert.equal(response.status, 200);
     assert.ok(response.headers.get('Content-Security-Policy')!.includes('frame-src dreamedge://example;'));
-    assert.ok(!response.headers.get('Content-Security-Policy')!.includes('reading-log'));
+    assert.ok(!response.headers.get('Content-Security-Policy')!.includes('other-app'));
     const forbidden = await serveAsset(root, 'dreamedge://other/index.html', [manifest]);
     assert.equal(forbidden.status, 404);
   } finally { rmSync(root, { recursive: true, force: true }); }

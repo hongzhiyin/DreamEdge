@@ -22,11 +22,10 @@
     "desktop",
     "shared",
     "shell",
-    "tool-sdk",
-    "tools",
     "mobile",
     "tests/**/*.ts",
     "capacitor.config.ts",
-    "packages/sdk/src"
+    "packages/sdk/src",
+    "examples"
   ]
 }

@@ -30,7 +30,7 @@ if (!tests) {
   const group = project.addPbxGroup([], 'AppUITests', 'AppUITests');
   const root = project.getFirstProject().firstProject.mainGroup;
   project.addToPbxGroup(group.uuid, root);
-  project.addSourceFile('ReadingPersistenceTests.swift', { target: target.uuid }, group.uuid);
+  project.addSourceFile('FrameworkLaunchTests.swift', { target: target.uuid }, group.uuid);
   const ref = project.pbxFileReferenceSection()[target.pbxNativeTarget.productReference];
   ref.path = '"AppUITests.xctest"';
   tests = [target.uuid, target.pbxNativeTarget];

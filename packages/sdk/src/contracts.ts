@@ -8,6 +8,11 @@ export interface AppManifest extends ToolManifest {
   services?: Record<string, { entry: string; methods: string[] }>;
 }
 export interface StoredRecord { id: string; value: Json }
+export interface StorageClient {
+  list(collection: string): Promise<StoredRecord[]>;
+  put(collection: string, id: string, value: Json): Promise<void>;
+  remove(collection: string, id: string): Promise<void>;
+}
 export type StorageRequest =
   | { operation: 'list'; collection: string }
   | { operation: 'put'; collection: string; id: string; value: Json }

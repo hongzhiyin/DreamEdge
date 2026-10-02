@@ -4,109 +4,66 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
+import { SHELL_ORIGIN, TOOL_CHANNEL } from '../packages/sdk/dist/contracts.js';
 
-const directory = await mkdtemp(join(tmpdir(), 'dreamedge-e2e-'));
+const directory = await mkdtemp(join(tmpdir(), 'dreamedge-framework-'));
 const errors = [];
 let application;
 async function launch() {
-  const environment = { ...process.env, DREAMEDGE_DATA_DIR: directory };
-  delete environment.ELECTRON_RUN_AS_NODE;
-  application = await electron.launch({
-    executablePath: process.env.DREAMEDGE_EXECUTABLE_PATH || electronPath,
-    args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')],
-    env: environment,
-  });
+  const env = { ...process.env, DREAMEDGE_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  application = await electron.launch({ executablePath: process.env.DREAMEDGE_EXECUTABLE_PATH || electronPath,
+    args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')], env });
   const page = await application.firstWindow();
-  await application.evaluate(({ app, BrowserWindow }) => {
-    app.focus({ steal: true });
-    BrowserWindow.getAllWindows()[0].focus();
-  });
-  await page.setViewportSize({ width: 920, height: 650 });
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  const tool = page.frameLocator('iframe');
-  await tool.locator('button[type="submit"]:enabled').waitFor();
-  return { page, tool };
+  const content = page.frameLocator('iframe');
+  await content.getByText('HelloWorld', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button').count(), 0);
+  assert.equal(await content.getByRole('button').count(), 0);
+  return { page, content };
 }
-
-try {
-  let { page, tool } = await launch();
-  await tool.getByText('你的第一条阅读足迹').waitFor();
-  await tool.getByLabel('阅读日期').fill('2026-10-02');
-  await tool.getByLabel('阅读内容').fill('《设计数据密集型应用》第一章\n可靠性与可维护性');
-  await tool.getByLabel('阅读时长').fill('45');
-  await tool.getByRole('button', { name: '保存记录' }).click();
-  await tool.getByText('记录已保存到本机。').waitFor();
-  assert.equal(await tool.locator('.entry').count(), 1);
-  assert.equal(await tool.locator('.stats').innerText().then(text => text.includes('45')), true);
-
-  // Whitespace content is rejected without a write, and the draft stays editable.
-  await tool.getByLabel('阅读内容').fill('   ');
-  await tool.getByRole('button', { name: '保存记录' }).click();
-  await tool.getByRole('alert').getByText('写下这次阅读的内容。').waitFor();
-  assert.equal(await tool.locator('.entry').count(), 1);
-  await tool.getByLabel('阅读内容').fill('');
-
-  await page.getByRole('button', { name: '重新加载工具' }).click();
-  await tool.locator('.entry').waitFor();
-  assert.equal(await tool.locator('.entry-content p').innerText(), '《设计数据密集型应用》第一章\n可靠性与可维护性');
-  assert.equal(await tool.locator('.duration').innerText(), '45 分钟');
-  assert.equal(await tool.locator('body').evaluate(() => typeof window.dreamEdge), 'undefined');
-  assert.equal(await tool.locator('body').evaluate(() => typeof window.require), 'undefined');
-  const unknownTool = await page.evaluate(async () => {
-    try { await window.dreamEdge.storage('unknown', { operation: 'list', collection: 'entries' }); return false; }
-    catch { return true; }
-  });
-  assert.ok(unknownTool);
-
-  await mkdir('artifacts', { recursive: true });
-  await page.screenshot({ path: 'artifacts/reading-log.png' });
-  await page.getByRole('button', { name: 'AI 助手' }).click();
-  await page.getByRole('complementary', { name: 'AI 助手' }).waitFor();
-  assert.ok(await page.getByLabel('AI 需求输入').isDisabled());
-  await page.screenshot({ path: 'artifacts/ai-panel.png' });
-  await page.keyboard.press('Escape');
-  assert.equal(await page.getByRole('complementary', { name: 'AI 助手' }).count(), 0);
-  await tool.getByLabel('阅读内容').focus();
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
-  await page.getByRole('complementary', { name: 'AI 助手' }).waitFor();
-  await page.keyboard.press('Escape');
-  await page.setViewportSize({ width: 920, height: 650 });
-  assert.ok(await tool.locator('body').evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  await page.screenshot({ path: 'artifacts/compact.png' });
-
-  await application.close();
-  ({ page, tool } = await launch());
-  await tool.locator('.entry').waitFor();
-  assert.equal(await tool.locator('.entry').count(), 1);
-  await tool.getByRole('button', { name: /^删除记录/ }).click();
-  await tool.getByRole('button', { name: '取消', exact: true }).click();
-  assert.equal(await tool.locator('.entry').count(), 1);
-  await tool.getByRole('button', { name: /^删除记录/ }).click();
-  await tool.getByRole('button', { name: '确认删除' }).click();
-  await tool.getByText('你的第一条阅读足迹').waitFor();
-  await application.close();
-  ({ page, tool } = await launch());
-  await tool.getByText('你的第一条阅读足迹').waitFor();
-  assert.equal(await tool.locator('.entry').count(), 0);
-  assert.deepEqual(errors, []);
-  console.log('PASS: add, validation, reload, isolation, AI entry, compact layout, restart persistence, confirmed deletion.');
-} catch (error) {
-  const page = application?.windows()[0];
-  if (page) {
-    await mkdir('artifacts', { recursive: true });
-    await page.screenshot({ path: 'artifacts/failure.png' }).catch(() => {});
-    for (const frame of page.frames()) {
-      console.error('FRAME', frame.url(), await frame.locator('body').innerText().catch(() => 'unavailable'));
-      console.error('FORM', await frame.locator('form').evaluateAll(forms => forms.map(form => ({
-        valid: form.checkValidity(),
-        fields: [...form.querySelectorAll('input,textarea')].map(field => ({ type: field.type, value: field.value, validity: field.validationMessage })),
-      }))).catch(() => []));
+async function storage(content, payload) {
+  return content.locator('body').evaluate((_body, { payload, channel, origin }) => new Promise((resolve, reject) => {
+    const requestId = crypto.randomUUID();
+    const timer = setTimeout(() => { window.removeEventListener('message', receive); reject(new Error('Framework bridge timed out')); }, 10000);
+    function receive(event) {
+      if (event.source !== window.parent || event.origin !== origin || event.data?.channel !== channel || event.data.requestId !== requestId) return;
+      clearTimeout(timer); window.removeEventListener('message', receive);
+      if (event.data.error) reject(new Error(event.data.error)); else resolve(event.data.result);
     }
-  }
-  console.error('Renderer errors:', errors);
-  throw error;
+    window.addEventListener('message', receive);
+    window.parent.postMessage({ channel, type: 'request', requestId, request: { kind: 'storage', payload } }, origin);
+  }), { payload, channel: TOOL_CHANNEL, origin: SHELL_ORIGIN });
+}
+try {
+  let { page, content } = await launch();
+  assert.equal(await application.evaluate(({ app }) => app.getName()), 'DreamEdge');
+  assert.equal(await content.locator('body').evaluate(() => typeof window.dreamEdge), 'undefined');
+  assert.equal(await content.locator('body').evaluate(() => typeof window.require), 'undefined');
+  await storage(content, { operation: 'put', collection: 'framework-test', id: 'record', value: { message: 'persisted' } });
+  await assert.rejects(storage(content, { operation: 'put', collection: '../outside', id: 'record', value: {} }));
+  assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.storage('other-app', { operation: 'list', collection: 'framework-test' }); return false; } catch { return true; } }));
+  assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.service('hello-world', 'unknown', 'read', null); return false; } catch { return true; } }));
+  await page.reload();
+  await content.getByText('HelloWorld', { exact: true }).waitFor();
+  assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
+  assert.equal(await page.getByRole('complementary').count(), 0);
+  await mkdir('artifacts', { recursive: true });
+  await page.screenshot({ path: 'artifacts/hello-world-desktop.png' });
+  await application.close();
+  ({ page, content } = await launch());
+  assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
+  await storage(content, { operation: 'remove', collection: 'framework-test', id: 'record' });
+  await application.close();
+  ({ page, content } = await launch());
+  assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), []);
+  assert.deepEqual(errors, []);
+  console.log('PASS: minimal framework shell, isolated bridge, capability checks, reload and durable storage across restart.');
 } finally {
-  await application?.close().catch(() => {});
+  if (application) {
+    const closed = await Promise.race([application.close().then(() => true).catch(() => true), new Promise(resolve => setTimeout(() => resolve(false), 5000))]);
+    if (!closed) application.process().kill('SIGKILL');
+  }
   await rm(directory, { recursive: true, force: true });
 }

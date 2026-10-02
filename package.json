@@ -12,7 +12,6 @@
   "scripts": {
     "start": "npm run build && electron .",
     "build": "npm run typecheck && npm run build:framework && node scripts/build.mjs",
-    "build:tool": "node scripts/build.mjs --tool",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "npm run build && node tests/desktop.e2e.mjs",
@@ -25,7 +24,8 @@
     "mobile:preview": "node scripts/preview-mobile.mjs",
     "test:mobile": "node tests/mobile.e2e.mjs",
     "build:framework": "tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs",
-    "framework:pack": "npm run build:framework && node scripts/pack-framework.mjs"
+    "framework:pack": "npm run build:framework && node scripts/pack-framework.mjs",
+    "test:framework": "npm run framework:pack && node tests/derived-app.e2e.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",

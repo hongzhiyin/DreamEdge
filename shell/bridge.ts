@@ -6,7 +6,7 @@ declare global {
   interface Window { dreamEdge: HostApi }
 }
 
-export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: ToolManifest | undefined, toggleAssistant: () => void): void {
+export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: ToolManifest | undefined): void {
   useEffect(() => {
     if (!tool) return;
     const origin = `dreamedge://${tool.id}`;
@@ -15,7 +15,6 @@ export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: 
       if (event.source !== frame.current?.contentWindow || event.origin !== origin) return;
       const data = event.data;
       if (!data || data.channel !== TOOL_CHANNEL) return;
-      if (data.type === 'toggle-assistant') { toggleAssistant(); return; }
       if (data.type !== 'request') return;
       if (typeof data.requestId !== 'string' || data.requestId.length > 80) return;
       if (pending.has(data.requestId) || pending.size >= 100) return;
@@ -37,5 +36,5 @@ export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: 
     }
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
-  }, [frame, tool, toggleAssistant]);
+  }, [frame, tool]);
 }

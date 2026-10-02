@@ -43,8 +43,8 @@ final class RecordDatabase {
     deinit { sqlite3_close(database) }
 
     func execute(toolId: String, operation: String, collection: String, id: String?, json: String?) throws -> [[String: String]] {
-        // Only the bundled reading tool is installed in this first iPhone host.
-        guard toolId == "reading-log" else { throw StorageFailure.message("工具未安装。") }
+        // The current framework prototype exposes only its own application namespace.
+        guard toolId == "hello-world" else { throw StorageFailure.message("工具未安装。") }
         try validateIdentifier(collection)
         if operation != "list" { try validateIdentifier(id ?? "") }
         var sql: String

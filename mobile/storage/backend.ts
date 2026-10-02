@@ -1,5 +1,5 @@
 import type { StorageRequest, StoredRecord } from '../../shared/contracts';
-import type { StorageClient } from '../../tool-sdk/storage-client';
+import type { StorageClient } from '../../shared/contracts';
 import { identifier, validateStorage } from '../../shared/storage-validation';
 
 export interface RecordBackend {

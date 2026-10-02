@@ -25,6 +25,6 @@ export async function createApp(directory, options) {
   await writeFile(resolve(root, 'app.config.json'), JSON.stringify(manifest, null, 2));
   await writeFile(resolve(root, '.gitignore'), 'node_modules/\ndist/\nrelease/\n*.sqlite*\n');
   await writeFile(resolve(root, 'ui/index.html'), '<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><div id="root"></div><script type="module" src="./main.ts"></script></html>');
-  await writeFile(resolve(root, 'ui/main.ts'), `import { storage } from '@dreamedge/sdk';\ndocument.getElementById('root')!.textContent = ${JSON.stringify(options.name)};\nconsole.log(await storage.list('settings'));\n`);
+  await writeFile(resolve(root, 'ui/main.ts'), "document.getElementById('root')!.textContent = 'HelloWorld';\n");
   console.log(`Created ${options.name} at ${root}. Install dependencies and run npm start.`);
 }
