@@ -12,7 +12,7 @@ export function containedPath(root: string, name: string): string {
 }
 export function validateManifest(value: unknown): AppManifest {
   const item = value as AppManifest;
-  if (!item || typeof item !== 'object' || typeof item.id !== 'string' || !/^[a-z][a-z0-9-]{0,79}$/.test(item.id)
+  if (!item || typeof item !== 'object' || typeof item.id !== 'string' || item.id === 'shell' || !/^[a-z][a-z0-9-]{0,79}$/.test(item.id)
       || typeof item.appId !== 'string' || !/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9-]+){2,}$/.test(item.appId)
       || typeof item.name !== 'string' || !item.name.trim() || item.name.length > 80
       || typeof item.version !== 'string' || !/^\d+\.\d+\.\d+$/.test(item.version)

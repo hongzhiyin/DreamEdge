@@ -18,6 +18,7 @@ test('different installed App identities select independent profiles', () => {
 test('application manifest rejects injected identities, invalid permissions and escaping paths', () => {
   assert.equal(validateManifest(manifest).appId, 'io.example.app');
   for (const value of [
+    { ...manifest, id: 'shell' },
     { ...manifest, id: 'evil; frame-src https://example.com' },
     { ...manifest, renderer: '../outside' }, { ...manifest, appId: '../profile' },
     { ...manifest, services: { local: { entry: '/outside.cjs', methods: ['read'] } } },

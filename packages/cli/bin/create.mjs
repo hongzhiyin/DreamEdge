@@ -11,7 +11,7 @@ export async function createApp(directory, options) {
   for (const path of [options.runtime, options.sdk, options.cli]) await access(resolve(path));
   if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9-]+){2,}$/.test(options.id)) throw new Error('应用标识格式无效。');
   const id = options.id.split('.').at(-1).toLowerCase();
-  if (!/^[a-z][a-z0-9-]{0,79}$/.test(id)) throw new Error('应用标识最后一段需以字母开头。');
+  if (id === 'shell' || !/^[a-z][a-z0-9-]{0,79}$/.test(id)) throw new Error('应用标识最后一段需以字母开头，并避开保留名称 shell。');
   await mkdir(resolve(root, 'ui'), { recursive: true });
   await mkdir(resolve(root, 'vendor'), { recursive: true });
   for (const path of [options.runtime, options.sdk, options.cli]) await cp(resolve(path), resolve(root, 'vendor', basename(path)));
