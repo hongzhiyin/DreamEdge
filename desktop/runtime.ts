@@ -5,6 +5,7 @@ import { configuredModel } from './development/responses';
 import { workerEngine } from './build/runner';
 import { ProjectWindows } from './windows/controller';
 import { registerWindowIpc } from './windows/ipc';
+import { installProjectMenu } from './windows/menu';
 
 export function startApp(): void {
   const root = app.getAppPath(); const manifest = loadApplication(root);
@@ -16,7 +17,9 @@ export function startApp(): void {
   const windows = new ProjectWindows(manifest, root, profile, frameworkRoot, join(__dirname, 'preload.cjs'),
     configuredModel(process.env), workerEngine(join(__dirname, 'build-worker.cjs')));
   app.whenReady().then(async () => {
-    registerWindowIpc(windows, manifest); await windows.restore();
+    registerWindowIpc(windows, manifest);
+    installProjectMenu(windows, manifest.name, manifest.capabilities.includes('workspace'));
+    await windows.restore();
     app.on('activate', () => { void windows.activate().catch(() => {}); });
     app.on('second-instance', () => { void windows.activate().catch(() => {}); });
   }).catch(error => { dialog.showErrorBox(`${manifest.name} 无法启动`, String(error)); app.quit(); });

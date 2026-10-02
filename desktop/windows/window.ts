@@ -27,7 +27,7 @@ export function createHostWindow(context: WindowContext, id: string, root: strin
   const denyDownload = (event: Electron.Event) => event.preventDefault();
   scopedSession.on('will-download', denyDownload);
   const window = new BrowserWindow({ ...restoredBounds(bounds), minWidth: 640, minHeight: 480,
-    backgroundColor: '#f7f8f5', autoHideMenuBar: true, title: 'DreamEdge',
+    backgroundColor: '#f7f8f5', autoHideMenuBar: false, title: 'DreamEdge',
     webPreferences: { session: scopedSession, preload, contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());

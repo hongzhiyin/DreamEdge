@@ -81,6 +81,10 @@ export class ProjectWindows {
     if (request.operation === 'list') return Promise.all([...this.windows.values()].filter(live => !live.closing).map(live => live.context.info()));
     if (request.operation === 'focus') return this.focus(request.windowId);
     if (!['new', 'createProject', 'openProject'].includes(request.operation)) throw new Error('不支持的窗口操作。');
+    return this.open(request as Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>);
+  }
+  async open(request: Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>): Promise<ProjectWindow> {
+    if (this.quitting || !this.manifest.capabilities.includes('workspace')) throw new Error('当前应用无法打开开发窗口。');
     const closed = request.operation === 'openProject' ? (await this.state.records()).find(window => !window.open && window.project?.root === request.directory) : undefined;
     const record = await this.state.allocate(null, closed?.id); const next = this.context(record);
     try {
@@ -94,6 +98,21 @@ export class ProjectWindows {
       if (error instanceof ProjectAlreadyOpen) return this.focus(error.windowId);
       throw error;
     }
+  }
+  async openFromMenu(request: Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>, parent: BrowserWindow | null): Promise<ProjectWindow> {
+    const live = [...this.windows.values()].find(live => live.window === parent && !live.closing);
+    if (live && request.operation !== 'new') {
+      const info = await live.context.info();
+      if (!info.project && !info.recoveryError) {
+        try {
+          await live.context.executeWorkspace(request.operation === 'createProject'
+            ? { operation: 'create', directory: request.directory, name: request.name }
+            : { operation: 'open', directory: request.directory });
+          await this.updateTitle(live.context); return live.context.info();
+        } catch (error) { if (error instanceof ProjectAlreadyOpen) return this.focus(error.windowId); throw error; }
+      }
+    }
+    return this.open(request);
   }
   async activate(): Promise<void> {
     const live = [...this.windows.entries()].find(([, live]) => !live.closing);
