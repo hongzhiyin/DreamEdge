@@ -2,9 +2,6 @@ import { app, dialog, protocol } from 'electron';
 import { dirname, join, resolve } from 'node:path';
 import { loadApplication, applicationDataDirectory } from './project';
 import { mkdir } from 'node:fs/promises';
-import { ModelSettings } from './model-connection/settings';
-import { ConnectionVault } from './model-connection/vault';
-import { nativeSecretEncryption } from './model-connection/native';
 import { workerEngine } from './build/runner';
 import { ProjectWindows } from './windows/controller';
 import { registerWindowIpc } from './windows/ipc';
@@ -18,19 +15,15 @@ export function startApp(): void {
   if (!app.requestSingleInstanceLock()) { app.quit(); return; }
   protocol.registerSchemesAsPrivileged(['dreamedge', 'dreamedge-preview'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true } })));
   const frameworkRoot = app.isPackaged ? (process.platform === 'darwin' ? resolve(dirname(app.getPath('exe')), '../..') : dirname(app.getPath('exe'))) : root;
-  let windows: ProjectWindows | undefined; let modelSettings: ModelSettings | undefined;
+  let windows: ProjectWindows | undefined;
   let closing = false;
   app.whenReady().then(async () => {
     await mkdir(profile, { recursive: true });
-    modelSettings = new ModelSettings(new ConnectionVault(profile, nativeSecretEncryption), {
-      apiKey: process.env.DREAMEDGE_AI_API_KEY, model: process.env.DREAMEDGE_AI_MODEL, baseUrl: process.env.DREAMEDGE_AI_BASE_URL,
-    }, () => windows?.modelSettingsChanged());
-    await modelSettings.ready;
-    if (closing) { await modelSettings.dispose(); return; }
-    windows = new ProjectWindows(manifest, root, profile, frameworkRoot, join(__dirname, 'preload.cjs'), modelSettings,
+    if (closing) return;
+    windows = new ProjectWindows(manifest, root, profile, frameworkRoot, join(__dirname, 'preload.cjs'), undefined,
       workerEngine(join(__dirname, 'build-worker.cjs')));
     const actions = new ProjectActions(windows);
-    registerWindowIpc(windows, manifest, actions, modelSettings);
+    registerWindowIpc(windows, manifest, actions);
     installProjectMenu(actions, manifest.name, manifest.capabilities.includes('workspace'));
     await windows.restore();
     app.on('activate', () => { void windows?.activate().catch(() => {}); });
@@ -40,6 +33,6 @@ export function startApp(): void {
   app.on('before-quit', event => {
     if (closing) return;
     event.preventDefault(); closing = true;
-    void Promise.all([windows?.shutdown(), modelSettings?.dispose()]).finally(() => app.quit());
+    void Promise.all([windows?.shutdown()]).finally(() => app.quit());
   });
 }

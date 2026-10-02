@@ -1,6 +1,6 @@
 import type { AssistantMessage, Message, Model } from '@earendil-works/pi-ai';
 import type { AgentActivity } from '../../shared/contracts';
-import type { ConnectionConfiguration } from '../model-connection/vault';
+import type { ConnectionConfiguration } from '../model-connection/configuration';
 import { ModelFailure, modelInstructions, type ModelAccess, type ModelInput } from './model';
 import { projectTools } from './agent-tools';
 import { responsesStream } from './agent-transport';

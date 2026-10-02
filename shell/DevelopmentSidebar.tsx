@@ -81,8 +81,9 @@ export function DevelopmentSidebar() {
           {error && <p role="alert" className="sidebar-error">{error}</p>}
           {loadError && <p role="alert" className="sidebar-error">{loadError}</p>}
         </div>
-        <ModelSettingsPanel changed={setModel} />
-        {current?.project && <AiConversation key={current.project.id} projectId={current.project.id} configured={!!model?.hasKey && !!model.model} />}
+        {current?.project && <ModelSettingsPanel key={current.project.id} projectId={current.project.id} changed={setModel} />}
+        {current?.project && <AiConversation key={current.project.id} projectId={current.project.id}
+          configured={model?.projectId === current.project.id && !!model.hasKey && !!model.model && !model.warning} />}
       </div>
     </aside>
   </div>;

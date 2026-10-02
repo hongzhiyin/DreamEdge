@@ -38,13 +38,13 @@ test('candidate snapshots reject altered base content instead of advertising a m
 
 test('credential guards reject session titles and prompts before those values reach session storage', async () => {
   const { ModelSettings } = await import('../desktop/model-connection/settings');
-  const { ConnectionVault } = await import('../desktop/model-connection/vault');
+  const { ProjectConnectionFile, EMPTY_REVISION } = await import('../desktop/model-connection/file');
   const { DevelopmentApi } = await import('../desktop/development/api');
   const f = await fixture(async () => proposal); const secret = 'fixture-connection-key';
-  const settings = new ModelSettings(new ConnectionVault(f.profile, { supported: false, available: () => false, encrypt: () => Buffer.alloc(0), decrypt: () => '' }));
+  const settings = new ModelSettings(new ProjectConnectionFile(f.project.rootDirectory), f.project.definition.id);
   const api = new DevelopmentApi(f.workspace, settings);
   try {
-    await settings.execute({ operation: 'save', apiKey: secret, model: 'fixture-model', baseUrl: 'https://model.example/v1', persist: false, expectedRevision: 0 });
+    await settings.execute({ operation: 'save', apiKey: secret, model: 'fixture-model', baseUrl: 'https://model.example/v1', projectId: f.project.definition.id, expectedRevision: EMPTY_REVISION });
     await assert.rejects(api.execute({ operation: 'create', projectId: f.project.definition.id, title: secret }), /凭据/);
     await assert.rejects(api.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: secret, paths: ['main.ts'] }), /凭据/);
     const session = await f.get(); assert.equal(session.turns.length, 0); assert.ok(!JSON.stringify(session).includes(secret));

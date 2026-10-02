@@ -14,14 +14,17 @@ import { WindowState } from './state';
 import { windowSelection } from './selection';
 import { Capacity } from './capacity';
 import { SavedProjectDisplay } from '../display/current';
+import { ProjectModels } from '../model-connection/project';
 
 export interface ContextOptions {
   id: string; manifest: AppManifest; root: string; profile: string; frameworkRoot: string;
-  catalog: WorkspaceRegistry; windows: WindowState; provider: ModelProvider; engine: BuildEngine;
+  catalog: WorkspaceRegistry; windows: WindowState; provider?: ModelProvider; engine: BuildEngine;
   openPreview: PreviewOpener; buildCapacity: Capacity; changed: () => void; closePreviews: () => void;
+  modelSettingsChanged?: () => void;
 }
 export class WindowContext {
   readonly workspace?: WorkspaceApi;
+  readonly modelSettings?: ProjectModels;
   private readonly display?: SavedProjectDisplay;
   development?: DevelopmentApi;
   builds?: CandidateBuildApi;
@@ -39,6 +42,7 @@ export class WindowContext {
         windowSelection(options.id, options.windows, options.catalog, project => {
           this.selected = project; this.contextId = randomUUID(); options.changed();
         }));
+      this.modelSettings = new ProjectModels(() => this.selected, () => options.modelSettingsChanged?.());
       this.display = new SavedProjectDisplay(this.workspace, options.engine, options.buildCapacity, () => {
         this.contextId = randomUUID(); options.changed();
       });
@@ -54,7 +58,7 @@ export class WindowContext {
   }
   private startTasks(): void {
     if (!this.workspace) return;
-    this.development = new DevelopmentApi(this.workspace, this.options.provider);
+    this.development = new DevelopmentApi(this.workspace, this.options.provider ?? this.modelSettings!);
     this.builds = new CandidateBuildApi(this.workspace, this.options.engine, this.options.openPreview, 300000, this.options.buildCapacity);
     this.versions = new VersionsApi(this.workspace, this.options.profile, undefined, 30000, () => { if (!this.disposed && !this.transitioning) this.display?.refresh(); });
   }
@@ -128,7 +132,9 @@ export class WindowContext {
       return invoke(service, method, input);
     });
   }
-  private async stopTasks(): Promise<void> { await Promise.all([this.development?.dispose(), this.builds?.dispose(), this.versions?.dispose()]); }
+  private async stopTasks(): Promise<void> {
+    await Promise.all([this.development?.dispose(), this.builds?.dispose(), this.versions?.dispose(), this.modelSettings?.reset()]);
+  }
   async dispose(): Promise<void> {
     this.disposed = true;
     await this.transition?.catch(() => {});

@@ -20,7 +20,7 @@ async function mockModel() {
   await application.evaluate((_electron, key) => {
     globalThis.modelMode = 'success'; globalThis.modelRequests = [];
     globalThis.fetch = async (url, options) => {
-      if (String(url) !== 'https://model.example/v1/responses') throw new Error('Unexpected service URL');
+      if (String(url) !== 'https://api.deepseek.com/responses') throw new Error('Unexpected service URL');
       if (new Headers(options.headers).get('Authorization') !== `Bearer ${key}`) throw new Error('Missing model credential');
       const body = JSON.parse(options.body);
       if (JSON.stringify(body).includes(key) || body.store !== false || options.redirect !== 'error') throw new Error('Unsafe request');
@@ -46,30 +46,37 @@ async function scanPlaintext(root) {
   for (const entry of await readdir(root, { withFileTypes: true })) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) await scanPlaintext(path);
-    else if (/\.(json|ts|tsx|txt|html|log)$/.test(entry.name)) assert.ok(!(await readFile(path, 'utf8')).includes(key), `Credential leaked in ${entry.name}`);
+    else if (path !== join(source, 'AI HelloWorld', '.dreamedge/model.json') && /\.(json|ts|tsx|txt|html|log)$/.test(entry.name)) assert.ok(!(await readFile(path, 'utf8')).includes(key), `Credential leaked in ${entry.name}`);
   }
 }
 try {
   let page = await launch(); await mockModel();
   await page.getByRole('button', { name: '打开开发侧栏' }).click();
-  await page.getByLabel('服务地址', { exact: true }).fill('https://model.example/v1');
-  await page.getByLabel('模型名称', { exact: true }).fill('fixture-model');
-  await page.getByLabel('API Key', { exact: true }).fill(key);
-  const remember = page.getByLabel('在本机加密保存', { exact: true });
-  if (process.env.DREAMEDGE_TEST_ENCRYPTED_SETTINGS === '1') await remember.check();
-  const persisted = await remember.isChecked();
-  await page.getByRole('button', { name: '保存配置', exact: true }).click();
-  await page.getByText(persisted ? '模型配置已在本机加密保存。' : '模型配置已设置，仅本次运行使用。', { exact: true }).waitFor();
-  assert.equal(await page.getByLabel('API Key', { exact: true }).inputValue(), '');
-  const state = await page.evaluate(() => window.dreamEdge.modelSettings({ operation: 'get' }));
-  assert.equal(state.hasKey, true); assert.ok(!JSON.stringify(state).includes(key));
-  await page.getByRole('button', { name: '测试连接', exact: true }).click();
-  await page.getByText('连接测试成功，模型支持当前结构化响应。', { exact: true }).waitFor();
-  await page.locator('.ai-settings > summary').click();
   await application.evaluate(({ dialog }, directory) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: directory }); }, join(source, 'AI HelloWorld'));
   await page.getByRole('button', { name: /^新建工程/ }).click();
-  const chat = page.getByRole('region', { name: 'AI 会话' }); await chat.waitFor();
+  await page.getByLabel('服务地址', { exact: true }).waitFor();
+  await page.waitForFunction(() => !document.querySelector('.ai-form input[type=url]')?.disabled);
   const project = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project;
+  await page.getByRole('button', { name: '使用 DeepSeek', exact: true }).click();
+  assert.equal(await page.getByLabel('服务地址', { exact: true }).inputValue(), 'https://api.deepseek.com');
+  assert.equal(await page.getByLabel('模型名称', { exact: true }).inputValue(), 'deepseek-flash');
+  await page.getByLabel('API Key', { exact: true }).fill(key);
+  await page.getByRole('button', { name: '保存配置', exact: true }).click();
+  await page.getByText('模型配置已保存到当前工程。', { exact: true }).waitFor();
+  assert.equal(await page.getByLabel('API Key', { exact: true }).inputValue(), '');
+  const state = await page.evaluate(projectId => window.dreamEdge.modelSettings({ operation: 'get', projectId }), project.definition.id);
+  assert.equal(state.hasKey, true); assert.ok(!JSON.stringify(state).includes(key));
+  assert.equal(JSON.parse(await readFile(join(project.rootDirectory, '.dreamedge/model.json'), 'utf8')).apiKey, key);
+  await page.getByRole('button', { name: '测试连接', exact: true }).click();
+  await page.getByText('连接测试成功，模型支持当前结构化响应。', { exact: true }).waitFor();
+  const configPath = join(project.rootDirectory, '.dreamedge/model.json');
+  const external = JSON.parse(await readFile(configPath, 'utf8')); external.model = 'deepseek-v4-pro';
+  await (await import('node:fs/promises')).writeFile(configPath, JSON.stringify(external));
+  await page.getByRole('button', { name: '重新读取文件', exact: true }).click();
+  await page.getByText('已重新读取工程配置文件。', { exact: true }).waitFor();
+  assert.equal(await page.getByLabel('模型名称', { exact: true }).inputValue(), 'deepseek-v4-pro');
+  await page.locator('.ai-settings > summary').click();
+  const chat = page.getByRole('region', { name: 'AI 会话' }); await chat.waitFor();
   const before = await readFile(join(project.sourceDirectory, 'main.ts'), 'utf8');
   await chat.getByLabel('修改需求', { exact: true }).fill('把 HelloWorld 改成 Hello AI');
   await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
@@ -99,7 +106,8 @@ try {
   await page.screenshot({ path: 'artifacts/dreamedge-ai-conversation.png' });
   const nextWindow = application.waitForEvent('window'); await page.getByRole('button', { name: '新窗口', exact: true }).click();
   const blank = await nextWindow; await blank.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor();
-  assert.equal((await blank.evaluate(() => window.dreamEdge.modelSettings({ operation: 'get' }))).hasKey, true);
+  assert.equal(await blank.locator('.ai-settings').count(), 0);
+  await assert.rejects(blank.evaluate(projectId => window.dreamEdge.modelSettings({ operation: 'get', projectId }), project.definition.id), /当前工程/);
   const noProject = await blank.evaluate(() => window.dreamEdge.windows({ operation: 'current' })); assert.equal(noProject.project, null);
   await assert.rejects(blank.evaluate(({ id, projectId }) => window.dreamEdge.development({ operation: 'get', projectId, sessionId: id }),
     { projectId: project.definition.id, id: (await page.evaluate(id => window.dreamEdge.development({ operation: 'listSummaries', projectId: id }), project.definition.id))[0].id }), /当前工程/);
@@ -115,7 +123,7 @@ try {
   await scanPlaintext(profile); await scanPlaintext(source);
   await application.close(); page = await launch('Hello AI');
   await page.frameLocator('iframe').getByText('Hello AI', { exact: true }).waitFor();
-  const restored = await page.evaluate(() => window.dreamEdge.modelSettings({ operation: 'get' })); assert.equal(restored.hasKey, persisted);
+  const restored = await page.evaluate(projectId => window.dreamEdge.modelSettings({ operation: 'get', projectId }), project.definition.id); assert.equal(restored.hasKey, true);
   const histories = await page.evaluate(id => window.dreamEdge.development({ operation: 'listSummaries', projectId: id }), project.definition.id);
   assert.equal(histories[0].turnCount, 3); assert.deepEqual(errors, []);
   console.log('PASS: model configuration/probe, scoped AI conversation, captured diff, candidate build/preview/confirm, cancellation, redacted errors and restart recovery.');

@@ -27,7 +27,9 @@ npm start
 
 Agent 执行循环直接复用 [pi-agent-core](https://github.com/earendil-works/pi/tree/main/packages/agent) 1.0.0；DreamEdge 提供当前工程源码的列目录、文本搜索和读取工具，并保存活动记录与校验快照。无需手动勾选文件。每轮最多 12 次模型请求、48 次工具调用、64 个读取文件及 128 KB 源码，最长 5 分钟；达到上限可缩小任务后继续。工具只读取当前工程 src，工程描述通过过滤后的上下文提供。当前不执行任意命令或直接写入源码，仍需预览并确认候选。开源声明随 App 和框架包分发。
 
-模型连接目前支持 Responses API、函数工具调用与结构化输出，服务需兼容 `/responses` 和 JSON Schema。优先在 App 内配置；也可在首次启动前配置 `DREAMEDGE_AI_API_KEY`、`DREAMEDGE_AI_MODEL`，可选 `DREAMEDGE_AI_BASE_URL`（默认 `https://api.openai.com/v1`）。API Key 只由主进程使用，界面读取配置时仅得到 hasKey 标记。勾选“在本机加密保存”后使用系统加密保存到当前 App 用户数据区；无安全加密服务时仅本次运行使用，不回退到明文保存。凭据不写入工程、会话或构建子进程；连接测试不发送工程源码，实际会话发送 AI 按需读取的源码与最近会话上下文。测试和会话请求可能产生模型服务费用。自动验收使用模拟响应，不需要真实密钥。
+模型连接使用各工程独立的 `.dreamedge/model.json`，保存 `schemaVersion: 1`、`apiKey`、`model`、`baseUrl`。先打开工程，再在模型连接中选择 DeepSeek 或 OpenAI 预设并填写该服务的 Key；DeepSeek 官方地址为 `https://api.deepseek.com`，模型可用 `deepseek-flash`，OpenAI 地址为 `https://api.openai.com/v1`。两者均使用 Responses 接口，服务需支持函数调用及结构化输出。文件以可编辑文本保存，自动加入工程 `.gitignore`；默认不会复用其他工程或旧的 App 共享配置。直接编辑文件后点击“重新读取文件”，后续请求也会重新读取配置；外部修改后的旧表单不能覆盖新文件。
+
+API Key 只由主进程读取和使用，界面返回 hasKey 标记和文件位置，不返回原值。配置文件位于源码之外，不发送给模型、不放入候选构建或版本快照。连接测试不发送工程源码，实际会话发送 AI 按需读取的源码与最近会话上下文；测试和会话可能产生服务费用。HTTP 401 表示认证失败，检查 Key 与服务地址是否匹配；自动验收使用模拟响应，不需要真实密钥。
 
 候选构建支持 HTML、JS/TS/JSX/TSX、CSS 和文本资源，以及 npm 公共仓库的通用浏览器包。直接依赖使用准确版本，传递依赖按范围解析并锁定归档地址与 SHA-512；已有匹配锁定记录的重建不重新解析版本，完整缓存可离线重建。安装不运行生命周期脚本，不支持私有仓库、Git/URL/本地依赖、原生或平台包；必需 peer 依赖需显式添加。当前支持常见 package 入口和明确 exports 子路径，尚未覆盖全部 npm 解析规则。构建与依赖变更在独立候选环境完成；预览无框架接口、Node.js 或网络权限，确认前不改写原源码。联网 React 验收用 `npm run test:dependencies:live`，日常自动测试使用固定归档夹具。详细限制统一记录在飞书。
 

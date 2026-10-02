@@ -1,6 +1,6 @@
 import type { AssistantMessage, Model, TranscriptContext } from '@earendil-works/pi-ai';
 import type { StreamFn } from '@earendil-works/pi-agent-core';
-import type { ConnectionConfiguration } from '../model-connection/vault';
+import type { ConnectionConfiguration } from '../model-connection/configuration';
 import { ModelFailure, proposalSchema } from './model';
 import { requestResponse } from './responses-transport';
 

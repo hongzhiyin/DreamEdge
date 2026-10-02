@@ -4,7 +4,7 @@ import { ModelFailure, modelPrompt, proposalSchema } from './model';
 import { normalizeConfiguration, requestResponse } from './responses-transport';
 import { runProjectAgent } from './agent';
 
-import type { ConnectionConfiguration as Configuration } from '../model-connection/vault';
+import type { ConnectionConfiguration as Configuration } from '../model-connection/configuration';
 interface OutputMessage { type: string; content?: { type: string; text?: string }[] }
 export { normalizeConfiguration } from './responses-transport';
 export class ResponsesModel implements ModelProvider {
@@ -49,8 +49,4 @@ export class ResponsesModel implements ModelProvider {
     try { return JSON.parse(text); }
     catch { throw new ModelFailure('模型返回的候选变更不是有效 JSON。'); }
   }
-}
-export function configuredModel(environment: NodeJS.ProcessEnv): ResponsesModel {
-  return new ResponsesModel({ apiKey: environment.DREAMEDGE_AI_API_KEY,
-    model: environment.DREAMEDGE_AI_MODEL, baseUrl: environment.DREAMEDGE_AI_BASE_URL });
 }

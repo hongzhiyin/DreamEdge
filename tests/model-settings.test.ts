@@ -1,133 +1,135 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile, stat, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ModelSettingsState } from '../shared/contracts';
-import { ConnectionVault, type SecretEncryption } from '../desktop/model-connection/vault';
+import { EMPTY_REVISION, MODEL_FILE, ProjectConnectionFile } from '../desktop/model-connection/file';
 import { ModelSettings } from '../desktop/model-connection/settings';
 import { createDefinition } from '../desktop/workspace/definition';
 import { deferred, proposal } from './development-fixture';
 
-function encryption(): SecretEncryption {
-  const key = randomBytes(32);
-  return { supported: true, available: () => true,
-    encrypt: value => { const iv = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', key, iv);
-      const bytes = Buffer.concat([cipher.update(value), cipher.final()]); return Buffer.concat([iv, cipher.getAuthTag(), bytes]); },
-    decrypt: value => { const decipher = createDecipheriv('aes-256-gcm', key, value.subarray(0, 12));
-      decipher.setAuthTag(value.subarray(12, 28)); return Buffer.concat([decipher.update(value.subarray(28)), decipher.final()]).toString(); } };
-}
-const settings = { operation: 'save' as const, model: 'fixture-model', baseUrl: 'https://model.example/v1/', apiKey: 'fixture-private-key', persist: true, expectedRevision: 0 };
+const projectId = 'fixture-project';
+const settings = { operation: 'save' as const, projectId, model: 'fixture-model', baseUrl: 'https://model.example/v1/', apiKey: 'fixture-private-key', expectedRevision: EMPTY_REVISION };
 const input = { prompt: 'Change greeting', context: { definition: createDefinition('HelloWorld'), files: [] }, history: [] };
 const response = () => Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(proposal) }] }] });
-
-test('model settings persist an encrypted key, return only public metadata and restore without leaking it', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-')); const codec = encryption();
+async function fixture(transport?: typeof fetch) {
+  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-'));
+  const service = new ModelSettings(new ProjectConnectionFile(root), projectId, () => {}, transport);
+  return { root, service, path: join(root, MODEL_FILE), get: () => service.execute({ operation: 'get', projectId }) as Promise<ModelSettingsState>,
+    cleanup: async () => { await service.dispose(); await rm(root, { recursive: true, force: true }); } };
+}
+test('project configuration is editable on disk, excluded from git and returned as metadata without the key', async () => {
+  const f = await fixture();
   try {
-    const service = new ModelSettings(new ConnectionVault(root, codec));
-    const saved = await service.execute(settings) as ModelSettingsState;
-    assert.equal(saved.hasKey, true); assert.equal(saved.persisted, true); assert.equal(saved.baseUrl, 'https://model.example/v1');
+    await writeFile(join(f.root, '.gitignore'), 'existing-rule\n');
+    const saved = await f.service.execute(settings) as ModelSettingsState;
+    assert.equal(saved.hasKey, true); assert.equal(saved.baseUrl, 'https://model.example/v1'); assert.equal(saved.configPath, f.path);
     assert.ok(!JSON.stringify(saved).includes(settings.apiKey));
-    const path = join(root, 'model-connection/settings.json'); const content = await readFile(path, 'utf8');
-    assert.ok(!content.includes(settings.apiKey)); assert.ok(JSON.parse(content).encryptedKey);
-    const restored = new ModelSettings(new ConnectionVault(root, codec));
-    assert.deepEqual(await restored.execute({ operation: 'get' }), saved);
-    await restored.execute({ operation: 'clear', expectedRevision: saved.revision });
-    assert.equal((await restored.execute({ operation: 'get' }) as ModelSettingsState).hasKey, false);
-    await assert.rejects(readFile(path), { code: 'ENOENT' }); await service.dispose(); await restored.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    assert.deepEqual(JSON.parse(await readFile(f.path, 'utf8')), { schemaVersion: 1, model: settings.model, baseUrl: 'https://model.example/v1', apiKey: settings.apiKey });
+    assert.equal(await readFile(join(f.root, '.gitignore'), 'utf8'), 'existing-rule\n/.dreamedge/model.json\n');
+    if (process.platform !== 'win32') assert.equal((await stat(f.path)).mode & 0o777, 0o600);
+    const restored = new ModelSettings(new ProjectConnectionFile(f.root), projectId);
+    assert.deepEqual(await restored.execute({ operation: 'get', projectId }), saved); await restored.dispose();
+    await f.service.execute({ operation: 'clear', projectId, expectedRevision: saved.revision });
+    assert.equal((await f.get()).hasKey, false); await assert.rejects(readFile(f.path), { code: 'ENOENT' });
+  } finally { await f.cleanup(); }
 });
-test('unavailable encryption permits session use but refuses persistence, and corrupt encrypted settings recover safely', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-'));
+test('external edits reload without a restart and stale forms cannot overwrite manually changed keys or URLs', async () => {
+  const calls: any[] = [];
+  const f = await fixture(async (url, options) => { calls.push({ url: String(url), auth: new Headers(options!.headers).get('Authorization') }); return response(); });
   try {
-    const service = new ModelSettings(new ConnectionVault(root, { supported: false, available: () => false, encrypt: () => { throw new Error('must not encrypt'); }, decrypt: () => { throw new Error('must not decrypt'); } }));
-    await assert.rejects(service.execute(settings), /仅本次运行/);
-    const saved = await service.execute({ ...settings, persist: false }) as ModelSettingsState;
-    assert.equal(saved.persisted, false); assert.equal(saved.hasKey, true);
-    await assert.rejects(readFile(join(root, 'model-connection/settings.json')), { code: 'ENOENT' });
-    await writeFile(join(root, 'model-connection/settings.json'), '{"encryptedKey":"fixture-private-key"}');
-    const restored = new ModelSettings(new ConnectionVault(root, encryption()));
-    const status = await restored.execute({ operation: 'get' }) as ModelSettingsState;
-    assert.equal(status.hasKey, false); assert.ok(status.warning); assert.ok(!JSON.stringify(status).includes(settings.apiKey));
-    await service.dispose(); await restored.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    const original = await f.service.execute(settings) as ModelSettingsState;
+    await writeFile(f.path, JSON.stringify({ schemaVersion: 1, model: 'other-model', apiKey: 'other-key', baseUrl: 'https://other.example/v1' }));
+    await assert.rejects(f.service.execute({ ...settings, expectedRevision: original.revision }), /已被修改/);
+    await assert.rejects(f.service.execute({ operation: 'test', projectId, expectedRevision: original.revision }), /已被修改/);
+    const state = await f.get(); assert.equal(state.model, 'other-model'); assert.notEqual(state.revision, original.revision);
+    await f.service.generate(input, new AbortController().signal);
+    assert.deepEqual(calls, [{ url: 'https://other.example/v1/responses', auth: 'Bearer other-key' }]);
+  } finally { await f.cleanup(); }
 });
-test('model settings prevent stale writes and require a new key when the service address changes', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-'));
+test('invalid and linked configuration files fail closed without exposing their content or overwriting targets', async () => {
+  const f = await fixture();
   try {
-    const service = new ModelSettings(new ConnectionVault(root, encryption()));
-    const first = await service.execute(settings) as ModelSettingsState;
-    await assert.rejects(service.execute({ ...settings, model: 'stale' }), /另一个窗口/);
-    await assert.rejects(service.execute({ operation: 'test', expectedRevision: 0 }), /另一个窗口/);
-    await assert.rejects(service.execute({ ...settings, expectedRevision: first.revision, baseUrl: 'https://other.example/v1', apiKey: '' }), /重新填写/);
-    const next = await service.execute({ ...settings, expectedRevision: first.revision, model: 'another-model', apiKey: '' }) as ModelSettingsState;
-    assert.equal(next.model, 'another-model'); assert.equal(next.hasKey, true); await service.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    await f.service.execute(settings); await writeFile(f.path, '{ invalid fixture-private-key');
+    const invalid = await f.get(); assert.equal(invalid.hasKey, false); assert.ok(invalid.warning); assert.ok(!JSON.stringify(invalid).includes(settings.apiKey));
+    await assert.rejects(f.service.generate(input, new AbortController().signal), /格式无效/);
+    await f.service.execute({ ...settings, expectedRevision: invalid.revision });
+    await rm(f.path); await writeFile(join(f.root, 'secret.txt'), 'outside-secret'); await symlink(join(f.root, 'secret.txt'), f.path);
+    assert.equal((await f.get()).hasKey, false);
+    await assert.rejects(f.service.execute({ ...settings, expectedRevision: EMPTY_REVISION }));
+    assert.equal(await readFile(join(f.root, 'secret.txt'), 'utf8'), 'outside-secret');
+  } finally { await f.cleanup(); }
 });
-test('connection test sends no project source and rejects raw upstream error disclosure', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-')); let fail = false;
+test('settings belong to one project and require a new key when changing service addresses', async () => {
+  const f = await fixture();
   try {
-    const transport: typeof fetch = async (_url, options) => {
-      const body = JSON.parse(String(options!.body)); assert.equal(body.text.format.name, 'dreamedge_connection');
-      assert.equal(body.store, false); assert.ok(!JSON.stringify(body).includes(settings.apiKey)); assert.ok(!JSON.stringify(body).includes('src/'));
-      if (fail) return new Response(settings.apiKey, { status: 401 });
-      return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: '{"ok":true}' }] }] });
-    };
-    const service = new ModelSettings(new ConnectionVault(root, encryption()), {}, () => {}, transport);
-    const state = await service.execute(settings) as ModelSettingsState;
-    assert.equal((await service.execute({ operation: 'test', expectedRevision: state.revision }) as { available: boolean }).available, true);
-    fail = true; const result = await service.execute({ operation: 'test', expectedRevision: state.revision });
-    assert.ok(!JSON.stringify(result).includes(settings.apiKey)); assert.match(JSON.stringify(result), /401/); await service.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    const first = await f.service.execute(settings) as ModelSettingsState;
+    await assert.rejects(f.service.execute({ ...settings, projectId: 'other' }), /当前工程/);
+    await assert.rejects(f.service.execute({ ...settings, expectedRevision: first.revision, baseUrl: 'https://other.example/v1', apiKey: '' }), /重新填写/);
+    const next = await f.service.execute({ ...settings, expectedRevision: first.revision, model: 'another-model', apiKey: '' }) as ModelSettingsState;
+    assert.equal(next.model, 'another-model'); assert.equal(next.hasKey, true);
+  } finally { await f.cleanup(); }
 });
-test('in-flight requests keep their initial connection while new requests use the newly saved settings', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-')); const answer = deferred<Response>(); const calls: { url: string; key: string | null }[] = [];
+test('connection tests use no project source and HTTP 401 reports authentication rather than quota', async () => {
+  let fail = false;
+  const f = await fixture(async (_url, options) => {
+    const body = JSON.parse(String(options!.body)); assert.equal(body.text.format.name, 'dreamedge_connection');
+    assert.equal(body.store, false); assert.ok(!JSON.stringify(body).includes(settings.apiKey)); assert.ok(!JSON.stringify(body).includes('src/'));
+    if (fail) return new Response(settings.apiKey, { status: 401 });
+    return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: '{"ok":true}' }] }] });
+  });
   try {
-    const transport: typeof fetch = async (url, options) => { calls.push({ url: String(url), key: new Headers(options!.headers).get('Authorization') }); return calls.length === 1 ? answer.promise : response(); };
-    const service = new ModelSettings(new ConnectionVault(root, encryption()), {}, () => {}, transport);
-    const state = await service.execute(settings) as ModelSettingsState;
-    const old = service.generate(input, new AbortController().signal);
+    const state = await f.service.execute(settings) as ModelSettingsState;
+    assert.equal((await f.service.execute({ operation: 'test', projectId, expectedRevision: state.revision }) as { available: boolean }).available, true);
+    fail = true; const result = await f.service.execute({ operation: 'test', projectId, expectedRevision: state.revision });
+    assert.match(JSON.stringify(result), /认证失败.*401/); assert.ok(!JSON.stringify(result).includes('服务限额')); assert.ok(!JSON.stringify(result).includes(settings.apiKey));
+  } finally { await f.cleanup(); }
+});
+test('in-flight requests keep their captured key while new requests use changed project configuration', async () => {
+  const answer = deferred<Response>(); const calls: { url: string; key: string | null }[] = [];
+  const f = await fixture(async (url, options) => { calls.push({ url: String(url), key: new Headers(options!.headers).get('Authorization') }); return calls.length === 1 ? answer.promise : response(); });
+  try {
+    const state = await f.service.execute(settings) as ModelSettingsState; const old = f.service.generate(input, new AbortController().signal);
     while (!calls.length) await new Promise(resolve => setTimeout(resolve, 1));
-    await service.execute({ ...settings, apiKey: 'fixture-other-key', baseUrl: 'https://other.example/v1', expectedRevision: state.revision });
-    answer.resolve(response()); await old; await service.generate(input, new AbortController().signal);
+    await f.service.execute({ ...settings, apiKey: 'fixture-other-key', baseUrl: 'https://other.example/v1', expectedRevision: state.revision });
+    answer.resolve(response()); await old; await f.service.generate(input, new AbortController().signal);
     assert.deepEqual(calls, [{ url: 'https://model.example/v1/responses', key: 'Bearer fixture-private-key' }, { url: 'https://other.example/v1/responses', key: 'Bearer fixture-other-key' }]);
-    await assert.rejects(service.assertSafeInput({ ...input, prompt: 'fixture-other-key' }), /凭据/); await service.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    await assert.rejects(f.service.assertSafeInput({ ...input, prompt: 'fixture-other-key' }), /凭据/);
+  } finally { answer.resolve(response()); await f.cleanup(); }
 });
-test('clearing settings stops active tests even when the transport ignores abort', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-'));
+test('clearing project configuration stops active tests even when transport ignores abort', async () => {
+  const f = await fixture(async () => new Promise(() => {}));
   try {
-    const service = new ModelSettings(new ConnectionVault(root, encryption()), {}, () => {}, async () => new Promise(() => {}));
-    const state = await service.execute(settings) as ModelSettingsState;
-    const waiting = service.execute({ operation: 'test', expectedRevision: state.revision });
-    await new Promise(resolve => setTimeout(resolve, 10)); await service.execute({ operation: 'clear', expectedRevision: state.revision });
-    const result = await waiting as { available: boolean; detail: string };
-    assert.equal(result.available, false); assert.match(result.detail, /已清除/); await service.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    const state = await f.service.execute(settings) as ModelSettingsState;
+    const waiting = f.service.execute({ operation: 'test', projectId, expectedRevision: state.revision });
+    await new Promise(resolve => setTimeout(resolve, 10)); await f.service.execute({ operation: 'clear', projectId, expectedRevision: state.revision });
+    const result = await waiting as { available: boolean; detail: string }; assert.equal(result.available, false); assert.match(result.detail, /已清除/);
+  } finally { await f.cleanup(); }
 });
-
-test('model metadata and echoed model replies cannot expose the configured key', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-'));
+test('model metadata and echoed replies cannot expose the configured key', async () => {
+  const f = await fixture(async () => Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ summary: settings.apiKey, files: [] }) }] }] }));
   try {
-    const service = new ModelSettings(new ConnectionVault(root, encryption()), {}, () => {}, async () => Response.json({ status: 'completed',
-      output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ summary: settings.apiKey, files: [] }) }] }] }));
-    await assert.rejects(service.execute({ ...settings, model: settings.apiKey }), /不能包含/);
-    await assert.rejects(service.execute({ ...settings, baseUrl: 'https://model.example/' + settings.apiKey }), /不能包含/);
-    await service.execute(settings);
-    await assert.rejects(service.generate(input, new AbortController().signal), /回复包含连接凭据/); await service.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+    await assert.rejects(f.service.execute({ ...settings, model: settings.apiKey }), /不能包含/);
+    await assert.rejects(f.service.execute({ ...settings, baseUrl: 'https://model.example/' + settings.apiKey }), /不能包含/);
+    await f.service.execute(settings); await assert.rejects(f.service.generate(input, new AbortController().signal), /回复包含连接凭据/);
+  } finally { await f.cleanup(); }
 });
 
-test('reading model metadata does not initialize or query the system encryptor', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dreamedge-model-settings-')); let checked = 0;
-  const codec = encryption();
-  const service = new ModelSettings(new ConnectionVault(root, { ...codec, available: async () => { checked++; return true; } }));
+test('independent project windows never share model keys and stale project requests are rejected', async () => {
+  const { ProjectModels } = await import('../desktop/model-connection/project');
+  const { fixture: developmentFixture } = await import('./development-fixture');
+  const f = await developmentFixture(async () => proposal);
+  const a = new ProjectModels(() => f.project, () => {}); let b: InstanceType<typeof ProjectModels> | undefined;
   try {
-    await service.ready;
-    const state = await service.execute({ operation: 'get' }) as ModelSettingsState;
-    assert.equal(state.secureStorageSupported, true); assert.equal(checked, 0);
-    await service.execute({ ...settings, persist: false }); assert.equal(checked, 0);
-    await service.execute({ ...settings, expectedRevision: 1, persist: true }); assert.equal(checked, 1);
-  } finally { await service.dispose(); await rm(root, { recursive: true, force: true }); }
+    await a.execute({ ...settings, projectId: f.project.definition.id });
+    const other = await f.workspace.execute({ operation: 'create', directory: join(f.root, 'second'), name: 'Second' }) as import('../shared/contracts').WorkspaceProject;
+    b = new ProjectModels(() => other, () => {});
+    const empty = await b.execute({ operation: 'get', projectId: other.definition.id }) as ModelSettingsState;
+    assert.equal(empty.hasKey, false);
+    assert.throws(() => b!.execute({ operation: 'get', projectId: f.project.definition.id }), /当前工程/);
+    await b.execute({ ...settings, projectId: other.definition.id, apiKey: 'other-project-key' });
+    assert.equal(JSON.parse(await readFile(join(f.project.rootDirectory, MODEL_FILE), 'utf8')).apiKey, settings.apiKey);
+    assert.equal(JSON.parse(await readFile(join(other.rootDirectory, MODEL_FILE), 'utf8')).apiKey, 'other-project-key');
+  } finally { await a.reset(); await b?.reset(); await f.cleanup(); }
 });

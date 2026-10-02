@@ -19,7 +19,7 @@ export class ProjectWindows {
   private readonly previewCapacity = new Capacity(4, '最多同时打开四个候选预览。');
   private quitting = false;
   constructor(private readonly manifest: AppManifest, private readonly root: string, private readonly profile: string,
-    private readonly frameworkRoot: string, private readonly preload: string, private readonly provider: ModelProvider, private readonly engine: BuildEngine) {
+    private readonly frameworkRoot: string, private readonly preload: string, private readonly provider: ModelProvider | undefined, private readonly engine: BuildEngine) {
     this.catalog = new WorkspaceRegistry(profile); this.state = new WindowState(profile);
     void this.catalog.ready.catch(() => {}); void this.state.ready.catch(() => {});
   }
@@ -34,6 +34,7 @@ export class ProjectWindows {
     return new WindowContext({ id: record.id, manifest: this.manifest, root: this.root, profile: this.profile,
       frameworkRoot: this.frameworkRoot, catalog: this.catalog, windows: this.state, provider: this.provider, engine: this.engine,
       buildCapacity: this.buildCapacity, openPreview: (project, build) => previews.open(project, build), closePreviews: () => previews.close(),
+      modelSettingsChanged: () => { const live = this.windows.get(record.id); if (live) live.window.webContents.send('host:model-settings-changed'); },
       changed: () => { const live = this.windows.get(record.id); if (live) live.window.webContents.send('host:context-changed'); } });
   }
   private async launch(record: WindowRecord, context = this.context(record)): Promise<ProjectWindow> {
@@ -70,9 +71,6 @@ export class ProjectWindows {
     context.assertAvailable();
     if (!context.workspace) throw new Error('当前应用未启用工程开发能力。');
     return live.window;
-  }
-  modelSettingsChanged(): void {
-    for (const live of this.windows.values()) if (!live.closing && !live.window.isDestroyed()) live.window.webContents.send('host:model-settings-changed');
   }
   async updateTitle(context: WindowContext): Promise<void> {
     const info = await context.info(); const live = this.windows.get(info.id);

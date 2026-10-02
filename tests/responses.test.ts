@@ -59,3 +59,13 @@ test('network failures are redacted and cancellation is passed to the transport'
   });
   await assert.rejects(model.generate(input, controller.signal), /无法连接模型服务/);
 });
+
+test('DeepSeek on the OpenAI endpoint is rejected before transmitting a key, while official DeepSeek uses its own Responses endpoint', async () => {
+  let calls = 0;
+  const wrong = new ResponsesModel({ apiKey: configuration.apiKey, model: 'deepseek-flash', baseUrl: 'https://api.openai.com/v1' }, async () => { calls++; return Response.json(success); });
+  await assert.rejects(wrong.generate(input, new AbortController().signal), /DeepSeek.*api.deepseek.com/); assert.equal(calls, 0);
+  const correct = new ResponsesModel({ apiKey: configuration.apiKey, model: 'deepseek-flash', baseUrl: 'https://api.deepseek.com' }, async (url, options) => {
+    calls++; assert.equal(url, 'https://api.deepseek.com/responses'); assert.equal(JSON.parse(String(options!.body)).model, 'deepseek-flash'); return Response.json(success);
+  });
+  assert.deepEqual(await correct.generate(input, new AbortController().signal), proposal); assert.equal(calls, 1);
+});
