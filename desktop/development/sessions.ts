@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import type { DevelopmentSession, DevelopmentSessionSummary, DevelopmentTurn, ProjectContext, WorkspaceProject } from '../../shared/contracts';
 import { ensureDirectory, hash, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
-import { PROPOSAL_LIMIT, shortText } from './context';
+import { CONTEXT_FILES, PROPOSAL_LIMIT, shortText } from './context';
 
 export function identifier(input: unknown): string {
   if (typeof input !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(input)) throw new Error('会话或轮次身份无效。');
@@ -14,10 +14,13 @@ function validateTurn(value: DevelopmentTurn, id: string): DevelopmentTurn {
   if (!value || value.id !== id || !['running', 'completed', 'failed', 'cancelled', 'interrupted'].includes(value.status)
       || !timestamp(value.startedAt) || (value.finishedAt !== null && !timestamp(value.finishedAt))
       || (value.summary !== null && typeof value.summary !== 'string') || (value.error !== null && typeof value.error !== 'string')
-      || !Array.isArray(value.context) || value.context.length > 20 || !Array.isArray(value.changes) || value.changes.length > 20) {
+      || !Array.isArray(value.context) || value.context.length > CONTEXT_FILES || !Array.isArray(value.changes) || value.changes.length > 20) {
     throw new Error('会话轮次记录无效。');
   }
   shortText(value.prompt, '会话请求', 8192);
+  if (value.activity !== undefined && (!Array.isArray(value.activity) || value.activity.length > 48 || value.activity.some(event =>
+    !event || typeof event.id !== 'string' || event.id.length > 160 || !['list_files', 'read_file', 'search_files'].includes(event.tool)
+    || !['running', 'completed', 'failed', 'cancelled'].includes(event.status) || typeof event.detail !== 'string' || event.detail.length > 200))) throw new Error('Agent 活动记录无效。');
   for (const file of value.context) {
     relativeParts(file.path);
     if (typeof file.hash !== 'string' || !/^[a-f0-9]{64}$/.test(file.hash)) throw new Error('上下文记录无效。');
@@ -98,7 +101,7 @@ export class SessionStore {
     try { value = JSON.parse(await readText(project.sessionsDirectory, `${identifier(sessionId)}/${identifier(turn.id)}/request-context.json`)); }
     catch { throw new Error('候选缺少有效的上下文快照，请重新生成。'); }
     if (!value || value.definition?.id !== project.definition.id || !Array.isArray(value.files) || value.files.length !== turn.context.length
-      || value.files.length > 20 || new Set(value.files.map(file => file.path)).size !== value.files.length) throw new Error('候选上下文快照无效。');
+      || value.files.length > CONTEXT_FILES || new Set(value.files.map(file => file.path)).size !== value.files.length) throw new Error('候选上下文快照无效。');
     let bytes = 0;
     for (const file of value.files) {
       relativeParts(file.path);

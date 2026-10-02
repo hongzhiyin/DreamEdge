@@ -29,6 +29,14 @@ async function mockModel() {
       globalThis.modelRequests.push(body);
       if (globalThis.modelMode === 'pending') return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new Error('Fixture cancelled')), { once: true }));
       if (globalThis.modelMode === 'httpError') return new Response(key, { status: 401 });
+      const outputs = body.input.filter(item => item.type === 'function_call_output');
+      const functionCalls = body.input.filter(item => item.type === 'function_call');
+      const lastTool = functionCalls.at(-1)?.name;
+      const next = outputs.length === 0 ? ['list_files', { directory: '', offset: 0 }]
+        : lastTool === 'list_files' ? ['search_files', { directory: '', query: 'HelloWorld' }]
+        : lastTool === 'search_files' ? ['read_file', { path: 'main.ts' }] : null;
+      if (next) return Response.json({ status: 'completed', output: [{ type: 'function_call', call_id: `call_${globalThis.modelRequests.length}`,
+        name: next[0], arguments: JSON.stringify(next[1]) }] });
       const result = { summary: '已将问候语改为 Hello AI。', files: [{ path: 'main.ts', content: "document.getElementById('root')!.textContent = 'Hello AI';\n" }] };
       return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] });
     };
@@ -72,7 +80,11 @@ try {
   assert.match(await candidate.getByLabel('修改差异 main.ts', { exact: true }).textContent(), /Hello AI/);
   assert.equal(await readFile(join(project.sourceDirectory, 'main.ts'), 'utf8'), before);
   const request = await application.evaluate(() => globalThis.modelRequests[0]);
-  assert.ok(request.input.includes('main.ts')); assert.ok(!request.input.includes(source));
+  assert.ok(!JSON.stringify(request.input).includes(before)); assert.ok(!JSON.stringify(request.input).includes(source));
+  assert.equal(await chat.locator('input[type="checkbox"]').count(), 0);
+  await chat.getByText('工程查阅 · 3 次操作', { exact: true }).waitFor();
+  const requests = await application.evaluate(() => globalThis.modelRequests);
+  assert.equal(requests.length, 4); assert.ok(JSON.stringify(requests.at(-1).input).includes('main.ts'));
   await candidate.getByRole('button', { name: '构建此候选', exact: true }).click();
   await candidate.getByText('构建成功，请预览并确认保存。', { exact: true }).waitFor();
   const opened = application.waitForEvent('window'); await candidate.getByRole('button', { name: '预览候选', exact: true }).click();
@@ -94,8 +106,8 @@ try {
   await application.evaluate(() => { globalThis.modelMode = 'pending'; });
   await chat.getByLabel('修改需求', { exact: true }).fill('继续修改'); await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await chat.getByRole('button', { name: '取消请求', exact: true }).click(); await chat.getByText('请求已取消；源码未被修改。', { exact: true }).waitFor();
-  assert.equal((await application.evaluate(() => globalThis.modelRequests.length)), 2);
-  const continuation = await application.evaluate(() => globalThis.modelRequests[1].input); assert.ok(continuation.includes('Hello AI'));
+  assert.equal((await application.evaluate(() => globalThis.modelRequests.length)), 5);
+  const continuation = await application.evaluate(() => globalThis.modelRequests[4].input); assert.ok(JSON.stringify(continuation).includes('Hello AI'));
   await application.evaluate(() => { globalThis.modelMode = 'httpError'; });
   await chat.getByLabel('修改需求', { exact: true }).fill('再试一次'); await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await chat.getByRole('alert').filter({ hasText: 'HTTP 401' }).waitFor();

@@ -14,6 +14,7 @@ await rm('dist/shell', { recursive: true, force: true });
 await mkdir('dist/desktop/desktop', { recursive: true });
 await bundle({ entryPoints: ['desktop/main.ts'], bundle: true, platform: 'node', format: 'cjs',
     target: 'node22', external: ['electron'], outfile: 'dist/desktop/desktop/main.js' });
+await cp('packages/desktop/dist/THIRD_PARTY_NOTICES.txt', 'dist/desktop/THIRD_PARTY_NOTICES.txt');
 await cp('packages/desktop/dist/preload.cjs', 'dist/desktop/desktop/preload.cjs');
 await cp('packages/desktop/dist/build-worker.cjs', 'dist/desktop/desktop/build-worker.cjs');
 await cp('packages/desktop/dist/shell', 'dist/shell', { recursive: true });

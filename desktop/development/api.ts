@@ -5,13 +5,14 @@ import { collectContext, shortText, validateProposal } from './context';
 import { ModelFailure, type ModelProvider } from './model';
 import { SessionStore } from './sessions';
 import { inspectCandidate } from './candidate';
+import { ProjectAccess } from './project-access';
 
 interface Job { controller: AbortController; done: Promise<void> }
 export class DevelopmentApi {
   private readonly store = new SessionStore();
   private readonly jobs = new Map<string, Job>();
   private closed = false;
-  constructor(private readonly workspace: WorkspaceApi, private readonly provider: ModelProvider, private readonly timeoutMs = 120000) {}
+  constructor(private readonly workspace: WorkspaceApi, private readonly provider: ModelProvider, private readonly timeoutMs = 300000) {}
   async execute(input: unknown): Promise<DevelopmentResult> {
     if (this.closed) throw new Error('开发会话服务已关闭。');
     const request = structuredClone(input) as DevelopmentRequest;
@@ -49,6 +50,7 @@ export class DevelopmentApi {
     for (const turn of session.turns) {
       if (turn.status === 'running' && !this.jobs.has(session.id)) {
         turn.status = 'interrupted'; turn.finishedAt = new Date().toISOString();
+        for (const event of turn.activity ?? []) if (event.status === 'running') event.status = 'cancelled';
         turn.error = '上次模型请求已中断；源码未被修改，可重新发送请求。'; changed = true;
       }
     }
@@ -62,10 +64,10 @@ export class DevelopmentApi {
       const session = await this.load(project, request.sessionId);
       if (this.jobs.has(session.id)) throw new Error('该会话已有运行中的请求。');
       if (session.turns.length >= 16) throw new Error('当前阶段每个会话最多支持 16 轮，请创建新会话。');
-      const context = await collectContext(project, request.paths);
+      const context = await collectContext(project, request.paths ?? []);
       await this.provider.assertSafeInput?.({ prompt, context, history: session.turns.filter(turn => turn.status === 'completed').slice(-4).map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) });
       const turn: DevelopmentTurn = { id: randomUUID(), prompt, startedAt: new Date().toISOString(), finishedAt: null,
-        status: 'running', summary: null, error: null, context: context.files.map(({ path, hash }) => ({ path, hash })), changes: [] };
+        status: 'running', summary: null, error: null, context: context.files.map(({ path, hash }) => ({ path, hash })), changes: [], activity: [] };
       if (!session.turns.length && session.title === '新会话') session.title = prompt.slice(0, 40);
       await this.store.saveContext(project, session.id, turn.id, context);
       session.turns.push(turn); session.updatedAt = turn.startedAt;
@@ -83,10 +85,20 @@ export class DevelopmentApi {
     const timer = setTimeout(() => job.controller.abort(new Error('模型请求超时；源码未被修改。')), this.timeoutMs);
     let aborted: (() => void) | undefined;
     try {
+      const access = new ProjectAccess(this.workspace, project.definition.id, context);
       const result = await Promise.race([
         this.provider.generate({ prompt: turn.prompt, context, history: session.turns.slice(0, -1)
           .filter(previous => previous.status === 'completed').slice(-4)
-          .map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) }, signal),
+          .map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) }, signal, {
+            execute: (...args) => access.execute(...args),
+            activity: event => this.workspace.withProject(project.definition.id, async current => {
+              signal.throwIfAborted();
+              const previous = turn.activity!.findIndex(item => item.id === event.id);
+              if (previous < 0) turn.activity!.push(event); else turn.activity![previous] = event;
+              turn.context = context.files.map(({ path, hash }) => ({ path, hash }));
+              await this.store.saveContext(current, session.id, turn.id, context); await this.store.save(current, session);
+            }),
+          }),
         new Promise<never>((_, reject) => {
           aborted = () => reject(signal.reason); signal.addEventListener('abort', aborted, { once: true });
           if (signal.aborted) aborted();
@@ -96,6 +108,8 @@ export class DevelopmentApi {
         signal.throwIfAborted();
         const proposal = await validateProposal(current, context, result);
         signal.throwIfAborted();
+        turn.context = context.files.map(({ path, hash }) => ({ path, hash }));
+        await this.store.saveContext(current, session.id, turn.id, context);
         turn.summary = proposal.summary; turn.changes = proposal.changes;
         await this.store.stage(current, session.id, turn);
         signal.throwIfAborted();
@@ -110,6 +124,7 @@ export class DevelopmentApi {
         : error instanceof ModelFailure ? error.message
         : '模型请求或候选校验失败；请检查连接、工程状态及上下文后重试。';
       turn.summary = null; turn.changes = []; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
+      for (const event of turn.activity ?? []) if (event.status === 'running') event.status = signal.aborted ? 'cancelled' : 'failed';
       // Persist into the captured project's own profile even after an active-project switch.
       await this.workspace.exclusive(async () => {
         await this.store.save(project, session).catch(() => {});

@@ -2,8 +2,9 @@ import type { CandidateFile, ModelProposal, ProjectContext, ProjectDefinition, W
 import { hash, listSource, readText, relativeParts } from '../workspace/paths';
 
 export const CONTEXT_LIMIT = 128 * 1024;
+export const CONTEXT_FILES = 64;
 export const PROPOSAL_LIMIT = 128 * 1024;
-function modelDefinition(definition: ProjectDefinition): ProjectDefinition {
+export function modelDefinition(definition: ProjectDefinition): ProjectDefinition {
   const { schemaVersion, id, name, appId, version, source, dependencies, build, savedAt } = definition;
   return structuredClone({ schemaVersion, id, name, appId, version, source, dependencies,
     build: { kind: build.kind, entry: build.entry }, savedAt });
@@ -15,8 +16,8 @@ export function shortText(value: unknown, label: string, limit: number): string 
   return value.trim();
 }
 export async function collectContext(project: WorkspaceProject, paths: unknown): Promise<ProjectContext> {
-  if (!Array.isArray(paths) || !paths.length || paths.length > 20 || new Set(paths).size !== paths.length) {
-    throw new Error('请选择 1–20 个不重复的上下文文件。');
+  if (!Array.isArray(paths) || paths.length > CONTEXT_FILES || new Set(paths).size !== paths.length) {
+    throw new Error('上下文文件不能重复或超过 64 个。');
   }
   const files = [];
   let bytes = 0;

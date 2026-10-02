@@ -1,5 +1,5 @@
 import type { ModelConnection, ModelSettingsRequest, ModelSettingsResult, ModelSettingsState } from '../../shared/contracts';
-import { ModelFailure, type ModelInput, type ModelProvider } from '../development/model';
+import { ModelFailure, type ModelAccess, type ModelInput, type ModelProvider } from '../development/model';
 import { ResponsesModel, normalizeConfiguration } from '../development/responses';
 import { ConnectionVault, type ConnectionConfiguration } from './vault';
 
@@ -67,12 +67,12 @@ export class ModelSettings implements ModelProvider {
     await this.ready; await this.queue;
     if (this.configuration.apiKey && JSON.stringify(input).includes(this.configuration.apiKey)) throw new ModelFailure('所选源码或需求中包含模型连接凭据，请移除后重试。');
   }
-  async generate(input: ModelInput, signal: AbortSignal): Promise<unknown> {
+  async generate(input: ModelInput, signal: AbortSignal, access?: ModelAccess): Promise<unknown> {
     await this.ready; await this.queue;
     const configuration = normalizeConfiguration(this.configuration);
     if (JSON.stringify(input).includes(configuration.apiKey)) throw new ModelFailure('请求上下文包含模型连接凭据，已停止发送。');
     return this.request(signal, async activeSignal => {
-      const result = await new ResponsesModel(configuration, this.transport).generate(input, activeSignal);
+      const result = await new ResponsesModel(configuration, this.transport).generate(input, activeSignal, access);
       if (JSON.stringify(result).includes(configuration.apiKey)) throw new ModelFailure('模型回复包含连接凭据，已拒绝保存，请检查模型服务。');
       return result;
     });

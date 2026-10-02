@@ -4,8 +4,6 @@ import type { DevelopmentSession, DevelopmentSessionSummary } from '../shared/co
 export function useDevelopmentSession(projectId: string) {
   const [sessions, setSessions] = useState<DevelopmentSessionSummary[]>([]);
   const [session, setSession] = useState<DevelopmentSession>();
-  const [files, setFiles] = useState<string[]>([]);
-  const [paths, setPaths] = useState<string[]>([]);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const alive = useRef(true); const pending = useRef(false); const generation = useRef(0);
   async function list() {
@@ -17,10 +15,8 @@ export function useDevelopmentSession(projectId: string) {
     alive.current = true; const current = ++generation.current;
     void (async () => {
       try {
-        const [history, names] = await Promise.all([list(), window.dreamEdge.workspace({ operation: 'listFiles', projectId }) as Promise<string[]>]);
+        const history = await list();
         if (!alive.current || generation.current !== current) return;
-        setFiles(names); const defaults = ['index.html', names.includes('main.tsx') ? 'main.tsx' : 'main.ts'].filter(name => names.includes(name));
-        setPaths(defaults.length ? defaults : names.slice(0, 1));
         const latest = history.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
         if (latest) {
           const value = await window.dreamEdge.development({ operation: 'get', projectId, sessionId: latest.id }) as DevelopmentSession;
@@ -64,7 +60,7 @@ export function useDevelopmentSession(projectId: string) {
     let target = session;
     if (!target) target = await window.dreamEdge.development({ operation: 'create', projectId, title: '新会话' }) as DevelopmentSession;
     if (!alive.current || generation.current !== epoch) return;
-    const value = await window.dreamEdge.development({ operation: 'send', projectId, sessionId: target.id, prompt, paths }) as DevelopmentSession;
+    const value = await window.dreamEdge.development({ operation: 'send', projectId, sessionId: target.id, prompt }) as DevelopmentSession;
     if (alive.current && generation.current === epoch) { setSession(value); await list(); }
   });
   const cancel = () => action(async epoch => {
@@ -72,5 +68,5 @@ export function useDevelopmentSession(projectId: string) {
     const value = await window.dreamEdge.development({ operation: 'cancel', projectId, sessionId: session.id }) as DevelopmentSession;
     if (alive.current && generation.current === epoch) { setSession(value); await list(); }
   });
-  return { sessions, session, files, paths, setPaths, running, busy, error, select, create, send, cancel };
+  return { sessions, session, running, busy, error, select, create, send, cancel };
 }
