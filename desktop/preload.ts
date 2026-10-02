@@ -7,14 +7,20 @@ async function invoke<T>(channel: string, ...arguments_: unknown[]): Promise<T> 
   return response.result as T;
 }
 const api: HostApi = {
+  windows: request => invoke('host:windows', request),
+  onContextChanged: listener => {
+    const receive = () => listener();
+    ipcRenderer.on('host:context-changed', receive);
+    return () => ipcRenderer.removeListener('host:context-changed', receive);
+  },
   versions: request => invoke('host:versions', request),
   build: request => invoke('host:build', request),
   development: request => invoke('host:development', request),
   workspace: request => invoke('host:workspace', request),
   info: () => invoke('host:info'),
-  service: (toolId, service, method, input) => invoke('host:service', toolId, service, method, input),
+  service: (toolId, service, method, input, contextId) => invoke('host:service', toolId, service, method, input, contextId),
   tools: () => invoke('host:tools'),
-  storage: (toolId, request) => invoke('host:storage', toolId, request),
+  storage: (toolId, request, contextId) => invoke('host:storage', toolId, request, contextId),
 };
 
 contextBridge.exposeInMainWorld('dreamEdge', api);

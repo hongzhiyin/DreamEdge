@@ -3,12 +3,15 @@ import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
 import type { DevelopmentRequest, DevelopmentResult } from './development.js';
 import type { CandidateBuildRequest, CandidateBuildResult } from './build.js';
 import type { VersionRequest, VersionResult } from './versions.js';
+import type { WindowRequest, WindowResult } from './windows.js';
+export type * from './windows.js';
 export type * from './versions.js';
 export type * from './build.js';
 export type * from './development.js';
 export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFile, WorkspaceRequest, WorkspaceResult } from './workspace.js';
 export interface ToolManifest {
   id: string; name: string; description: string; version: string; entry: string; capabilities: string[];
+  contextId?: string;
 }
 export interface AppManifest extends ToolManifest {
   appId: string;
@@ -29,14 +32,16 @@ export type BridgeRequest =
   | { kind: 'storage'; payload: StorageRequest }
   | { kind: 'service'; service: string; method: string; input: Json };
 export interface HostApi {
+  windows(request: WindowRequest): Promise<WindowResult>;
+  onContextChanged(listener: () => void): () => void;
   versions(request: VersionRequest): Promise<VersionResult>;
   build(request: CandidateBuildRequest): Promise<CandidateBuildResult>;
   development(request: DevelopmentRequest): Promise<DevelopmentResult>;
   workspace(request: WorkspaceRequest): Promise<WorkspaceResult>;
   info(): Promise<AppManifest>;
   tools(): Promise<ToolManifest[]>;
-  storage(toolId: string, request: StorageRequest): Promise<StoredRecord[] | void>;
-  service(toolId: string, service: string, method: string, input: Json): Promise<Json>;
+  storage(toolId: string, request: StorageRequest, contextId?: string): Promise<StoredRecord[] | void>;
+  service(toolId: string, service: string, method: string, input: Json, contextId?: string): Promise<Json>;
 }
 export const SHELL_URL = 'dreamedge://shell/index.html';
 export const SHELL_ORIGIN = 'dreamedge://shell';

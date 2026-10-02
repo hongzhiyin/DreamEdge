@@ -11,6 +11,7 @@ export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: 
     if (!tool) return;
     const origin = `dreamedge://${tool.id}`;
     const pending = new Set<string>();
+    let alive = true;
     async function receive(event: MessageEvent): Promise<void> {
       if (event.source !== frame.current?.contentWindow || event.origin !== origin) return;
       const data = event.data;
@@ -25,16 +26,16 @@ export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: 
         const request = data.request as BridgeRequest;
         if (!request || !['storage', 'service'].includes(request.kind)) throw new Error('无效的应用请求。');
         const result = request.kind === 'storage'
-          ? await window.dreamEdge.storage(tool!.id, request.payload)
-          : await window.dreamEdge.service(tool!.id, request.service, request.method, request.input);
-        source.postMessage({ ...reply, result }, origin);
+          ? await window.dreamEdge.storage(tool!.id, request.payload, tool!.contextId)
+          : await window.dreamEdge.service(tool!.id, request.service, request.method, request.input, tool!.contextId);
+        if (alive && source === frame.current?.contentWindow) source.postMessage({ ...reply, result }, origin);
       } catch (error) {
-        source.postMessage({ ...reply, error: error instanceof Error ? error.message : '存储失败。' }, origin);
+        if (alive && source === frame.current?.contentWindow) source.postMessage({ ...reply, error: error instanceof Error ? error.message : '存储失败。' }, origin);
       } finally {
         pending.delete(data.requestId);
       }
     }
     window.addEventListener('message', receive);
-    return () => window.removeEventListener('message', receive);
+    return () => { alive = false; window.removeEventListener('message', receive); };
   }, [frame, tool]);
 }

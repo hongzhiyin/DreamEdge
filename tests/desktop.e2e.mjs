@@ -50,6 +50,7 @@ try {
     try { return typeof window.parent.dreamEdge; } catch { return 'blocked'; }
   }), 'blocked');
   const project = await page.evaluate(directory => window.dreamEdge.workspace({ operation: 'create', directory, name: 'HelloWorld fixture' }), join(sourceDirectory, 'project'));
+  await content.getByText('HelloWorld', { exact: true }).waitFor();
   const connection = await page.evaluate(() => window.dreamEdge.development({ operation: 'connection' }));
   assert.equal(connection.available, false);
   const modelSession = await page.evaluate(projectId => window.dreamEdge.development({ operation: 'create', projectId, title: 'Model fixture' }), project.definition.id);
@@ -97,8 +98,13 @@ try {
   const restoredFile = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
   assert.ok(restoredFile.content.includes('Updated HelloWorld'));
   await page.evaluate(() => window.dreamEdge.workspace({ operation: 'close' }));
+  await content.getByText('HelloWorld', { exact: true }).waitFor();
+  assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), []);
+  await page.evaluate(directory => window.dreamEdge.workspace({ operation: 'open', directory }), project.rootDirectory);
+  await content.getByText('HelloWorld', { exact: true }).waitFor();
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
   await storage(content, { operation: 'remove', collection: 'framework-test', id: 'record' });
+  await page.evaluate(() => window.dreamEdge.workspace({ operation: 'close' }));
   await application.close();
   ({ page, content } = await launch());
   assert.equal((await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project, null);

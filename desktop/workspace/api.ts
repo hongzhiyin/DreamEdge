@@ -1,13 +1,14 @@
 import type { WorkspaceProject, WorkspaceRequest, WorkspaceResult } from '../../shared/contracts';
 import { WorkspaceManager } from './manager';
 import { WorkspaceFiles } from './files';
+import type { WorkspaceSelection } from './registry';
 
 export class WorkspaceApi {
   private readonly manager: WorkspaceManager;
   private readonly files: WorkspaceFiles;
   private queue: Promise<unknown> = Promise.resolve();
-  constructor(dataDirectory: string, frameworkRoot: string) {
-    this.manager = new WorkspaceManager(dataDirectory, frameworkRoot);
+  constructor(dataDirectory: string, frameworkRoot: string, selection?: WorkspaceSelection) {
+    this.manager = new WorkspaceManager(dataDirectory, frameworkRoot, selection);
     this.files = new WorkspaceFiles(this.manager);
   }
   execute(input: unknown): Promise<WorkspaceResult> {
@@ -23,6 +24,12 @@ export class WorkspaceApi {
   }
   withProject<T>(id: unknown, task: (project: WorkspaceProject) => Promise<T>): Promise<T> {
     return this.exclusive(async () => task(structuredClone(await this.manager.project(id))));
+  }
+  withCurrent<T>(task: (project: WorkspaceProject | null) => Promise<T>): Promise<T> {
+    return this.exclusive(async () => {
+      const { project } = await this.manager.current();
+      return task(project ? structuredClone(await this.manager.project(project.definition.id)) : null);
+    });
   }
   mutateProject<T>(id: unknown, task: (project: WorkspaceProject) => Promise<T>): Promise<T> {
     return this.exclusive(async () => {

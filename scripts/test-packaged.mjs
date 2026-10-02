@@ -10,9 +10,8 @@ const relativePath = paths[process.platform];
 if (!relativePath) throw new Error('此打包验收只支持 macOS 与 Windows。');
 const executable = resolve(relativePath);
 await access(executable);
-const result = spawnSync(process.execPath, ['tests/desktop.e2e.mjs'], {
-  stdio: 'inherit',
-  env: { ...process.env, DREAMEDGE_EXECUTABLE_PATH: executable },
-});
-if (result.error) throw result.error;
-process.exit(result.status ?? 1);
+for (const test of ['tests/desktop.e2e.mjs', 'tests/multi-window.e2e.mjs']) {
+  const result = spawnSync(process.execPath, [test], { stdio: 'inherit', env: { ...process.env, DREAMEDGE_EXECUTABLE_PATH: executable } });
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}

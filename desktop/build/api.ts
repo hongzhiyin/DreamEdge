@@ -6,15 +6,17 @@ import { treeHashes } from '../workspace/source-tree';
 import { applyCandidate, assertSnapshot, assertSource, saveSnapshot, sourceSnapshot } from './snapshot';
 import { BuildStore, previewUrl } from './store';
 import { BuildFailure, type BuildEngine, type BuildInput } from './types';
+import { Capacity } from '../windows/capacity';
 
-interface Job { controller: AbortController; done: Promise<void> }
+interface Job { controller: AbortController; done: Promise<void>; release: () => void }
 export type PreviewOpener = (project: WorkspaceProject, record: CandidateBuild) => Promise<void>;
 export class CandidateBuildApi {
   private readonly store = new BuildStore();
   private readonly jobs = new Map<string, Job>();
   private closed = false;
   constructor(private readonly workspace: WorkspaceApi, private readonly engine: BuildEngine,
-    private readonly openPreview: PreviewOpener, private readonly timeoutMs = 30000) {}
+    private readonly openPreview: PreviewOpener, private readonly timeoutMs = 30000,
+    private readonly capacity = new Capacity(2, '当前最多同时运行两个候选构建。')) {}
   async execute(input: unknown): Promise<CandidateBuildResult> {
     if (this.closed) throw new Error('候选构建服务已关闭。');
     const request = structuredClone(input) as CandidateBuildRequest;
@@ -60,9 +62,12 @@ export class CandidateBuildApi {
         candidate: request.candidate ?? null, status: 'running', startedAt: new Date().toISOString(), finishedAt: null,
         definitionHash: snapshot.definitionHash, sourceHashes: snapshot.hashes, candidateHashes: treeHashes(input.files), outputHashes: {}, previewUrl: null,
         logs: [{ level: 'info', message: '正在构建独立候选源码副本；源工程保持不变。' }] };
-      const root = await this.store.create(project, record);
-      await saveSnapshot(await ensureDirectory(root, 'source'), input);
-      const job: Job = { controller: new AbortController(), done: Promise.resolve() };
+      const release = this.capacity.acquire();
+      try {
+        const root = await this.store.create(project, record);
+        await saveSnapshot(await ensureDirectory(root, 'source'), input);
+      } catch (error) { release(); throw error; }
+      const job: Job = { controller: new AbortController(), done: Promise.resolve(), release };
       this.jobs.set(record.id, job);
       return { project, record, input, job };
     });
@@ -96,6 +101,7 @@ export class CandidateBuildApi {
     } finally {
       clearTimeout(timer); if (aborted) signal.removeEventListener('abort', aborted);
       if (this.jobs.get(record.id) === job) this.jobs.delete(record.id);
+      job.release();
     }
   }
   private async cancel(projectId: string, id: string): Promise<CandidateBuild> {

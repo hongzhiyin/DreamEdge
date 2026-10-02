@@ -3,17 +3,17 @@ import { join } from 'node:path';
 import type { ProjectDefinition, WorkspaceProject, WorkspaceStatus } from '../../shared/contracts';
 import { createDefinition, DEFINITION_FILE, projectName, projectVersion, validateDefinition } from './definition';
 import { canonicalTarget, directory, ensureDirectory, hash, inside, readText, writeText } from './paths';
-import { WorkspaceRegistry } from './registry';
+import { WorkspaceRegistry, type WorkspaceSelection } from './registry';
 import { recoverTransaction } from '../versions/recovery';
 
 export class WorkspaceManager {
-  private readonly registry: WorkspaceRegistry;
+  private readonly registry: WorkspaceSelection;
   private selected: WorkspaceProject | null = null;
   private definitionHash = '';
   private recoveryError: string | null = null;
   readonly ready: Promise<void>;
-  constructor(private readonly dataDirectory: string, private readonly frameworkRoot: string) {
-    this.registry = new WorkspaceRegistry(dataDirectory);
+  constructor(private readonly dataDirectory: string, private readonly frameworkRoot: string, selection?: WorkspaceSelection) {
+    this.registry = selection ?? new WorkspaceRegistry(dataDirectory);
     this.ready = this.restore();
   }
   private async restore(): Promise<void> {
