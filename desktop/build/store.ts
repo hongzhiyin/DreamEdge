@@ -5,6 +5,7 @@ import type { CandidateBuild, WorkspaceProject } from '../../shared/contracts';
 import { identifier } from '../development/sessions';
 import { directory, ensureDirectory, hash, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
 import { BuildFailure, type BuildOutput } from './types';
+import { equalHashes, readSourceTree } from '../workspace/source-tree';
 
 export function previewUrl(id: string): string { return `dreamedge-preview://b${identifier(id).replaceAll('-', '')}/index.html`; }
 export function buildRoot(project: WorkspaceProject, id: string): string { return join(project.buildDirectory, identifier(id)); }
@@ -28,9 +29,9 @@ export class BuildStore {
   async load(project: WorkspaceProject, id: string): Promise<CandidateBuild> {
     identifier(id);
     const record = JSON.parse(await readText(project.buildDirectory, `${id}/record.json`)) as CandidateBuild;
-    if (!record || record.schemaVersion !== 1 || record.id !== id || record.projectId !== project.definition.id
+    if (!record || record.schemaVersion !== 2 || record.id !== id || record.projectId !== project.definition.id
         || !['running', 'succeeded', 'failed', 'cancelled', 'interrupted'].includes(record.status)
-        || !hashes(record.sourceHashes) || !hashes(record.outputHashes)
+        || !hashes(record.sourceHashes) || !hashes(record.candidateHashes) || !hashes(record.outputHashes)
         || typeof record.definitionHash !== 'string' || !/^[a-f0-9]{64}$/.test(record.definitionHash)
         || !Array.isArray(record.logs) || record.logs.length > 64
         || record.logs.some(log => !log || !['info', 'warning', 'error'].includes(log.level) || typeof log.message !== 'string' || log.message.length > 2000)
@@ -42,6 +43,8 @@ export class BuildStore {
     return record;
   }
   async verify(project: WorkspaceProject, record: CandidateBuild): Promise<void> {
+    const candidate = await readSourceTree(join(buildRoot(project, record.id), 'source'));
+    if (!equalHashes(candidate.hashes, record.candidateHashes)) throw new Error('候选源码副本已变化，请重新构建。');
     const root = join(buildRoot(project, record.id), 'output');
     for (const [path, expected] of Object.entries(record.outputHashes)) {
       if (hash(await readText(root, path)) !== expected) throw new Error('构建产物已变化，请重新构建候选。');

@@ -5,6 +5,7 @@ import { resolve, join, dirname } from 'node:path';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
 import { verifyBuildPreview } from './build-preview.e2e.mjs';
+import { verifyVersionSave } from './version-save.e2e.mjs';
 import { SHELL_ORIGIN, TOOL_CHANNEL } from '../packages/sdk/dist/contracts.js';
 
 const directory = await mkdtemp(join(tmpdir(), 'dreamedge-framework-'));
@@ -66,6 +67,8 @@ try {
   const frameworkRoot = runtime.packaged ? (process.platform === 'darwin' ? resolve(dirname(runtime.executable), '../..') : dirname(runtime.executable)) : runtime.root;
   await assert.rejects(page.evaluate(directory => window.dreamEdge.workspace({ operation: 'create', directory, name: 'Forbidden' }), join(frameworkRoot, 'forbidden-project')));
   await storage(content, { operation: 'put', collection: 'framework-test', id: 'record', value: { message: 'persisted' } });
+  const restoredVersion = await verifyVersionSave(page, project, buildId);
+  assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), [{ id: 'record', value: { message: 'persisted' } }]);
   await assert.rejects(storage(content, { operation: 'put', collection: '../outside', id: 'record', value: {} }));
   assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.storage('other-app', { operation: 'list', collection: 'framework-test' }); return false; } catch { return true; } }));
   assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.service('hello-world', 'unknown', 'read', null); return false; } catch { return true; } }));
@@ -85,6 +88,11 @@ try {
   assert.equal(recoveredSession.turns[0].status, 'failed');
   const restoredBuild = await page.evaluate(({ projectId, buildId }) => window.dreamEdge.build({ operation: 'get', projectId, buildId }), { projectId: project.definition.id, buildId });
   assert.equal(restoredBuild.status, 'succeeded');
+  const versions = await page.evaluate(projectId => window.dreamEdge.versions({ operation: 'status', projectId }), project.definition.id);
+  assert.equal(versions.versions.length, 4); assert.equal(versions.head, restoredVersion.versionId);
+  const operation = await page.evaluate(({ projectId, operationId }) => window.dreamEdge.versions({ operation: 'getOperation', projectId, operationId }),
+    { projectId: project.definition.id, operationId: restoredVersion.id });
+  assert.equal(operation.status, 'completed');
   assert.deepEqual(recoveredSession.turns[0].changes, []);
   const restoredFile = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
   assert.ok(restoredFile.content.includes('Updated HelloWorld'));
@@ -96,7 +104,7 @@ try {
   assert.equal((await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project, null);
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), []);
   assert.deepEqual(errors, []);
-  console.log('PASS: HelloWorld shell, model sessions, isolated candidate build/preview and restart recovery.');
+  console.log('PASS: HelloWorld shell, candidate preview/save/version restore, isolated data and restart recovery.');
 } finally {
   if (application) {
     const closed = await Promise.race([application.close().then(() => true).catch(() => true), new Promise(resolve => setTimeout(() => resolve(false), 5000))]);

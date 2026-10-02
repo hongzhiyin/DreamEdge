@@ -11,6 +11,7 @@ import { configuredModel } from './development/responses';
 import { CandidateBuildApi } from './build/api';
 import { workerEngine } from './build/runner';
 import { CandidatePreviews } from './build/preview';
+import { VersionsApi } from './versions/api';
 export function startApp(): void {
   const root = app.getAppPath();
   const manifest = loadApplication(root);
@@ -27,6 +28,7 @@ export function startApp(): void {
   const development = workspace ? new DevelopmentApi(workspace, configuredModel(process.env)) : undefined;
   const previews = new CandidatePreviews();
   const builds = workspace ? new CandidateBuildApi(workspace, workerEngine(join(__dirname, 'build-worker.cjs')), (project, record) => previews.open(project, record)) : undefined;
+  const versions = workspace ? new VersionsApi(workspace, dataDirectory) : undefined;
   protocol.registerSchemesAsPrivileged(['dreamedge', 'dreamedge-preview'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true } })));
   let storage: ToolStorage | undefined;
   function createWindow() {
@@ -75,6 +77,11 @@ export function startApp(): void {
       if (!builds) throw new Error('当前应用未启用工程开发能力。');
       return builds.execute(request);
     });
+    handle('host:versions', (event, request) => {
+      trust(event);
+      if (!versions) throw new Error('当前应用未启用工程开发能力。');
+      return versions.execute(request);
+    });
     handle('host:storage', (event, toolId, request) => {
       if (toolId !== manifest.id) throw new Error('应用身份无效。');
       trust(event, toolId);
@@ -95,6 +102,6 @@ export function startApp(): void {
     if (!development || closing) return;
     event.preventDefault(); closing = true;
     previews.close();
-    void Promise.all([development.dispose(), builds?.dispose()]).finally(() => app.quit());
+    void Promise.all([development.dispose(), builds?.dispose(), versions?.dispose()]).finally(() => app.quit());
   });
 }

@@ -3,6 +3,7 @@ export type { Json, AppManifest, ToolManifest, StoredRecord, StorageRequest, Sto
 export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFile, WorkspaceRequest, WorkspaceResult } from './workspace.js';
 export type * from './development.js';
 export type * from './build.js';
+export type * from './versions.js';
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: number };
 const pending = new Map<string, Pending>();
 if (typeof window !== 'undefined') {

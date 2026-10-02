@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { CandidateBuild, CandidateBuildRequest, CandidateBuildResult, WorkspaceProject } from '../../shared/contracts';
 import { WorkspaceApi } from '../workspace/api';
 import { ensureDirectory } from '../workspace/paths';
+import { treeHashes } from '../workspace/source-tree';
 import { applyCandidate, assertSnapshot, assertSource, saveSnapshot, sourceSnapshot } from './snapshot';
 import { BuildStore, previewUrl } from './store';
 import { BuildFailure, type BuildEngine, type BuildInput } from './types';
@@ -55,9 +56,9 @@ export class CandidateBuildApi {
       const input = { files: structuredClone(snapshot.files) };
       await applyCandidate(project, input.files, request.candidate);
       assertSnapshot(input);
-      const record: CandidateBuild = { schemaVersion: 1, id: randomUUID(), projectId: project.definition.id,
+      const record: CandidateBuild = { schemaVersion: 2, id: randomUUID(), projectId: project.definition.id,
         candidate: request.candidate ?? null, status: 'running', startedAt: new Date().toISOString(), finishedAt: null,
-        definitionHash: snapshot.definitionHash, sourceHashes: snapshot.hashes, outputHashes: {}, previewUrl: null,
+        definitionHash: snapshot.definitionHash, sourceHashes: snapshot.hashes, candidateHashes: treeHashes(input.files), outputHashes: {}, previewUrl: null,
         logs: [{ level: 'info', message: '正在构建独立候选源码副本；源工程保持不变。' }] };
       const root = await this.store.create(project, record);
       await saveSnapshot(await ensureDirectory(root, 'source'), input);

@@ -1,21 +1,11 @@
 import type { CandidateReference, WorkspaceProject } from '../../shared/contracts';
 import { SessionStore } from '../development/sessions';
-import { hash, listSource, readText, relativeParts, writeText } from '../workspace/paths';
+import { hash, relativeParts } from '../workspace/paths';
+import { equalHashes, readSourceTree, writeSourceTree } from '../workspace/source-tree';
 import type { BuildInput } from './types';
 
 export async function sourceSnapshot(project: WorkspaceProject) {
-  const paths = await listSource(project.sourceDirectory);
-  if (paths.length > 200) throw new Error('当前候选构建最多支持 200 个源码文件。');
-  const files: Record<string, string> = Object.create(null);
-  const hashes: Record<string, string> = Object.create(null);
-  let bytes = 0;
-  for (const path of paths) {
-    const content = await readText(project.sourceDirectory, path);
-    bytes += Buffer.byteLength(content);
-    if (bytes > 4 * 1024 * 1024) throw new Error('候选构建源码总量不能超过 4 MB。');
-    files[path] = content; hashes[path] = hash(content);
-  }
-  return { files, hashes, definitionHash: hash(JSON.stringify(project.definition)) };
+  return { ...await readSourceTree(project.sourceDirectory), definitionHash: hash(JSON.stringify(project.definition)) };
 }
 export async function applyCandidate(project: WorkspaceProject, files: Record<string, string>, reference?: CandidateReference): Promise<void> {
   if (!reference) return;
@@ -40,7 +30,7 @@ export async function applyCandidate(project: WorkspaceProject, files: Record<st
   if (names.some(path => names.some(other => other !== path && other.startsWith(path + '/')))) throw new Error('候选文件与目录冲突。');
 }
 export async function saveSnapshot(root: string, input: BuildInput): Promise<void> {
-  for (const [path, content] of Object.entries(input.files)) await writeText(root, path, content);
+  await writeSourceTree(root, input.files);
 }
 export function assertSnapshot(input: BuildInput): void {
   const entries = Object.entries(input.files);
@@ -50,7 +40,7 @@ export function assertSnapshot(input: BuildInput): void {
 }
 export async function assertSource(project: WorkspaceProject, hashes: Record<string, string>, definitionHash: string): Promise<void> {
   const current = await sourceSnapshot(project);
-  if (current.definitionHash !== definitionHash || JSON.stringify(current.hashes) !== JSON.stringify(hashes)) {
+  if (current.definitionHash !== definitionHash || !equalHashes(current.hashes, hashes)) {
     throw new Error('源工程已变化，请重新构建候选。');
   }
 }

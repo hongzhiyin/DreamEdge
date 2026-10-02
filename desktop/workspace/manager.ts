@@ -4,6 +4,7 @@ import type { ProjectDefinition, WorkspaceProject, WorkspaceStatus } from '../..
 import { createDefinition, DEFINITION_FILE, projectName, projectVersion, validateDefinition } from './definition';
 import { canonicalTarget, directory, ensureDirectory, hash, inside, readText, writeText } from './paths';
 import { WorkspaceRegistry } from './registry';
+import { recoverTransaction } from '../versions/recovery';
 
 export class WorkspaceManager {
   private readonly registry: WorkspaceRegistry;
@@ -44,6 +45,7 @@ export class WorkspaceManager {
   private async inspect(path: unknown): Promise<{ project: WorkspaceProject; definitionHash: string }> {
     const root = await canonicalTarget(path, true);
     await this.assertAllowed(root);
+    await recoverTransaction(root, this.dataDirectory);
     const content = await readText(root, DEFINITION_FILE);
     const definition = validateDefinition(JSON.parse(content));
     // Reject identity reuse before creating or accessing another project's managed directories.
@@ -91,6 +93,12 @@ export class WorkspaceManager {
     if (hash(content) !== this.definitionHash) throw new Error('工程描述已被外部修改，请重新打开工程。');
     await directory(this.selected.sourceDirectory);
     return this.selected;
+  }
+  async refresh(id: unknown): Promise<void> {
+    if (!this.selected || id !== this.selected.definition.id) throw new Error('当前工程已变化。');
+    const { project, definitionHash } = await this.inspect(this.selected.rootDirectory);
+    if (project.definition.id !== id) throw new Error('工程身份发生变化。');
+    this.selected = project; this.definitionHash = definitionHash;
   }
   async save(id: unknown, changes: { name?: unknown; version?: unknown }): Promise<WorkspaceProject> {
     const project = await this.project(id);

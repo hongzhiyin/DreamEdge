@@ -24,6 +24,13 @@ export class WorkspaceApi {
   withProject<T>(id: unknown, task: (project: WorkspaceProject) => Promise<T>): Promise<T> {
     return this.exclusive(async () => task(structuredClone(await this.manager.project(id))));
   }
+  mutateProject<T>(id: unknown, task: (project: WorkspaceProject) => Promise<T>): Promise<T> {
+    return this.exclusive(async () => {
+      const project = structuredClone(await this.manager.project(id));
+      try { return await task(project); }
+      finally { await this.manager.refresh(id); }
+    });
+  }
   private async dispatch(input: unknown): Promise<WorkspaceResult> {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('无效的工作区请求。');
     const request = input as WorkspaceRequest;
