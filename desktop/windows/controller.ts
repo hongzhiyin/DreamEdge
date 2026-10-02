@@ -64,6 +64,13 @@ export class ProjectWindows {
     if (!live || live.closing || this.quitting) throw new Error('开发窗口不存在或正在关闭。');
     return live.context;
   }
+  nativeWindow(context: WindowContext): BrowserWindow {
+    const live = [...this.windows.values()].find(live => live.context === context);
+    if (!live || live.closing || this.quitting || live.window.isDestroyed()) throw new Error('开发窗口不存在或正在关闭。');
+    context.assertAvailable();
+    if (!context.workspace) throw new Error('当前应用未启用工程开发能力。');
+    return live.window;
+  }
   async updateTitle(context: WindowContext): Promise<void> {
     const info = await context.info(); const live = this.windows.get(info.id);
     if (live && !live.window.isDestroyed()) live.window.setTitle(info.project ? `${this.manifest.name} · ${info.project.name}` : this.manifest.name);
@@ -99,7 +106,7 @@ export class ProjectWindows {
       throw error;
     }
   }
-  async openFromMenu(request: Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>, parent: BrowserWindow | null): Promise<ProjectWindow> {
+  async openFromAction(request: Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>, parent: BrowserWindow | null): Promise<ProjectWindow> {
     const live = [...this.windows.values()].find(live => live.window === parent && !live.closing);
     if (live && request.operation !== 'new') {
       const info = await live.context.info();

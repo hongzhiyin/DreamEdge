@@ -7,6 +7,7 @@ async function invoke<T>(channel: string, ...arguments_: unknown[]): Promise<T> 
   return response.result as T;
 }
 const api: HostApi = {
+  projectAction: action => invoke('host:project-action', action),
   windows: request => invoke('host:windows', request),
   onContextChanged: listener => {
     const receive = () => listener();

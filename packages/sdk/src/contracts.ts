@@ -3,7 +3,7 @@ import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
 import type { DevelopmentRequest, DevelopmentResult } from './development.js';
 import type { CandidateBuildRequest, CandidateBuildResult } from './build.js';
 import type { VersionRequest, VersionResult } from './versions.js';
-import type { WindowRequest, WindowResult } from './windows.js';
+import type { ProjectAction, ProjectWindow, WindowRequest, WindowResult } from './windows.js';
 export type * from './windows.js';
 export type * from './versions.js';
 export type * from './build.js';
@@ -32,6 +32,7 @@ export type BridgeRequest =
   | { kind: 'storage'; payload: StorageRequest }
   | { kind: 'service'; service: string; method: string; input: Json };
 export interface HostApi {
+  projectAction(action: ProjectAction): Promise<ProjectWindow | null>;
   windows(request: WindowRequest): Promise<WindowResult>;
   onContextChanged(listener: () => void): () => void;
   versions(request: VersionRequest): Promise<VersionResult>;

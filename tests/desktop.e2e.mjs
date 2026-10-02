@@ -24,7 +24,8 @@ async function launch() {
   page.on('pageerror', error => errors.push(error.message));
   const content = page.frameLocator('iframe');
   await content.getByText('HelloWorld', { exact: true }).waitFor();
-  assert.equal(await page.getByRole('button').count(), 0);
+  assert.equal(await page.getByRole('button', { name: '打开开发侧栏' }).count(), 1);
+  assert.equal(await page.getByRole('complementary').count(), 0);
   assert.equal(await content.getByRole('button').count(), 0);
   return { page, content };
 }

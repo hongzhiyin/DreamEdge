@@ -11,3 +11,4 @@ export type WindowRequest =
   | { operation: 'openProject'; directory: string }
   | { operation: 'focus'; windowId: string };
 export type WindowResult = ProjectWindow | ProjectWindow[];
+export type ProjectAction = 'createProject' | 'openProject' | 'new';

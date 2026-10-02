@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppManifest } from '../shared/contracts';
 import { useToolBridge } from './bridge';
+import { DevelopmentSidebar } from './DevelopmentSidebar';
 
 export function App() {
   const [application, setApplication] = useState<AppManifest>();
@@ -19,5 +20,6 @@ export function App() {
     {application && <iframe key={application.contextId} ref={frame} title={`${application.name}内容`}
       src={`dreamedge://${application.id}/${application.entry}`}
       sandbox="allow-scripts allow-same-origin allow-forms" />}
+    {application?.capabilities.includes('workspace') && <DevelopmentSidebar />}
   </div>;
 }
