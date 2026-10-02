@@ -6,7 +6,7 @@ export function identifier(value: unknown): asserts value is string {
   }
 }
 
-function isJson(value: unknown, depth = 0): value is Json {
+export function isJson(value: unknown, depth = 0): value is Json {
   if (depth > 20) return false;
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);

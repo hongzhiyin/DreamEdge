@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { ToolStorage } from '../desktop/storage';
 import { assetPath } from '../desktop/assets';
+import sample from '../tools/reading-log/manifest.json';
 
 test('records survive close and reopen; tools and collections stay isolated', () => {
   const directory = mkdtempSync(join(tmpdir(), 'dreamedge-storage-'));
@@ -51,8 +52,8 @@ test('storage rejects invalid operations, identifiers and payloads without chang
 
 test('asset loader serves only registered local roots', () => {
   const dist = resolve('test-dist');
-  assert.equal(assetPath(dist, 'dreamedge://reading-log/index.html'), join(dist, 'tools', 'reading-log', 'index.html'));
+  assert.equal(assetPath(dist, 'dreamedge://reading-log/index.html', [sample]), join(dist, 'tools', 'reading-log', 'index.html'));
   for (const url of ['file:///etc/passwd', 'dreamedge://unknown/index.html', 'dreamedge://shell/%2e%2e%2fsecret']) {
-    assert.throws(() => assetPath(dist, url));
+    assert.throws(() => assetPath(dist, url, [sample]));
   }
 });

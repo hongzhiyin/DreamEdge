@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpen, ChevronRight, Layers2, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { ChevronRight, Layers2, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 import type { ToolManifest } from '../shared/contracts';
 import { useToolBridge } from './bridge';
 import { AiPanel } from './AiPanel';
@@ -17,7 +17,7 @@ export function App() {
 
   function loadTools() {
     setError('');
-    window.dreamEdge.tools().then(setTools).catch(() => setError('工具列表无法加载，请重试。'));
+    window.dreamEdge.tools().then(items => { setTools(items); document.title = items[0]?.name ?? 'DreamEdge'; }).catch(() => setError('工具列表无法加载，请重试。'));
   }
   useEffect(loadTools, []);
   useEffect(() => {
@@ -34,17 +34,17 @@ export function App() {
 
   return <div className="app-layout">
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark"><Layers2 size={23} /></span><span>DreamEdge<small>构建你的工具空间</small></span></div>
-      <div className="nav-label">我的工具 <span>{tools.length.toString().padStart(2, '0')}</span></div>
-      {tools.map(item => <button key={item.id} className="tool-nav" aria-current="page">
-        <BookOpen size={19} /><span>{item.name}<small>记录每一次阅读</small></span><ChevronRight size={15} />
-      </button>)}
-      <div className="sidebar-note"><span className="small-line" /><p>从一个小工具开始，<br />把日常想法变成可能。</p></div>
-      <div className="local-status"><ShieldCheck size={17} /><div>本地工作空间<small>工具与记录保存在本机</small></div></div>
+      <div className="brand"><span className="brand-mark"><Layers2 size={23} /></span><span>{tool?.name ?? '加载中'}<small>独立应用工作区</small></span></div>
+      <div className="nav-label">当前应用 <span>{tools.length.toString().padStart(2, '0')}</span></div>
+      {tools.map(item => <div key={item.id} className="tool-nav" aria-label="当前应用">
+        <Layers2 size={19} /><span>{item.name}<small>{item.description}</small></span>
+      </div>)}
+      <div className="sidebar-note"><span className="small-line" /><p>由 DreamEdge 提供<br />运行与开发能力。</p></div>
+      <div className="local-status"><ShieldCheck size={17} /><div>本地工作空间<small>应用数据保存在本机</small></div></div>
     </aside>
     <div className="workspace">
       <header className="workspace-header">
-        <div className="breadcrumb">我的工具 <ChevronRight size={14} /><strong>{tool?.name ?? '加载中'}</strong><span className="version">v{tool?.version ?? '0.1.0'}</span></div>
+        <div className="breadcrumb">当前应用 <ChevronRight size={14} /><strong>{tool?.name ?? '加载中'}</strong><span className="version">v{tool?.version ?? '0.1.0'}</span></div>
         <div className="header-actions"><button className="icon-button" aria-label="重新加载工具" onClick={() => setReload(value => value + 1)}><RefreshCw size={17} /></button>
           <button ref={aiButton} className="ai-toggle" onClick={() => setAiOpen(open => !open)} aria-expanded={aiOpen}><Sparkles size={16} />AI 助手<kbd>⌘ K</kbd></button></div>
       </header>

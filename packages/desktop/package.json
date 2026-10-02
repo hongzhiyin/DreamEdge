@@ -1,0 +1,9 @@
+{
+  "name": "@dreamedge/desktop",
+  "version": "0.1.1",
+  "main": "dist/runtime.cjs",
+  "exports": { ".": "./dist/runtime.cjs", "./manifest": "./dist/project.cjs", "./package.json": "./package.json" },
+  "files": ["dist"],
+  "peerDependencies": { "electron": ">=44" },
+  "license": "UNLICENSED"
+}

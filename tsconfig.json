@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
@@ -10,7 +14,19 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["desktop", "shared", "shell", "tool-sdk", "tools", "mobile", "tests/**/*.ts", "capacitor.config.ts"]
+  "include": [
+    "desktop",
+    "shared",
+    "shell",
+    "tool-sdk",
+    "tools",
+    "mobile",
+    "tests/**/*.ts",
+    "capacitor.config.ts",
+    "packages/sdk/src"
+  ]
 }

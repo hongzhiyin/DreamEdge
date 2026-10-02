@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import type { HostApi, StorageRequest, ToolManifest } from '../shared/contracts';
+import type { HostApi, BridgeRequest, ToolManifest } from '../shared/contracts';
 import { TOOL_CHANNEL } from '../shared/contracts';
 
 declare global {
@@ -23,7 +23,11 @@ export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: 
       const source = event.source as Window;
       const reply = { channel: TOOL_CHANNEL, type: 'response', requestId: data.requestId };
       try {
-        const result = await window.dreamEdge.storage(tool!.id, data.request as StorageRequest);
+        const request = data.request as BridgeRequest;
+        if (!request || !['storage', 'service'].includes(request.kind)) throw new Error('无效的应用请求。');
+        const result = request.kind === 'storage'
+          ? await window.dreamEdge.storage(tool!.id, request.payload)
+          : await window.dreamEdge.service(tool!.id, request.service, request.method, request.input);
         source.postMessage({ ...reply, result }, origin);
       } catch (error) {
         source.postMessage({ ...reply, error: error instanceof Error ? error.message : '存储失败。' }, origin);

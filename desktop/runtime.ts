@@ -1,0 +1,66 @@
+import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron';
+import { join, resolve } from 'node:path';
+import { serveAsset } from './assets';
+import { ToolStorage } from './storage';
+import { loadApplication, applicationDataDirectory } from './project';
+import { createServices } from './services';
+import { SHELL_URL } from '../shared/contracts';
+export function startApp(): void {
+  const root = app.getAppPath();
+  const manifest = loadApplication(root);
+  const catalog = [manifest];
+  const dataDirectory = process.env.DREAMEDGE_DATA_DIR
+    ? resolve(process.env.DREAMEDGE_DATA_DIR) : applicationDataDirectory(app.getPath('appData'), manifest);
+  app.setName(manifest.name);
+  app.setPath('userData', dataDirectory);
+  app.setAppUserModelId(manifest.appId);
+  const services = createServices(manifest, root, dataDirectory);
+  protocol.registerSchemesAsPrivileged([{ scheme: 'dreamedge', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+  let storage: ToolStorage | undefined;
+  function createWindow() {
+    const window = new BrowserWindow({
+      title: manifest.name, width: 1180, height: 850, minWidth: 920, minHeight: 650,
+      backgroundColor: '#f7f8f5', autoHideMenuBar: true,
+      webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true,
+        sandbox: true, nodeIntegration: false, webSecurity: true },
+    });
+    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    window.webContents.on('will-navigate', event => event.preventDefault());
+    window.webContents.on('will-frame-navigate', event => {
+      if (!event.isMainFrame && event.url !== `dreamedge://${manifest.id}/${manifest.entry}`) event.preventDefault();
+    });
+    void window.loadURL(SHELL_URL);
+  }
+  app.whenReady().then(() => {
+    storage = new ToolStorage(join(dataDirectory, 'data', 'records.sqlite'));
+    protocol.handle('dreamedge', request => serveAsset(join(root, 'dist'), request.url, catalog));
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+    session.defaultSession.setPermissionCheckHandler(() => false);
+    function trust(event: Electron.IpcMainInvokeEvent, toolId?: unknown) {
+      if (event.senderFrame !== event.sender.mainFrame || event.senderFrame?.url !== SHELL_URL
+          || (toolId !== undefined && toolId !== manifest.id)) throw new Error('应用调用来源无效。');
+    }
+    function handle(channel: string, handler: (event: Electron.IpcMainInvokeEvent, ...arguments_: any[]) => unknown) {
+      ipcMain.handle(channel, async (event, ...arguments_) => {
+        try { return { ok: true, result: await handler(event, ...arguments_) }; }
+        catch (error) { return { ok: false, error: error instanceof Error ? error.message : '应用操作失败，请重试。' }; }
+      });
+    }
+    handle('host:info', event => { trust(event); return manifest; });
+    handle('host:tools', event => { trust(event); return catalog; });
+    handle('host:storage', (event, toolId, request) => {
+      if (toolId !== manifest.id) throw new Error('应用身份无效。');
+      trust(event, toolId);
+      if (!manifest.capabilities.includes('storage')) throw new Error('应用没有存储权限。');
+      return storage!.execute(manifest.id, request);
+    });
+    handle('host:service', (event, toolId, service, method, input) => {
+      if (toolId !== manifest.id) throw new Error('应用身份无效。');
+      trust(event, toolId); return services(service, method, input);
+    });
+    createWindow();
+    app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
+  }).catch(error => { dialog.showErrorBox(`${manifest.name} 无法启动`, String(error)); app.quit(); });
+  app.on('window-all-closed', () => app.quit());
+  app.on('will-quit', () => storage?.close());
+}

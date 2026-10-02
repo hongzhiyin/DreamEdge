@@ -14,8 +14,8 @@ export function AiPanel({ toolName, onClose }: { toolName: string; onClose(): vo
     </div>
     <div className="phase-note"><span className="eyebrow">第一阶段 · 宿主与样例</span>
       <h3>基础能力已就位</h3>
-      <p><Check size={15} />独立运行阅读记录工具</p>
-      <p><Check size={15} />在本机保存业务数据</p>
+      <p><Check size={15} />独立运行当前业务应用</p>
+      <p><Check size={15} />独立保存本机业务数据</p>
       <p className="next-step">下一阶段将接入模型、代码修改与预览。当前面板尚不能发送消息或修改工具。</p>
     </div>
     <div className="ai-composer"><textarea aria-label="AI 需求输入" disabled placeholder="模型尚未接入" rows={3} />

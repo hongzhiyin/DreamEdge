@@ -1,0 +1,12 @@
+{
+  "id": "reading-log",
+  "appId": "io.github.hongzhiyin.dreamedge",
+  "name": "DreamEdge",
+  "description": "阅读记录 · 基建回归样例",
+  "version": "0.1.1",
+  "entry": "index.html",
+  "renderer": "tools/reading-log",
+  "capabilities": [
+    "storage"
+  ]
+}

@@ -2,7 +2,7 @@
   "name": "dreamedge",
   "version": "0.1.1",
   "private": true,
-  "description": "A local desktop home for small, evolving tools",
+  "description": "A framework for independently installable, AI-editable business apps",
   "author": "hongzhiyin",
   "license": "UNLICENSED",
   "main": "dist/desktop/desktop/main.js",
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "start": "npm run build && electron .",
-    "build": "npm run typecheck && tsc -p tsconfig.desktop.json && node scripts/build.mjs",
+    "build": "npm run typecheck && npm run build:framework && node scripts/build.mjs",
     "build:tool": "node scripts/build.mjs --tool",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import tsx --test tests/*.test.ts",
@@ -23,7 +23,9 @@
     "ios:sync": "npm run build:mobile && cap sync ios && node scripts/configure-ios.mjs",
     "ios:open": "cap open ios",
     "mobile:preview": "node scripts/preview-mobile.mjs",
-    "test:mobile": "node tests/mobile.e2e.mjs"
+    "test:mobile": "node tests/mobile.e2e.mjs",
+    "build:framework": "tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs",
+    "framework:pack": "npm run build:framework && node scripts/pack-framework.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",
@@ -42,7 +44,8 @@
     "playwright": "1.63.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vite": "8.3.2"
+    "vite": "8.3.2",
+    "esbuild": "0.28.2"
   },
   "overrides": {
     "xcode": {

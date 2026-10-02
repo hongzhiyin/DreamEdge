@@ -2,7 +2,7 @@
   "appId": "io.github.hongzhiyin.dreamedge",
   "productName": "DreamEdge",
   "directories": { "output": "release" },
-  "files": ["dist/desktop/**/*", "dist/shell/**/*", "dist/tools/**/*", "package.json", "!node_modules/@capacitor/**"],
+  "files": ["dist/app.json", "dist/desktop/**/*", "dist/shell/**/*", "dist/tools/**/*", "package.json", "!node_modules/@capacitor/**"],
   "asar": true,
   "npmRebuild": false,
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",

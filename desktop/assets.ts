@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
-import { catalog } from './catalog';
+import type { ToolManifest } from '../shared/contracts';
 
 const types: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json',
 };
 
-export function assetPath(dist: string, rawUrl: string): string {
+export function assetPath(dist: string, rawUrl: string, catalog: ToolManifest[]): string {
   const url = new URL(rawUrl);
   const tool = catalog.find(item => item.id === url.hostname);
   if (url.protocol !== 'dreamedge:' || (url.hostname !== 'shell' && !tool)) {
@@ -21,14 +21,14 @@ export function assetPath(dist: string, rawUrl: string): string {
   return filename;
 }
 
-export async function serveAsset(dist: string, rawUrl: string): Promise<Response> {
+export async function serveAsset(dist: string, rawUrl: string, catalog: ToolManifest[]): Promise<Response> {
   try {
-    const filename = assetPath(dist, rawUrl);
+    const filename = assetPath(dist, rawUrl, catalog);
     const body = await readFile(filename);
     const csp = [
       "default-src 'none'", "script-src 'self'", "style-src 'self'",
       "img-src 'self' data:", "font-src 'self'", "connect-src 'none'",
-      'frame-src dreamedge://reading-log', "object-src 'none'", "base-uri 'none'",
+      `frame-src ${catalog.map(tool => `dreamedge://${tool.id}`).join(' ')}`, "object-src 'none'", "base-uri 'none'",
       "form-action 'none'", 'frame-ancestors dreamedge://shell',
     ].join('; ');
     return new Response(body, { headers: {

@@ -1,0 +1,15 @@
+{
+  "name": "@dreamedge/sdk",
+  "version": "0.1.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "UNLICENSED"
+}
