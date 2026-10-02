@@ -7,6 +7,11 @@ final class ReadingPersistenceTests: XCTestCase {
         app.launch()
         let content = app.webViews.textViews["阅读内容"]
         XCTAssertTrue(content.waitForExistence(timeout: 30), "阅读工具必须加载并连接原生存储")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { object, _ in
+            guard let field = object as? XCUIElement else { return false }
+            return field.exists && field.isEnabled
+        }, object: content)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed, app.debugDescription)
         content.tap()
         content.typeText("iPhone persistence verification")
         app.webViews.firstMatch.swipeUp()
