@@ -4,6 +4,7 @@ import { WorkspaceApi } from '../workspace/api';
 import { collectContext, shortText, validateProposal } from './context';
 import { ModelFailure, type ModelProvider } from './model';
 import { SessionStore } from './sessions';
+import { inspectCandidate } from './candidate';
 
 interface Job { controller: AbortController; done: Promise<void> }
 export class DevelopmentApi {
@@ -20,7 +21,18 @@ export class DevelopmentApi {
     if (request.operation === 'cancel') return this.cancel(request.projectId, request.sessionId);
     return this.workspace.withProject('projectId' in request ? request.projectId : undefined, async project => {
       switch (request.operation) {
-        case 'create': return structuredClone(await this.store.create(project, request.title));
+        case 'listSummaries': return this.store.summaries(project);
+        case 'create': {
+          const title = shortText(request.title, '会话名称', 160);
+          await this.provider.assertSafeInput?.({ prompt: title, context: { definition: project.definition, files: [] }, history: [] });
+          return structuredClone(await this.store.create(project, title));
+        }
+        case 'candidate': {
+          const session = await this.load(project, request.sessionId);
+          const turn = session.turns.find(turn => turn.id === request.turnId);
+          if (!turn || turn.status !== 'completed' || !turn.summary) throw new Error('只能查看已完成的候选。');
+          return inspectCandidate(project, session, turn, await this.store.context(project, session.id, turn));
+        }
         case 'get': return structuredClone(await this.load(project, request.sessionId));
         case 'list': {
           const sessions = [];
@@ -51,8 +63,11 @@ export class DevelopmentApi {
       if (this.jobs.has(session.id)) throw new Error('该会话已有运行中的请求。');
       if (session.turns.length >= 16) throw new Error('当前阶段每个会话最多支持 16 轮，请创建新会话。');
       const context = await collectContext(project, request.paths);
+      await this.provider.assertSafeInput?.({ prompt, context, history: session.turns.filter(turn => turn.status === 'completed').slice(-4).map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) });
       const turn: DevelopmentTurn = { id: randomUUID(), prompt, startedAt: new Date().toISOString(), finishedAt: null,
         status: 'running', summary: null, error: null, context: context.files.map(({ path, hash }) => ({ path, hash })), changes: [] };
+      if (!session.turns.length && session.title === '新会话') session.title = prompt.slice(0, 40);
+      await this.store.saveContext(project, session.id, turn.id, context);
       session.turns.push(turn); session.updatedAt = turn.startedAt;
       await this.store.save(project, session);
       const job: Job = { controller: new AbortController(), done: Promise.resolve() };

@@ -1,8 +1,8 @@
 import { mkdir, readdir, rename, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import type { DevelopmentSession, DevelopmentTurn, WorkspaceProject } from '../../shared/contracts';
-import { ensureDirectory, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
+import type { DevelopmentSession, DevelopmentSessionSummary, DevelopmentTurn, ProjectContext, WorkspaceProject } from '../../shared/contracts';
+import { ensureDirectory, hash, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
 import { PROPOSAL_LIMIT, shortText } from './context';
 
 export function identifier(input: unknown): string {
@@ -52,11 +52,7 @@ export class SessionStore {
   }
   async load(project: WorkspaceProject, input: unknown): Promise<DevelopmentSession> {
     const id = identifier(input);
-    const value = JSON.parse(await readText(project.sessionsDirectory, `${id}/session.json`));
-    if (!value || value.schemaVersion !== 1 || value.id !== id || value.projectId !== project.definition.id
-        || !timestamp(value.createdAt) || !timestamp(value.updatedAt) || !Array.isArray(value.turnIds)
-        || value.turnIds.length > 16 || new Set(value.turnIds).size !== value.turnIds.length) throw new Error('会话记录无效或不属于当前工程。');
-    shortText(value.title, '会话名称', 160);
+    const value = await this.metadata(project, id);
     const turns: DevelopmentTurn[] = [];
     for (const turnId of value.turnIds) {
       identifier(turnId);
@@ -64,6 +60,22 @@ export class SessionStore {
     }
     return { schemaVersion: 1, id, projectId: value.projectId, title: value.title,
       createdAt: value.createdAt, updatedAt: value.updatedAt, turns };
+  }
+  private async metadata(project: WorkspaceProject, id: string) {
+    const value = JSON.parse(await readText(project.sessionsDirectory, `${id}/session.json`));
+    if (!value || value.schemaVersion !== 1 || value.id !== id || value.projectId !== project.definition.id
+        || !timestamp(value.createdAt) || !timestamp(value.updatedAt) || !Array.isArray(value.turnIds)
+        || value.turnIds.length > 16 || new Set(value.turnIds).size !== value.turnIds.length) throw new Error('会话记录无效或不属于当前工程。');
+    shortText(value.title, '会话名称', 160);
+    return value;
+  }
+  async summaries(project: WorkspaceProject): Promise<DevelopmentSessionSummary[]> {
+    const result: DevelopmentSessionSummary[] = [];
+    for (const id of await this.list(project)) {
+      const value = await this.metadata(project, id);
+      result.push({ id, title: value.title, updatedAt: value.updatedAt, turnCount: value.turnIds.length });
+    }
+    return result;
   }
   async save(project: WorkspaceProject, session: DevelopmentSession): Promise<void> {
     const root = await ensureDirectory(project.sessionsDirectory, identifier(session.id));
@@ -76,6 +88,26 @@ export class SessionStore {
     }
     const { turns, ...metadata } = session;
     await writeText(root, 'session.json', JSON.stringify({ ...metadata, turnIds: turns.map(turn => turn.id) }));
+  }
+  async saveContext(project: WorkspaceProject, sessionId: string, turnId: string, context: ProjectContext): Promise<void> {
+    const root = await ensureDirectory(project.sessionsDirectory, `${identifier(sessionId)}/${identifier(turnId)}`);
+    await writeText(root, 'request-context.json', JSON.stringify(context));
+  }
+  async context(project: WorkspaceProject, sessionId: string, turn: DevelopmentTurn): Promise<ProjectContext> {
+    let value: ProjectContext;
+    try { value = JSON.parse(await readText(project.sessionsDirectory, `${identifier(sessionId)}/${identifier(turn.id)}/request-context.json`)); }
+    catch { throw new Error('候选缺少有效的上下文快照，请重新生成。'); }
+    if (!value || value.definition?.id !== project.definition.id || !Array.isArray(value.files) || value.files.length !== turn.context.length
+      || value.files.length > 20 || new Set(value.files.map(file => file.path)).size !== value.files.length) throw new Error('候选上下文快照无效。');
+    let bytes = 0;
+    for (const file of value.files) {
+      relativeParts(file.path);
+      if (typeof file.content !== 'string' || file.content.includes('\0') || hash(file.content) !== file.hash
+        || !turn.context.some(item => item.path === file.path && item.hash === file.hash)) throw new Error('候选上下文快照已变化。');
+      bytes += Buffer.byteLength(file.content);
+    }
+    if (bytes > PROPOSAL_LIMIT) throw new Error('候选上下文快照过大。');
+    return value;
   }
   async stage(project: WorkspaceProject, sessionId: string, turn: DevelopmentTurn): Promise<void> {
     const root = await ensureDirectory(project.sessionsDirectory, `${identifier(sessionId)}/${identifier(turn.id)}`);

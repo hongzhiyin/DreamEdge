@@ -2,22 +2,24 @@ import type { ModelConnection } from '../../shared/contracts';
 import type { ModelInput, ModelProvider } from './model';
 import { ModelFailure, modelPrompt, proposalSchema } from './model';
 
-interface Configuration { apiKey?: string; model?: string; baseUrl?: string }
+import type { ConnectionConfiguration as Configuration } from '../model-connection/vault';
 interface OutputMessage { type: string; content?: { type: string; text?: string }[] }
 const RESPONSE_LIMIT = 1024 * 1024;
-function settings(configuration: Configuration): { key: string; model: string; endpoint: string } {
+export function normalizeConfiguration(configuration: Configuration): Required<Configuration> {
   const { apiKey, model } = configuration;
-  if (!apiKey?.trim() || /[\r\n]/.test(apiKey) || !model?.trim() || model.length > 120 || /[\x00-\x1f]/.test(model)) {
-    throw new ModelFailure('请在主进程配置 API Key 和模型名称。');
+  if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey.length > 4096 || /[\x00-\x20\x7f]/.test(apiKey.trim())
+    || typeof model !== 'string' || !model.trim() || model.length > 120 || /[\x00-\x1f\x7f]/.test(model)) {
+    throw new ModelFailure('请填写有效的 API Key 和模型名称。');
   }
   let url: URL;
   try { url = new URL(configuration.baseUrl || 'https://api.openai.com/v1'); }
   catch { throw new ModelFailure('模型服务地址格式无效。'); }
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.href.length > 2048) {
     throw new ModelFailure('模型服务地址必须是不包含凭据或查询参数的 HTTPS API 基础地址。');
   }
-  url.pathname = url.pathname.replace(/\/$/, '') + '/responses';
-  return { key: apiKey.trim(), model: model.trim(), endpoint: url.href };
+  if (model.trim().includes(apiKey.trim()) || decodeURIComponent(url.pathname).includes(apiKey.trim())) throw new ModelFailure('模型名称或服务地址不能包含 API Key。');
+  url.pathname = url.pathname.replace(/\/+$/, '');
+  return { apiKey: apiKey.trim(), model: model.trim(), baseUrl: url.href.replace(/\/$/, '') };
 }
 async function readResponse(response: Response): Promise<unknown> {
   if (!response.body) throw new Error('模型响应为空。');
@@ -42,18 +44,37 @@ export class ResponsesModel implements ModelProvider {
   }
   async connection(): Promise<ModelConnection> {
     try {
-      settings(this.configuration);
+      normalizeConfiguration(this.configuration);
       return { provider: 'responses', available: true, detail: 'API 配置已就绪；服务可用性需通过实际请求确认。' };
     } catch {
       return { provider: 'responses', available: false, detail: '请配置有效的 API Key、模型名称和 HTTPS 服务地址。' };
     }
   }
-  async generate(input: ModelInput, signal: AbortSignal): Promise<unknown> {
-    const configuration = settings(this.configuration);
+  async probe(signal: AbortSignal): Promise<void> {
+    const configuration = normalizeConfiguration(this.configuration);
     let response: Response;
-    try { response = await this.transport(configuration.endpoint, {
+    try {
+      response = await this.transport(configuration.baseUrl + '/responses', { method: 'POST', signal, redirect: 'error',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${configuration.apiKey}` },
+        body: JSON.stringify({ model: configuration.model, store: false, stream: false, max_output_tokens: 1024,
+          input: 'Connection test. Return an object with ok=true.', tools: [],
+          text: { format: { type: 'json_schema', name: 'dreamedge_connection', strict: true,
+            schema: { type: 'object', additionalProperties: false, required: ['ok'], properties: { ok: { type: 'boolean' } } } } } }) });
+    } catch { throw new ModelFailure('无法连接模型服务，或连接测试已超时。'); }
+    if (!response.ok) { await response.body?.cancel(); throw new ModelFailure(`连接测试失败（HTTP ${response.status}），请核对凭据和模型权限。`); }
+    try {
+      const result = await readResponse(response) as { status?: string; output?: OutputMessage[] };
+      const text = result.output?.filter(item => item.type === 'message').flatMap(item => item.content ?? [])
+        .filter(item => item.type === 'output_text').map(item => item.text ?? '').join('');
+      if (result.status !== 'completed' || !text || JSON.parse(text).ok !== true) throw new Error();
+    } catch { throw new ModelFailure('服务未返回有效的结构化连接测试结果，请检查 Responses 支持情况。'); }
+  }
+  async generate(input: ModelInput, signal: AbortSignal): Promise<unknown> {
+    const configuration = normalizeConfiguration(this.configuration);
+    let response: Response;
+    try { response = await this.transport(configuration.baseUrl + '/responses', {
       method: 'POST', signal, redirect: 'error',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${configuration.key}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${configuration.apiKey}` },
       body: JSON.stringify({ model: configuration.model, store: false, stream: false, max_output_tokens: 16384,
         input: modelPrompt(input), tools: [],
         text: { format: { type: 'json_schema', name: 'dreamedge_changes', strict: true, schema: proposalSchema } } }),

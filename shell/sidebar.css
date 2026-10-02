@@ -37,7 +37,7 @@
   position: fixed;
   inset: 0 0 0 auto;
   z-index: 2;
-  width: min(320px, 100vw);
+  width: min(360px, 100vw);
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--sidebar-border);
@@ -80,3 +80,8 @@
 @media (prefers-reduced-motion: reduce) {
   .development-controls button, .development-sidebar { transition: none; }
 }
+
+.sidebar-actions.is-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sidebar-actions.is-compact .sidebar-action { flex-direction: column; gap: 4px; padding: 8px 4px; min-height: 64px; }
+.sidebar-actions.is-compact .sidebar-action-detail { display: none; }
+.sidebar-actions.is-compact .sidebar-action-label { font-size: 12px; }

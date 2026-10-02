@@ -1,3 +1,4 @@
+export type * from './model-settings.js';
 export type * from './dependencies.js';
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
@@ -32,7 +33,10 @@ export type StorageRequest =
 export type BridgeRequest =
   | { kind: 'storage'; payload: StorageRequest }
   | { kind: 'service'; service: string; method: string; input: Json };
+import type { ModelSettingsRequest, ModelSettingsResult } from './model-settings.js';
 export interface HostApi {
+  modelSettings(request: ModelSettingsRequest): Promise<ModelSettingsResult>;
+  onModelSettingsChanged(listener: () => void): () => void;
   projectAction(action: ProjectAction): Promise<ProjectWindow | null>;
   windows(request: WindowRequest): Promise<WindowResult>;
   onContextChanged(listener: () => void): () => void;

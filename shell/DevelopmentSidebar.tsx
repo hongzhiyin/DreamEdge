@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppWindow, FolderOpen, FolderPlus, PanelRightClose, PanelRightOpen } from 'lucide-react';
-import type { ProjectAction, ProjectWindow } from '../shared/contracts';
+import type { ModelSettingsState, ProjectAction, ProjectWindow } from '../shared/contracts';
 import './sidebar.css';
-import { DependencyPanel } from './DependencyPanel';
+import './ai.css';
+import { ModelSettingsPanel } from './ModelSettingsPanel';
+import { AiConversation } from './AiConversation';
 
 const actions = [
   { action: 'createProject', label: '新建工程', detail: '创建独立的工程目录', icon: FolderPlus },
@@ -15,6 +17,7 @@ export function DevelopmentSidebar() {
   const [current, setCurrent] = useState<ProjectWindow>();
   const [busy, setBusy] = useState<ProjectAction | null>(null);
   const [error, setError] = useState('');
+  const [model, setModel] = useState<ModelSettingsState>();
   const toggle = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
@@ -65,7 +68,7 @@ export function DevelopmentSidebar() {
           {!current?.project && <p className="sidebar-hint">新建或打开工程，开始开发。</p>}
           {current?.recoveryError && <p role="alert" className="sidebar-error">{current.recoveryError}</p>}
         </section>
-        <nav className="sidebar-actions" aria-label="工程操作" aria-busy={busy !== null}>
+        <nav className={`sidebar-actions${current?.project ? ' is-compact' : ''}`} aria-label="工程操作" aria-busy={busy !== null}>
           {actions.map(({ action, label, detail, icon: Icon }) => <button key={action} disabled={busy !== null}
             className="sidebar-action" onClick={() => { void run(action); }}>
             <Icon aria-hidden="true" size={20} strokeWidth={1.75} />
@@ -76,7 +79,8 @@ export function DevelopmentSidebar() {
           {busy && <p role="status">{busy === 'new' ? '正在打开新窗口…' : '正在选择工程…'}</p>}
           {error && <p role="alert" className="sidebar-error">{error}</p>}
         </div>
-        {current?.project && <DependencyPanel key={current.project.id} projectId={current.project.id} />}
+        <ModelSettingsPanel changed={setModel} />
+        {current?.project && <AiConversation key={current.project.id} projectId={current.project.id} configured={!!model?.hasKey && !!model.model} />}
       </div>
     </aside>
   </div>;

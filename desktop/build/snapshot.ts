@@ -1,5 +1,6 @@
 import type { CandidateReference, WorkspaceProject } from '../../shared/contracts';
 import { SessionStore } from '../development/sessions';
+import { validateProposal } from '../development/context';
 import { hash, relativeParts } from '../workspace/paths';
 import { equalHashes, readSourceTree, writeSourceTree } from '../workspace/source-tree';
 import type { BuildInput } from './types';
@@ -9,9 +10,13 @@ export async function sourceSnapshot(project: WorkspaceProject) {
 }
 export async function applyCandidate(project: WorkspaceProject, files: Record<string, string>, reference?: CandidateReference): Promise<void> {
   if (!reference) return;
-  const session = await new SessionStore().load(project, reference.sessionId);
+  const sessions = new SessionStore();
+  const session = await sessions.load(project, reference.sessionId);
   const turn = session.turns.find(turn => turn.id === reference.turnId);
   if (!turn || turn.status !== 'completed') throw new Error('只能构建已完成的模型候选变更。');
+  const originalContext = await sessions.context(project, session.id, turn);
+  try { await validateProposal(project, originalContext, { summary: turn.summary, files: turn.changes }); }
+  catch { throw new Error('候选上下文已过期，请重新生成变更。'); }
   const context = new Map(turn.context.map(file => [file.path, file.hash]));
   for (const [path, expected] of context) {
     if (!Object.hasOwn(files, path) || hash(files[path]) !== expected) throw new Error('候选上下文已过期，请重新生成变更。');

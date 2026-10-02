@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
+import { buildCandidate, confirmCandidate } from './dependency-operations.e2e.mjs';
 
 const profile = await mkdtemp(join(tmpdir(), 'dreamedge-react-profile-'));
 const source = await mkdtemp(join(tmpdir(), 'dreamedge-react-source-'));
@@ -23,28 +24,21 @@ try {
       content: "import {createRoot} from 'react-dom/client';createRoot(document.getElementById('root')!).render(<main>HelloWorld React</main>);" });
   }, project.definition.id);
   await page.getByRole('button', { name: '打开开发侧栏' }).click();
-  const panel = page.getByRole('region', { name: '依赖与构建' }); await panel.waitFor();
-  for (const name of ['react', 'react-dom']) {
-    await panel.getByLabel('包名', { exact: true }).fill(name); await panel.getByLabel('版本', { exact: true }).fill('19.2.0');
-    await panel.getByRole('button', { name: '添加依赖', exact: true }).click();
-  }
-  await panel.getByRole('button', { name: '构建候选', exact: true }).click();
-  await panel.getByRole('status').filter({ hasText: /构建成功|构建未完成/ }).waitFor({ timeout: 120000 });
-  assert.equal(await panel.getByText('构建成功，请预览并确认保存。', { exact: true }).count(), 1, await panel.innerText());
-  const opened = application.waitForEvent('window'); await panel.getByRole('button', { name: '预览候选', exact: true }).click();
+  assert.equal(await page.getByRole('region', { name: '依赖与构建' }).count(), 0);
+  const candidate = await buildCandidate(page, { projectId: project.definition.id, dependencies: { react: '19.2.0', 'react-dom': '19.2.0' } });
+  const opened = application.waitForEvent('window');
+  await page.evaluate(request => window.dreamEdge.build(request), { operation: 'openPreview', projectId: project.definition.id, buildId: candidate.id });
   const preview = await opened; await preview.getByText('HelloWorld React', { exact: true }).waitFor();
   assert.equal(await preview.evaluate(() => typeof window.dreamEdge), 'undefined');
   await mkdir('artifacts', { recursive: true }); await preview.screenshot({ path: 'artifacts/react-locked-preview.png' });
   await (await application.browserWindow(preview)).evaluate(window => window.close());
-  await panel.getByRole('button', { name: '确认保存', exact: true }).click();
-  await panel.getByText('已保存，依赖已随工程版本锁定。', { exact: true }).waitFor();
+  await confirmCandidate(page, project.definition.id, candidate.id);
   const current = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project;
   assert.equal(current.definition.dependencies.react, '19.2.0'); assert.equal(current.definition.dependencies['react-dom'], '19.2.0');
   assert.equal(Object.keys(current.definition.dependencyLock.packages).length, 3);
   const first = JSON.parse(await readFile(join(project.buildDirectory, (await readdir(project.buildDirectory)).find(name => !name.startsWith('.')), 'record.json'), 'utf8'));
   await application.evaluate(() => { globalThis.fetch = async () => { throw new Error('Locked cached rebuild must not use the registry'); }; });
-  await panel.getByRole('button', { name: '构建候选', exact: true }).click();
-  await panel.getByText('构建成功，请预览并确认保存。', { exact: true }).waitFor();
+  await buildCandidate(page, { projectId: project.definition.id });
   const records = await Promise.all((await readdir(project.buildDirectory)).filter(name => !name.startsWith('.')).map(async name => JSON.parse(await readFile(join(project.buildDirectory, name, 'record.json'), 'utf8'))));
   assert.equal(records.length, 2); assert.deepEqual(records.find(record => record.id !== first.id).outputHashes, first.outputHashes);
   console.log('PASS: live npm React 19.2.0 + ReactDOM + scheduler install, TSX build, isolated browser preview, confirmed lock and identical offline cached rebuild.');

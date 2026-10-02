@@ -12,15 +12,22 @@ export interface DevelopmentTurn {
   context: { path: string; hash: string }[];
   changes: CandidateFile[];
 }
+export interface DevelopmentSessionSummary { id: string; title: string; updatedAt: string; turnCount: number }
 export interface DevelopmentSession {
   schemaVersion: 1; id: string; projectId: string; title: string;
   createdAt: string; updatedAt: string; turns: DevelopmentTurn[];
 }
+export interface CandidateInspection {
+  reference: { sessionId: string; turnId: string }; summary: string; stale: boolean; reason: string | null;
+  files: { path: string; before: string | null; after: string }[];
+}
 export type DevelopmentRequest =
   | { operation: 'connection' }
   | { operation: 'create'; projectId: string; title: string }
+  | { operation: 'listSummaries'; projectId: string }
   | { operation: 'list'; projectId: string }
+  | { operation: 'candidate'; projectId: string; sessionId: string; turnId: string }
   | { operation: 'get'; projectId: string; sessionId: string }
   | { operation: 'send'; projectId: string; sessionId: string; prompt: string; paths: string[] }
   | { operation: 'cancel'; projectId: string; sessionId: string };
-export type DevelopmentResult = ModelConnection | DevelopmentSession | DevelopmentSession[];
+export type DevelopmentResult = CandidateInspection | ModelConnection | DevelopmentSession | DevelopmentSession[] | DevelopmentSessionSummary[];

@@ -71,6 +71,9 @@ export class ProjectWindows {
     if (!context.workspace) throw new Error('当前应用未启用工程开发能力。');
     return live.window;
   }
+  modelSettingsChanged(): void {
+    for (const live of this.windows.values()) if (!live.closing && !live.window.isDestroyed()) live.window.webContents.send('host:model-settings-changed');
+  }
   async updateTitle(context: WindowContext): Promise<void> {
     const info = await context.info(); const live = this.windows.get(info.id);
     if (live && !live.window.isDestroyed()) live.window.setTitle(info.project ? `${this.manifest.name} · ${info.project.name}` : this.manifest.name);

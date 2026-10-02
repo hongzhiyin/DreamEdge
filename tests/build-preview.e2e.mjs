@@ -15,6 +15,9 @@ export async function verifyBuildPreview(application, page, project) {
   const sessionRoot = join(project.sessionsDirectory, session.id);
   await mkdir(join(sessionRoot, id));
   await writeFile(join(sessionRoot, id, 'turn.json'), JSON.stringify(turn));
+  const current = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project.definition;
+  const { dependencyLock: _lock, ...definition } = current;
+  await writeFile(join(sessionRoot, id, 'request-context.json'), JSON.stringify({ definition, files: [{ path: 'main.ts', content: original.content, hash: original.hash }] }));
   const metadata = JSON.parse(await readFile(join(sessionRoot, 'session.json'), 'utf8'));
   await writeFile(join(sessionRoot, 'session.json'), JSON.stringify({ ...metadata, turnIds: [id] }));
   const record = await page.evaluate(({ projectId, sessionId, turnId }) => window.dreamEdge.build({ operation: 'start', projectId,

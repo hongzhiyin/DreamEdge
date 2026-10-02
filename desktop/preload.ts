@@ -7,6 +7,11 @@ async function invoke<T>(channel: string, ...arguments_: unknown[]): Promise<T> 
   return response.result as T;
 }
 const api: HostApi = {
+  modelSettings: request => invoke('host:model-settings', request),
+  onModelSettingsChanged: listener => {
+    const receive = () => listener(); ipcRenderer.on('host:model-settings-changed', receive);
+    return () => ipcRenderer.removeListener('host:model-settings-changed', receive);
+  },
   projectAction: action => invoke('host:project-action', action),
   windows: request => invoke('host:windows', request),
   onContextChanged: listener => {

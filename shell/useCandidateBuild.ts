@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CandidateBuild, VersionOperation, WorkspaceProject, WorkspaceStatus } from '../shared/contracts';
+import type { CandidateBuild, CandidateReference, VersionOperation, WorkspaceProject, WorkspaceStatus } from '../shared/contracts';
 
 export function useCandidateBuild(projectId: string) {
   const [project, setProject] = useState<WorkspaceProject>();
@@ -39,8 +39,8 @@ export function useCandidateBuild(projectId: string) {
     catch (error) { if (alive.current) setError(error instanceof Error ? error.message : '操作失败，请重试。'); }
     finally { pending.current = false; if (alive.current) setBusy(false); }
   }
-  const start = (dependencies: Record<string, string>) => action(async () => {
-    const next = await window.dreamEdge.build({ operation: 'start', projectId, dependencies }) as CandidateBuild;
+  const start = (dependencies?: Record<string, string>, candidate?: CandidateReference) => action(async () => {
+    const next = await window.dreamEdge.build({ operation: 'start', projectId, dependencies, candidate }) as CandidateBuild;
     if (alive.current) { setRecord(next); setSaved(false); }
   });
   const cancel = () => action(async () => {
@@ -55,7 +55,7 @@ export function useCandidateBuild(projectId: string) {
   });
   const confirm = () => action(async () => {
     if (!record) return;
-    let operation = await window.dreamEdge.versions({ operation: 'confirm', projectId, buildId: record.id, label: '保存依赖与候选构建' }) as VersionOperation;
+    let operation = await window.dreamEdge.versions({ operation: 'confirm', projectId, buildId: record.id, label: '保存候选修改' }) as VersionOperation;
     while (alive.current && operation.status === 'running') {
       await new Promise(resolve => setTimeout(resolve, 300));
       if (!alive.current) return;

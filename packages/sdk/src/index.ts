@@ -1,3 +1,4 @@
+export type * from './model-settings.js';
 export type * from './dependencies.js';
 import { SHELL_ORIGIN, TOOL_CHANNEL, type BridgeRequest, type Json, type StoredRecord } from './contracts.js';
 export type { Json, AppManifest, ToolManifest, StoredRecord, StorageRequest, StorageClient } from './contracts.js';

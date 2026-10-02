@@ -6,6 +6,7 @@ export interface ModelInput {
   history: Pick<DevelopmentTurn, 'prompt' | 'summary' | 'changes'>[];
 }
 export interface ModelProvider {
+  assertSafeInput?(input: ModelInput): Promise<void>;
   connection(): Promise<ModelConnection>;
   generate(input: ModelInput, signal: AbortSignal): Promise<unknown>;
 }

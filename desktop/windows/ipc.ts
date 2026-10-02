@@ -2,14 +2,19 @@ import { ipcMain } from 'electron';
 import type { AppManifest } from '../../shared/contracts';
 import { ProjectWindows } from './controller';
 import { ProjectActions } from './actions';
+import { ModelSettings } from '../model-connection/settings';
 
-export function registerWindowIpc(windows: ProjectWindows, manifest: AppManifest, actions: ProjectActions): void {
+export function registerWindowIpc(windows: ProjectWindows, manifest: AppManifest, actions: ProjectActions, modelSettings: ModelSettings): void {
   function handle(channel: string, handler: (context: ReturnType<ProjectWindows['trust']>, ...args: any[]) => unknown) {
     ipcMain.handle(channel, async (event, ...args) => {
       try { return { ok: true, result: await handler(windows.trust(event), ...args) }; }
       catch (error) { return { ok: false, error: error instanceof Error ? error.message : '应用操作失败，请重试。' }; }
     });
   }
+  handle('host:model-settings', (context, request) => {
+    context.assertAvailable(); if (!context.workspace) throw new Error('当前应用未启用模型配置。');
+    return modelSettings.execute(request);
+  });
   handle('host:project-action', (context, action) => actions.execute(action, windows.nativeWindow(context), context));
   handle('host:info', () => manifest);
   handle('host:tools', context => context.tools());

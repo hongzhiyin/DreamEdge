@@ -27,6 +27,7 @@ async function launch(path) {
   const identity = await page.evaluate(() => window.dreamEdge.info());
   assert.equal(await page.getByRole('button', { name: '打开开发侧栏' }).count(), 0);
   await assert.rejects(page.evaluate(() => window.dreamEdge.projectAction('new')), /未启用工程开发能力/);
+  await assert.rejects(page.evaluate(() => window.dreamEdge.modelSettings({ operation: 'get' })), /未启用模型配置/);
   return { app, page, identity };
 }
 try {
