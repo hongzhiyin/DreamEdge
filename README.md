@@ -1,10 +1,20 @@
-# IdeaDock 项目计划
+# DreamEdge 项目计划
 
-IdeaDock 是一个内置 AI 开发能力的小工具运行框架。用户在框架中通过对话创建工具，直接使用工具，并在使用过程中继续通过对话修改界面、业务逻辑和数据结构。
+DreamEdge 是一个内置 AI 开发能力的小工具运行框架。用户在框架中通过对话创建工具，直接使用工具，并在使用过程中继续通过对话修改界面、业务逻辑和数据结构。
 
 本文记录需求、架构和开发顺序，供新的项目会话继续工作。第一阶段采用 React、TypeScript、Vite 和 SQLite，桌面宿主使用 Electron，iPhone 宿主使用 Capacitor；后续阶段中的设计仍是规划。
 
-整理日期：2026 年 10 月 2 日。项目目录：`/Users/chihoyo/Project/IdeaDock`。
+整理日期：2026 年 10 月 2 日。项目目录：`/Users/chihoyo/Project/DreamEdge`。后续请在此目录打开项目并创建会话。
+
+## 文档与开发日志
+
+项目说明存放在本仓库，开发日志按日期归档在 [DreamEdge 飞书目录](https://my.feishu.cn/wiki/E13MwneaoiwJLDkvCJccEoarnYe) 下的 [开发日志](https://my.feishu.cn/wiki/KvHPw9jIKi0NBkkA45GcWfVGnmd) 中。项目更名时需同步更新仓库文档、飞书目录标题、日志正文及相关链接。
+
+- [项目计划与当前进度](README.md)
+- [第一阶段架构](docs/architecture.md)
+- [桌面构建与发布](docs/distribution.md)
+- [iPhone 实现与运行说明](docs/iphone.md)
+- [发布说明](docs/release-notes.md)
 
 ## 本地运行
 
@@ -17,7 +27,9 @@ npm start
 
 应用加载独立的阅读记录工具，可添加日期、内容和分钟时长，查看累计统计，并确认删除记录。AI 面板入口已提供，当前尚未接入真实模型。
 
-数据保存在 Electron 用户数据目录的 `data/ideadock.sqlite`，与项目源码、构建产物分开。macOS 默认为 `~/Library/Application Support/IdeaDock/data/ideadock.sqlite`。
+数据保存在 Electron 用户数据目录的 `data/dreamedge.sqlite`，与项目源码、构建产物分开。macOS 默认为 `~/Library/Application Support/DreamEdge/data/dreamedge.sqlite`。
+
+项目统一使用 DreamEdge 的名称、数据目录、数据库名称和应用标识，不保留旧名称兼容逻辑，也不迁移旧数据。
 
 ```bash
 npm run build              # 类型检查、宿主编译与独立工具构建
@@ -43,11 +55,11 @@ npm run test:mobile        # WebKit 手机界面验收
 
 ## 源码仓库
 
-私有仓库：[hongzhiyin/IdeaDock](https://github.com/hongzhiyin/IdeaDock)，默认分支为 `main`。使用有访问权限的 GitHub 账号，可在另一台电脑克隆源码：
+私有仓库：[hongzhiyin/DreamEdge](https://github.com/hongzhiyin/DreamEdge)，默认分支为 `main`。使用有访问权限的 GitHub 账号，可在另一台电脑克隆源码：
 
 ```bash
-git clone https://github.com/hongzhiyin/IdeaDock.git
-cd IdeaDock
+git clone https://github.com/hongzhiyin/DreamEdge.git DreamEdge
+cd DreamEdge
 npm ci
 npm start
 ```
@@ -65,7 +77,7 @@ npm start
 5. 新工具复用窗口、存储、AI 接入和开发流程，减少重复搭建 UI、数据层及运行环境的工作。
 6. 每个工具可以持续迭代，用户不必每次切换到外部 AI 会话重新交代项目背景。
 
-典型使用流程：打开 IdeaDock → 描述工具需求 → 创建工具 → 使用工具 → 唤出 AI 调整功能 → 保存后继续使用。
+典型使用流程：打开 DreamEdge → 描述工具需求 → 创建工具 → 使用工具 → 唤出 AI 调整功能 → 保存后继续使用。
 
 ## 第一版的建议范围
 
@@ -173,7 +185,7 @@ npm start
 
 实现桌面窗口、工具展示区域、AI 面板入口和最小工具加载方式。手工制作阅读记录工具，接入框架存储接口。
 
-验收标准：能够添加、查看并保存记录；关闭 IdeaDock 后重新打开，工具和记录仍可使用。此阶段无需真实模型即可验证宿主与工具的基本关系。
+验收标准：能够添加、查看并保存记录；关闭 DreamEdge 后重新打开，工具和记录仍可使用。此阶段无需真实模型即可验证宿主与工具的基本关系。
 
 ### 第二阶段 AI 修改已有工具
 
@@ -202,26 +214,26 @@ npm start
 ## 当前进度
 
 - 已完成需求讨论及初步架构建议。
-- 项目目录原名 Toolloom，现已按用户要求改名为 IdeaDock。
+- 项目名称、应用标识和存储路径已统一为 DreamEdge。
 - 已建立 Electron 宿主、独立 React 工具、共享 SDK 与 SQLite 存储，安装并锁定依赖。
 - 已实现阅读记录添加、列表、统计、确认删除，以及 AI 面板入口与快捷键。
 - 第一阶段验收通过：类型检查与构建成功，5 项核心测试通过；真实 Electron 测试覆盖添加/校验/查看、独立工具重载、整进程重启保留记录、确认删除及重启确认、AI 面板与快捷键、较窄窗口布局。
 - 已检查默认窗口、AI 面板及 920×650 内容视口截图；运行时没有 renderer 错误。测试截图位于 `artifacts/`。
 - 已初始化 Git 并建立 GitHub 私有远程仓库，使用 `main` 分支管理源码。
-- 已配置三平台安装包、自动测试与 Release 草稿流程；Apple Silicon Mac、Intel Mac 和 Windows x64 均已通过源码及打包应用验收，运行记录见 [Actions](https://github.com/hongzhiyin/IdeaDock/actions/runs/36913574730)。
-- 已增加 Capacitor iPhone 宿主与系统 SQLite 插件；完整原生构建、手机 WebKit 测试、模拟器 App 重启恢复及 SQLite 文件验收均已通过，见 [iPhone Actions](https://github.com/hongzhiyin/IdeaDock/actions/runs/36971547681)。已检查真实 iPhone 布局截图；真机签名和安装尚未配置。
+- 已配置三平台安装包、自动测试与 Release 草稿流程；Apple Silicon Mac、Intel Mac 和 Windows x64 均已通过源码及打包应用验收，运行记录见 [Actions](https://github.com/hongzhiyin/DreamEdge/actions/runs/36913574730)。
+- 已增加 Capacitor iPhone 宿主与系统 SQLite 插件；完整原生构建、手机 WebKit 测试、模拟器 App 重启恢复及 SQLite 文件验收均已通过，见 [iPhone Actions](https://github.com/hongzhiyin/DreamEdge/actions/runs/36971547681)。已检查真实 iPhone 布局截图；真机签名和安装尚未配置。
 - 尚未接入真实模型、实现候选版本/恢复/迁移、开发者证书签名或自动更新。
 - 尚未进行性能测试；当前仅为第一阶段本地开发版本。
 
 ## 下次会话的起点
 
-在 IdeaDock 对应的项目会话中，先阅读本文件与 `docs/architecture.md`，运行已有测试，然后从当前阶段未完成项继续。
+在 DreamEdge 对应的项目会话中，先阅读本文件与 `docs/architecture.md`，运行已有测试，然后从当前阶段未完成项继续。
 
 下一阶段目标：接入一家模型服务，实现当前工具的候选修改、构建日志与预览保存，再通过内置 AI 增加月份筛选，并保留已有数据。开始前需确定模型厂商与协议、密钥管理和候选构建执行边界。
 
 可用的会话开场：
 
-> 请先阅读 README.md 和 docs/architecture.md，检查已有实现与验收结果，再继续推进 IdeaDock 的下一阶段。
+> 请先阅读 README.md 和 docs/architecture.md，检查已有实现与验收结果，再继续推进 DreamEdge 的下一阶段。
 
 ## 官方参考
 

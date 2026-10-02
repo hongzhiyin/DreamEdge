@@ -1,4 +1,4 @@
-# 第一阶段架构
+# DreamEdge 第一阶段架构
 
 目前采用 Electron + React + TypeScript + Vite，数据库使用 Electron 内置的 `node:sqlite`。依赖版本固定在 `package-lock.json`，开发环境要求 Node.js 22.13 或更新版本。第一阶段使用随应用提供的手工样例，不接入模型。
 
@@ -14,7 +14,7 @@
 | `scripts/` | 受控构建脚本 |
 | `tests/` | 存储与业务测试、真实 Electron 验收 |
 
-宿主加载 `ideadock://shell/index.html`，工具在不同来源的 sandbox iframe 中加载 `ideadock://reading-log/index.html`。每个工具有独立 Vite 构建产物。仅修改阅读工具时执行 `npm run typecheck && npm run build:tool -- reading-log`，然后点击宿主顶部的重新加载按钮即可使用新产物。
+宿主加载 `dreamedge://shell/index.html`，工具在不同来源的 sandbox iframe 中加载 `dreamedge://reading-log/index.html`。每个工具有独立 Vite 构建产物。仅修改阅读工具时执行 `npm run typecheck && npm run build:tool -- reading-log`，然后点击宿主顶部的重新加载按钮即可使用新产物。
 
 当前 catalog 明确登记一个随应用提供的工具。工具安装、动态发现和候选版本切换尚未实现。新增工具时需要同步登记 catalog、构建目标和加载策略；第四阶段再实现模板创建与安装流程。
 
@@ -40,9 +40,11 @@ await storage.remove('entries', recordId);
 
 ## 数据位置与恢复
 
-数据保存在 Electron `app.getPath('userData')/data/ideadock.sqlite`，与源码、构建产物分开。macOS 默认路径为 `~/Library/Application Support/IdeaDock/data/ideadock.sqlite`。首次启动自动创建，关闭后重开仍使用该数据库。
+数据保存在 Electron `app.getPath('userData')/data/dreamedge.sqlite`，与源码、构建产物分开。macOS 默认路径为 `~/Library/Application Support/DreamEdge/data/dreamedge.sqlite`。首次启动自动创建，关闭后重开仍使用该数据库。
 
-开发和测试可通过 `IDEADOCK_DATA_DIR` 指定绝对的数据目录。端到端测试总是使用临时目录，不写入个人记录。数据库采用 WAL 与 FULL synchronous；备份时请先关闭应用，再复制数据目录，避免遗漏 WAL 中的数据。
+桌面与 iPhone 的应用标识均为 `io.github.hongzhiyin.dreamedge`。iPhone 数据库位于 App 容器的 `Library/Application Support/DreamEdge/dreamedge.sqlite`，浏览器预览使用 `dreamedge-mobile-preview` IndexedDB。所有入口统一使用新名称，不保留旧名称兼容逻辑，也不迁移旧数据。
+
+开发和测试可通过 `DREAMEDGE_DATA_DIR` 指定绝对的数据目录。端到端测试总是使用临时目录，不写入个人记录。数据库采用 WAL 与 FULL synchronous；备份时请先关闭应用，再复制数据目录，避免遗漏 WAL 中的数据。
 
 阅读记录使用 `entries` 集合，保存 `id`、`date`（本地日历日期）、`content`、`minutes`、`createdAt`。有效日期、非空内容、1–1440 整数分钟在业务层校验。读取到不兼容的数据会报错、保留原始数据并禁用新增，防止静默忽略旧记录。
 

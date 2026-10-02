@@ -1,4 +1,4 @@
-# 桌面构建与发布
+# DreamEdge 桌面构建与发布
 
 GitHub Actions 工作流为 `.github/workflows/desktop.yml`，生成三个目标：macOS arm64、macOS x64 与 Windows x64。当前没有自动更新客户端，也没有开发者证书签名或 Apple 公证。
 
@@ -6,7 +6,7 @@ GitHub Actions 工作流为 `.github/workflows/desktop.yml`，生成三个目标
 
 推送 `main` 或创建针对 `main` 的 PR 后，自动安装锁定依赖、运行核心测试并构建源码。此过程不会创建 Release。
 
-在 [Actions](https://github.com/hongzhiyin/IdeaDock/actions/workflows/desktop.yml) 中点击 **Run workflow**，可以手动构建三平台安装包并下载 Artifacts，产物保留 14 天。失败时保留测试诊断截图 7 天。
+在 [Actions](https://github.com/hongzhiyin/DreamEdge/actions/workflows/desktop.yml) 中点击 **Run workflow**，可以手动构建三平台安装包并下载 Artifacts，产物保留 14 天。失败时保留测试诊断截图 7 天。
 
 ## 版本发布
 
