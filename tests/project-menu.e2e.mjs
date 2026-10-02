@@ -18,10 +18,16 @@ async function waitProject(page) {
     } catch (error) { if (!error.message.includes('切换工程')) throw error; }
     await new Promise(resolve => setTimeout(resolve, 20));
   }
-  throw new Error('Menu did not open a project');
+  throw new Error('Menu did not open a project: ' + JSON.stringify(await page.evaluate(() => window.dreamEdge.windows({ operation: 'list' }))));
 }
 async function click(page, id) {
-  const native = await application.browserWindow(page); await native.evaluate(window => window.focus());
+  const native = await application.browserWindow(page);
+  await application.evaluate(({ app }) => app.focus({ steal: true }));
+  await native.evaluate(window => new Promise((resolve, reject) => {
+    if (window.isFocused()) { resolve(); return; }
+    const timer = setTimeout(() => reject(new Error('Project menu window did not receive focus')), 5000);
+    window.once('focus', () => { clearTimeout(timer); resolve(); }); window.focus();
+  }));
   await application.evaluate(({ Menu }, id) => {
     const item = Menu.getApplicationMenu().getMenuItemById(id);
     if (!item) throw new Error('Missing project menu command'); item.click();

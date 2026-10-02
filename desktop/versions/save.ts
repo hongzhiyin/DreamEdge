@@ -19,9 +19,12 @@ export async function planSave(project: WorkspaceProject, request: ChangeRequest
     if (build.definitionHash !== current.definitionHash || !equalHashes(build.sourceHashes, current.hashes)) throw new Error('候选已过期，拒绝覆盖当前源码。');
     await builds.verify(project, build);
     const candidate = await readSourceTree(join(buildRoot(project, build.id), 'source'));
+    const definition = await builds.candidateDefinition(project, build);
+    const base = (value: ProjectDefinition) => { const { dependencies: _deps, dependencyLock: _lock, ...rest } = value; return rest; };
+    if (JSON.stringify(base(definition)) !== JSON.stringify(base(current.definition))) throw new Error('候选不能改变工程身份或无关描述。');
     const parts = current.definition.version.split('.');
     const version = request.version === undefined ? `${parts[0]}.${parts[1]}.${BigInt(parts[2]) + 1n}` : projectVersion(request.version);
-    return { files: candidate.files, definition: { ...current.definition, version, savedAt: new Date().toISOString() },
+    return { files: candidate.files, definition: { ...definition, version, savedAt: new Date().toISOString() },
       expectedStateHash: stateHash(build.definitionHash, build.sourceHashes), buildId: build.id, restoredFrom: null };
   }
   if (request.expectedStateHash !== current.stateHash) throw new Error('恢复前的工程状态已变化，请重新核对版本。');

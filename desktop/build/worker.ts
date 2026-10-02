@@ -7,7 +7,7 @@ async function main() {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
     bytes += chunk.length;
-    if (bytes > 28 * 1024 * 1024) throw new Error('构建输入过大。');
+    if (bytes > 56 * 1024 * 1024) throw new Error('构建输入过大。');
     chunks.push(chunk);
   }
   const input = JSON.parse(Buffer.concat(chunks).toString('utf8')) as BuildInput;

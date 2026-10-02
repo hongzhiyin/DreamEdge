@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ProjectDefinition } from '../../shared/contracts';
+import { dependencies, validateLock } from '../dependencies/policy';
 
 export const DEFINITION_FILE = '.dreamedge/project.json';
 export function projectName(value: unknown): string {
@@ -18,8 +19,8 @@ export function validateDefinition(value: unknown): ProjectDefinition {
       || item.source !== 'src' || item.build?.kind !== 'web' || item.build.entry !== 'index.html'
       || typeof item.savedAt !== 'string' || !Number.isFinite(Date.parse(item.savedAt))) throw new Error('工程描述格式无效或版本不受支持。');
   projectName(item.name); projectVersion(item.version);
-  if (!item.dependencies || typeof item.dependencies !== 'object' || Array.isArray(item.dependencies)
-      || Object.entries(item.dependencies).some(([name, version]) => !/^(@[a-z0-9-]+\/)?[a-z0-9-]+$/.test(name) || typeof version !== 'string' || version.length > 100)) throw new Error('工程依赖描述无效。');
+  dependencies(item.dependencies);
+  if (item.dependencyLock !== undefined) validateLock(item.dependencyLock, item.dependencies);
   return item;
 }
 export function createDefinition(name: unknown): ProjectDefinition {

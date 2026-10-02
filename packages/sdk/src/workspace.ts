@@ -1,3 +1,4 @@
+import type { DependencyLock } from './dependencies.js';
 export interface ProjectDefinition {
   schemaVersion: 1;
   id: string;
@@ -6,6 +7,7 @@ export interface ProjectDefinition {
   version: string;
   source: 'src';
   dependencies: Record<string, string>;
+  dependencyLock?: DependencyLock;
   build: { kind: 'web'; entry: 'index.html' };
   savedAt: string;
 }

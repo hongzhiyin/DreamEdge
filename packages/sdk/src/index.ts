@@ -1,3 +1,4 @@
+export type * from './dependencies.js';
 import { SHELL_ORIGIN, TOOL_CHANNEL, type BridgeRequest, type Json, type StoredRecord } from './contracts.js';
 export type { Json, AppManifest, ToolManifest, StoredRecord, StorageRequest, StorageClient } from './contracts.js';
 export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFile, WorkspaceRequest, WorkspaceResult } from './workspace.js';

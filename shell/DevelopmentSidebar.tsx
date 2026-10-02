@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppWindow, FolderOpen, FolderPlus, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { ProjectAction, ProjectWindow } from '../shared/contracts';
 import './sidebar.css';
+import { DependencyPanel } from './DependencyPanel';
 
 const actions = [
   { action: 'createProject', label: '新建工程', detail: '创建独立的工程目录', icon: FolderPlus },
@@ -75,6 +76,7 @@ export function DevelopmentSidebar() {
           {busy && <p role="status">{busy === 'new' ? '正在打开新窗口…' : '正在选择工程…'}</p>}
           {error && <p role="alert" className="sidebar-error">{error}</p>}
         </div>
+        {current?.project && <DependencyPanel key={current.project.id} projectId={current.project.id} />}
       </div>
     </aside>
   </div>;

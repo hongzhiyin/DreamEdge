@@ -49,7 +49,7 @@ export class WindowContext {
   private startTasks(): void {
     if (!this.workspace) return;
     this.development = new DevelopmentApi(this.workspace, this.options.provider);
-    this.builds = new CandidateBuildApi(this.workspace, this.options.engine, this.options.openPreview, 30000, this.options.buildCapacity);
+    this.builds = new CandidateBuildApi(this.workspace, this.options.engine, this.options.openPreview, 300000, this.options.buildCapacity);
     this.versions = new VersionsApi(this.workspace, this.options.profile);
   }
   assertAvailable(): void {

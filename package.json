@@ -16,7 +16,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "npm run build && npm run test:desktop",
     "package": "npm run build && electron-builder --publish never",
-    "test:desktop": "node tests/desktop.e2e.mjs && node tests/multi-window.e2e.mjs && node tests/project-menu.e2e.mjs && node tests/sidebar.e2e.mjs",
+    "test:desktop": "node tests/desktop.e2e.mjs && node tests/multi-window.e2e.mjs && node tests/project-menu.e2e.mjs && node tests/sidebar.e2e.mjs && node --import tsx tests/dependency-sidebar.e2e.mjs",
     "test:packaged": "node scripts/test-packaged.mjs",
     "build:mobile": "npm run typecheck && node scripts/build-mobile.mjs",
     "ios:sync": "npm run build:mobile && cap sync ios && node scripts/configure-ios.mjs",
@@ -25,7 +25,8 @@
     "test:mobile": "node tests/mobile.e2e.mjs",
     "build:framework": "tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs",
     "framework:pack": "npm run build:framework && node scripts/pack-framework.mjs",
-    "test:framework": "npm run framework:pack && node tests/derived-app.e2e.mjs"
+    "test:framework": "npm run framework:pack && node tests/derived-app.e2e.mjs",
+    "test:dependencies:live": "node tests/react-dependencies.e2e.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",
@@ -40,10 +41,13 @@
     "@types/node": "26.6.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/semver": "7.8.0",
     "electron": "44.5.1",
     "electron-builder": "26.15.3",
     "parse5": "8.0.1",
     "playwright": "1.63.0",
+    "semver": "7.8.5",
+    "tar": "7.5.22",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vite": "8.3.2"

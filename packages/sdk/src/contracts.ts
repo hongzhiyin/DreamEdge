@@ -1,3 +1,4 @@
+export type * from './dependencies.js';
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
 import type { DevelopmentRequest, DevelopmentResult } from './development.js';

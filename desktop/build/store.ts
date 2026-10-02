@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { readdir, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { CandidateBuild, WorkspaceProject } from '../../shared/contracts';
+import type { CandidateBuild, ProjectDefinition, WorkspaceProject } from '../../shared/contracts';
 import { identifier } from '../development/sessions';
+import { validateDefinition } from '../workspace/definition';
+import { dependencies } from '../dependencies/policy';
 import { directory, ensureDirectory, hash, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
 import { BuildFailure, type BuildOutput } from './types';
 import { equalHashes, readSourceTree } from '../workspace/source-tree';
@@ -29,20 +31,32 @@ export class BuildStore {
   async load(project: WorkspaceProject, id: string): Promise<CandidateBuild> {
     identifier(id);
     const record = JSON.parse(await readText(project.buildDirectory, `${id}/record.json`)) as CandidateBuild;
-    if (!record || record.schemaVersion !== 2 || record.id !== id || record.projectId !== project.definition.id
+    if (!record || record.schemaVersion !== 3 || record.id !== id || record.projectId !== project.definition.id
         || !['running', 'succeeded', 'failed', 'cancelled', 'interrupted'].includes(record.status)
         || !hashes(record.sourceHashes) || !hashes(record.candidateHashes) || !hashes(record.outputHashes)
         || typeof record.definitionHash !== 'string' || !/^[a-f0-9]{64}$/.test(record.definitionHash)
+        || !['resolving', 'installing', 'compiling', 'complete'].includes(record.phase)
+        || typeof record.candidateDefinitionHash !== 'string' || !/^[a-f0-9]{64}$/.test(record.candidateDefinitionHash)
         || !Array.isArray(record.logs) || record.logs.length > 64
         || record.logs.some(log => !log || !['info', 'warning', 'error'].includes(log.level) || typeof log.message !== 'string' || log.message.length > 2000)
         || typeof record.startedAt !== 'string' || !Number.isFinite(Date.parse(record.startedAt))
         || (record.finishedAt !== null && !Number.isFinite(Date.parse(record.finishedAt)))
         || (record.previewUrl !== null && record.previewUrl !== previewUrl(id))) throw new Error('构建记录无效或不属于当前工程。');
+    dependencies(record.dependencies);
     if (record.candidate !== null) { identifier(record.candidate.sessionId); identifier(record.candidate.turnId); }
     if (record.status === 'succeeded' && (!record.previewUrl || !Object.hasOwn(record.outputHashes, 'index.html'))) throw new Error('成功构建缺少预览产物。');
     return record;
   }
+  async candidateDefinition(project: WorkspaceProject, record: CandidateBuild): Promise<ProjectDefinition> {
+    const content = await readText(buildRoot(project, record.id), 'candidate-definition.json');
+    if (hash(content) !== record.candidateDefinitionHash) throw new Error('候选工程描述或依赖锁定已变化，请重新构建。');
+    const definition = validateDefinition(JSON.parse(content));
+    if (definition.id !== project.definition.id || definition.appId !== project.definition.appId
+      || JSON.stringify(dependencies(definition.dependencies)) !== JSON.stringify(dependencies(record.dependencies))) throw new Error('候选工程身份或依赖与构建记录不一致。');
+    return definition;
+  }
   async verify(project: WorkspaceProject, record: CandidateBuild): Promise<void> {
+    await this.candidateDefinition(project, record);
     const candidate = await readSourceTree(join(buildRoot(project, record.id), 'source'));
     if (!equalHashes(candidate.hashes, record.candidateHashes)) throw new Error('候选源码副本已变化，请重新构建。');
     const root = join(buildRoot(project, record.id), 'output');

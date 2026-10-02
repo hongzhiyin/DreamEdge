@@ -1,0 +1,30 @@
+.dependency-panel { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--sidebar-border); }
+.dependency-panel h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.dependency-hint { margin: 8px 0 12px; color: var(--sidebar-muted); font-size: 12px; line-height: 1.6; }
+.dependency-list { padding: 0; margin: 0; list-style: none; }
+.dependency-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
+.dependency-list li > span { min-width: 0; overflow-wrap: anywhere; }
+.dependency-list strong { font-size: 13px; font-weight: 500; }
+.dependency-version { display: block; font-size: 12px; color: var(--sidebar-muted); font-variant-numeric: tabular-nums; }
+.dependency-form { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 12px 8px; margin: 16px 0; }
+.dependency-form label { display: grid; gap: 6px; font-size: 12px; color: var(--sidebar-muted); }
+.dependency-form input { width: 100%; height: 40px; padding: 8px; border: 1px solid #cececb; border-radius: 6px; font: inherit; color: var(--sidebar-text); background: #fff; }
+.dependency-form input:focus-visible { outline: 2px solid var(--sidebar-focus); outline-offset: 2px; }
+.dependency-form > button { grid-column: 1 / -1; }
+.dependency-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 10px; border: 1px solid #cececb; border-radius: 6px; font: inherit; font-size: 12px; color: var(--sidebar-text); background: #fff; cursor: pointer; transition: background-color 150ms; }
+.dependency-button:hover:enabled { background: var(--sidebar-hover); }
+.dependency-button:active:enabled { background: #e3e3e0; }
+.dependency-button.primary { background: #27272a; border-color: #27272a; color: #fff; }
+.dependency-button.primary:hover:enabled { background: #414146; }
+.dependency-button:disabled, .dependency-form input:disabled { opacity: .55; cursor: default; }
+.dependency-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.dependency-progress { margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--sidebar-muted); }
+.dependency-progress p { margin: 8px 0; }
+.dependency-logs { list-style: none; padding: 0; margin: 8px 0; overflow-wrap: anywhere; }
+.dependency-logs li { margin: 4px 0; }
+.dependency-log-error { color: #a12c2c; }
+@media (prefers-reduced-motion: reduce) { .dependency-button { transition: none; } }
+
+.dependency-clear { min-height: 40px; margin-top: 8px; padding: 8px 0; font: inherit; font-size: 12px; color: var(--sidebar-muted); background: transparent; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.dependency-clear:hover:enabled { color: var(--sidebar-text); }
+.dependency-clear:disabled { opacity: .55; cursor: default; }
