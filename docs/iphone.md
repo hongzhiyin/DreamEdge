@@ -46,6 +46,8 @@ npm run mobile:preview
 
 `.github/workflows/ios.yml` 在 GitHub Mac 环境中编译完整 iOS 工程，运行 iPhone 模拟器 UI 测试：通过 Capacitor 保存记录、退出应用、重新启动并读取原记录。成功后上传模拟器 App 与测试结果。模拟器 ZIP 只能用于模拟器，不能直接安装到真实 iPhone。
 
+2026 年 10 月 2 日，[完整 iPhone 验收](https://github.com/hongzhiyin/IdeaDock/actions/runs/36970386995) 已通过：Xcode 原生编译、WebKit 手机交互、原生 SQLite 校验，以及 iPhone 模拟器 App 保存/退出/重启读取。测试还直接检查模拟器容器内的 SQLite 文件，确认记录由原生存储持久化。桌面版回归测试通过。
+
 数据库位于 App 容器的 `Library/Application Support/IdeaDock/ideadock.sqlite`。覆盖网页资源不会覆盖业务数据；应用升级应保留容器数据。卸载 App 会删除其本地容器数据，应先做好备份。当前没有数据库迁移或跨设备同步。
 
 参考：[Capacitor iOS](https://capacitorjs.com/docs/ios)、[原生插件](https://capacitorjs.com/docs/plugins/ios)、[Swift Package Manager](https://capacitorjs.com/docs/ios/spm)。

@@ -209,7 +209,7 @@ npm start
 - 已检查默认窗口、AI 面板及 920×650 内容视口截图；运行时没有 renderer 错误。测试截图位于 `artifacts/`。
 - 已初始化 Git 并建立 GitHub 私有远程仓库，使用 `main` 分支管理源码。
 - 已配置三平台安装包、自动测试与 Release 草稿流程；Apple Silicon Mac、Intel Mac 和 Windows x64 均已通过源码及打包应用验收，运行记录见 [Actions](https://github.com/hongzhiyin/IdeaDock/actions/runs/36913574730)。
-- 已增加 Capacitor iPhone 宿主、系统 SQLite 插件及手机 WebKit 验收；完整 iOS 原生构建与模拟器 UI 验收由独立工作流执行。
+- 已增加 Capacitor iPhone 宿主与系统 SQLite 插件；完整原生构建、手机 WebKit 测试、模拟器 App 重启恢复及 SQLite 文件验收均已通过，见 [iPhone Actions](https://github.com/hongzhiyin/IdeaDock/actions/runs/36970386995)。真机签名和安装尚未配置。
 - 尚未接入真实模型、实现候选版本/恢复/迁移、开发者证书签名或自动更新。
 - 尚未进行性能测试；当前仅为第一阶段本地开发版本。
 
