@@ -10,6 +10,12 @@ const appGroup = Object.entries(groups).find(([, value]) => value.path === 'App'
 for (const source of ['RecordDatabase.swift', 'StoragePlugin.swift', 'AppBridgeViewController.swift']) {
   if (!project.hasFile(source)) project.addSourceFile(source, { target: app.uuid }, appGroup);
 }
+if (!project.hasFile('PrivacyInfo.xcprivacy')) {
+  const resource = project.addFile('PrivacyInfo.xcprivacy', appGroup);
+  Object.assign(resource, { uuid: project.generateUuid(), target: app.uuid, group: 'Resources' });
+  project.addToPbxBuildFileSection(resource);
+  project.addToPbxResourcesBuildPhase(resource);
+}
 let tests = Object.entries(project.pbxNativeTargetSection()).find(([, value]) => value.name === '"AppUITests"');
 if (!tests) {
   const original = [...app.firstTarget.dependencies];
@@ -38,6 +44,13 @@ attributes.TargetAttributes[tests[0]] = { CreatedOnToolsVersion: '26.0', TestTar
 const testProduct = project.pbxFileReferenceSection()[tests[1].productReference];
 testProduct.path = '"AppUITests.xctest"';
 testProduct.name = '"AppUITests.xctest"';
+for (const file of Object.values(project.pbxFileReferenceSection())) {
+  if (typeof file !== 'object') continue;
+  for (const key of ['fileEncoding', 'explicitFileType', 'lastKnownFileType']) {
+    if (file[key] === undefined || file[key] === 'undefined') delete file[key];
+  }
+  if (file.path?.includes('PrivacyInfo.xcprivacy')) file.lastKnownFileType = 'text.xml';
+}
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
 for (const [key, config] of Object.entries(project.pbxXCBuildConfigurationSection())) {
   if (key.endsWith('_comment')) continue;

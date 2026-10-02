@@ -5,7 +5,7 @@ import Foundation
 public final class StoragePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "IdeaDockStoragePlugin"
     public let jsName = "IdeaDockStorage"
-    public let pluginMethods = [CAPPluginMethod(name: "execute", returnType: CAPPluginReturnPromise)]
+    public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "execute", returnType: CAPPluginReturnPromise)]
     private var database: RecordDatabase?
     private let queue = DispatchQueue(label: "io.github.hongzhiyin.ideadock.storage")
 
