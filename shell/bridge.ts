@@ -3,13 +3,13 @@ import type { HostApi, StorageRequest, ToolManifest } from '../shared/contracts'
 import { TOOL_CHANNEL } from '../shared/contracts';
 
 declare global {
-  interface Window { ideaDock: HostApi }
+  interface Window { dreamEdge: HostApi }
 }
 
 export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: ToolManifest | undefined, toggleAssistant: () => void): void {
   useEffect(() => {
     if (!tool) return;
-    const origin = `ideadock://${tool.id}`;
+    const origin = `dreamedge://${tool.id}`;
     const pending = new Set<string>();
     async function receive(event: MessageEvent): Promise<void> {
       if (event.source !== frame.current?.contentWindow || event.origin !== origin) return;
@@ -23,7 +23,7 @@ export function useToolBridge(frame: RefObject<HTMLIFrameElement | null>, tool: 
       const source = event.source as Window;
       const reply = { channel: TOOL_CHANNEL, type: 'response', requestId: data.requestId };
       try {
-        const result = await window.ideaDock.storage(tool!.id, data.request as StorageRequest);
+        const result = await window.dreamEdge.storage(tool!.id, data.request as StorageRequest);
         source.postMessage({ ...reply, result }, origin);
       } catch (error) {
         source.postMessage({ ...reply, error: error instanceof Error ? error.message : '存储失败。' }, origin);

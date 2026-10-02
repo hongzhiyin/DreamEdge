@@ -16,10 +16,10 @@ if (!project.hasFile('PrivacyInfo.xcprivacy')) {
   project.addToPbxBuildFileSection(resource);
   project.addToPbxResourcesBuildPhase(resource);
 }
-let tests = Object.entries(project.pbxNativeTargetSection()).find(([, value]) => value.name === '"AppUITests"');
+let tests = Object.entries(project.pbxNativeTargetSection()).find(([, value]) => value.name?.replaceAll('"', '') === 'AppUITests');
 if (!tests) {
   const original = [...app.firstTarget.dependencies];
-  const target = project.addTarget('AppUITests', 'unit_test_bundle', 'AppUITests', 'io.github.hongzhiyin.ideadock.uitests');
+  const target = project.addTarget('AppUITests', 'unit_test_bundle', 'AppUITests', 'io.github.hongzhiyin.dreamedge.uitests');
   // xcode's helper supports unit bundles; set Apple's UI testing product type explicitly.
   target.pbxNativeTarget.productType = '"com.apple.product-type.bundle.ui-testing"';
   app.firstTarget.dependencies = original;
@@ -56,7 +56,7 @@ for (const [key, config] of Object.entries(project.pbxXCBuildConfigurationSectio
   if (key.endsWith('_comment')) continue;
   const settings = config.buildSettings;
   settings.IPHONEOS_DEPLOYMENT_TARGET = '16.0';
-  if (settings.PRODUCT_BUNDLE_IDENTIFIER?.includes('ideadock')) {
+  if (settings.PRODUCT_BUNDLE_IDENTIFIER?.includes('dreamedge')) {
     settings.MARKETING_VERSION = version;
     settings.CURRENT_PROJECT_VERSION = '1';
   }

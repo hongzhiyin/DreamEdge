@@ -7,7 +7,7 @@ import { ToolStorage } from '../desktop/storage';
 import { assetPath } from '../desktop/assets';
 
 test('records survive close and reopen; tools and collections stay isolated', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'ideadock-storage-'));
+  const directory = mkdtempSync(join(tmpdir(), 'dreamedge-storage-'));
   const filename = join(directory, 'data', 'test.sqlite');
   let db = new ToolStorage(filename);
   try {
@@ -32,7 +32,7 @@ test('records survive close and reopen; tools and collections stay isolated', ()
 });
 
 test('storage rejects invalid operations, identifiers and payloads without changing records', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'ideadock-validation-'));
+  const directory = mkdtempSync(join(tmpdir(), 'dreamedge-validation-'));
   const db = new ToolStorage(join(directory, 'test.sqlite'));
   try {
     const invalid = [
@@ -51,8 +51,8 @@ test('storage rejects invalid operations, identifiers and payloads without chang
 
 test('asset loader serves only registered local roots', () => {
   const dist = resolve('test-dist');
-  assert.equal(assetPath(dist, 'ideadock://reading-log/index.html'), join(dist, 'tools', 'reading-log', 'index.html'));
-  for (const url of ['file:///etc/passwd', 'ideadock://unknown/index.html', 'ideadock://shell/%2e%2e%2fsecret']) {
+  assert.equal(assetPath(dist, 'dreamedge://reading-log/index.html'), join(dist, 'tools', 'reading-log', 'index.html'));
+  for (const url of ['file:///etc/passwd', 'dreamedge://unknown/index.html', 'dreamedge://shell/%2e%2e%2fsecret']) {
     assert.throws(() => assetPath(dist, url));
   }
 });

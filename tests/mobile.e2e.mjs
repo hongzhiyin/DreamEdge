@@ -5,7 +5,7 @@ import { resolve, join } from 'node:path';
 import { webkit, devices } from 'playwright';
 import { preview } from 'vite';
 
-const profile = await mkdtemp(join(tmpdir(), 'ideadock-mobile-'));
+const profile = await mkdtemp(join(tmpdir(), 'dreamedge-mobile-'));
 const server = await preview({ configFile: false, root: resolve('mobile'),
   build: { outDir: resolve('dist/mobile') }, preview: { host: '127.0.0.1', port: 0 } });
 const address = server.httpServer.address();

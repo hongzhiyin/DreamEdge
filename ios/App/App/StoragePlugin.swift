@@ -1,13 +1,13 @@
 import Capacitor
 import Foundation
 
-@objc(IdeaDockStoragePlugin)
+@objc(DreamEdgeStoragePlugin)
 public final class StoragePlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "IdeaDockStoragePlugin"
-    public let jsName = "IdeaDockStorage"
+    public let identifier = "DreamEdgeStoragePlugin"
+    public let jsName = "DreamEdgeStorage"
     public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "execute", returnType: CAPPluginReturnPromise)]
     private var database: RecordDatabase?
-    private let queue = DispatchQueue(label: "io.github.hongzhiyin.ideadock.storage")
+    private let queue = DispatchQueue(label: "io.github.hongzhiyin.dreamedge.storage")
 
     @objc func execute(_ call: CAPPluginCall) {
         guard let toolId = call.getString("toolId"), let operation = call.getString("operation"),

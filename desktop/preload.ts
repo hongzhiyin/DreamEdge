@@ -6,4 +6,4 @@ const api: HostApi = {
   storage: (toolId, request) => ipcRenderer.invoke('host:storage', toolId, request),
 };
 
-contextBridge.exposeInMainWorld('ideaDock', api);
+contextBridge.exposeInMainWorld('dreamEdge', api);

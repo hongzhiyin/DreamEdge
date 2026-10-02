@@ -4,7 +4,7 @@ import type { Json, StoredRecord } from '../../shared/contracts';
 interface Row { toolId: string; collection: string; id: string; value: Json }
 
 // The browser preview uses IndexedDB; installed iPhone apps use native SQLite.
-export function createBrowserBackend(name = 'ideadock-mobile-preview'): RecordBackend {
+export function createBrowserBackend(name = 'dreamedge-mobile-preview'): RecordBackend {
   let connection: Promise<IDBDatabase> | undefined;
   function open(): Promise<IDBDatabase> {
     return connection ??= new Promise((resolve, reject) => {

@@ -19,7 +19,7 @@ export function App() {
   function close() { setAiOpen(false); button.current?.focus(); }
   return <div className="mobile-root">
     <header className="mobile-header">
-      <div className="mobile-brand"><Layers2 size={24} /><div>IdeaDock<small>随身的工具空间</small></div></div>
+      <div className="mobile-brand"><Layers2 size={24} /><div>DreamEdge<small>随身的工具空间</small></div></div>
       <button ref={button} className="mobile-ai-button" onClick={() => setAiOpen(true)} aria-expanded={aiOpen} aria-label="打开 AI 助手"><Sparkles size={18} />助手</button>
     </header>
     <main><ReadingLog store={readingStore} /></main>

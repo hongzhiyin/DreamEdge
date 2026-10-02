@@ -5,10 +5,10 @@ import { serveAsset } from './assets';
 import { ToolStorage } from './storage';
 import { SHELL_URL } from '../shared/contracts';
 
-app.setName('IdeaDock');
-// Tests use an isolated directory and never touch personal records.
-if (process.env.IDEADOCK_DATA_DIR) app.setPath('userData', resolve(process.env.IDEADOCK_DATA_DIR));
-protocol.registerSchemesAsPrivileged([{ scheme: 'ideadock', privileges: {
+app.setName('DreamEdge');
+const dataDirectory = process.env.DREAMEDGE_DATA_DIR;
+app.setPath('userData', dataDirectory ? resolve(dataDirectory) : join(app.getPath('appData'), 'DreamEdge'));
+protocol.registerSchemesAsPrivileged([{ scheme: 'dreamedge', privileges: {
   standard: true, secure: true, supportFetchAPI: true,
 } }]);
 
@@ -16,7 +16,7 @@ let storage: ToolStorage | undefined;
 
 function createWindow(): void {
   const window = new BrowserWindow({
-    title: 'IdeaDock', width: 1260, height: 850, minWidth: 920, minHeight: 650,
+    title: 'DreamEdge', width: 1260, height: 850, minWidth: 920, minHeight: 650,
     backgroundColor: '#f7f8f5', autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'), contextIsolation: true,
@@ -26,7 +26,7 @@ function createWindow(): void {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-frame-navigate', event => {
-    if (!event.isMainFrame && event.url !== 'ideadock://reading-log/index.html') {
+    if (!event.isMainFrame && event.url !== 'dreamedge://reading-log/index.html') {
       event.preventDefault();
     }
   });
@@ -34,8 +34,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  storage = new ToolStorage(join(app.getPath('userData'), 'data', 'ideadock.sqlite'));
-  protocol.handle('ideadock', request => serveAsset(join(app.getAppPath(), 'dist'), request.url));
+  storage = new ToolStorage(join(app.getPath('userData'), 'data', 'dreamedge.sqlite'));
+  protocol.handle('dreamedge', request => serveAsset(join(app.getAppPath(), 'dist'), request.url));
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   function trust(event: Electron.IpcMainInvokeEvent): void {
@@ -53,7 +53,7 @@ app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 }).catch(error => {
-  dialog.showErrorBox('IdeaDock 无法启动', String(error));
+  dialog.showErrorBox('DreamEdge 无法启动', String(error));
   app.quit();
 });
 

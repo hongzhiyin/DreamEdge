@@ -57,8 +57,8 @@ jobs:
       - name: Upload simulator app
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: ideadock-ios-simulator
-          path: artifacts/IdeaDock-iOS-simulator.zip
+          name: dreamedge-ios-simulator
+          path: artifacts/DreamEdge-iOS-simulator.zip
           if-no-files-found: error
           retention-days: 14
       - name: Upload iPhone diagnostics

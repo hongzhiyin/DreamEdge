@@ -10,7 +10,7 @@ const types: Record<string, string> = {
 export function assetPath(dist: string, rawUrl: string): string {
   const url = new URL(rawUrl);
   const tool = catalog.find(item => item.id === url.hostname);
-  if (url.protocol !== 'ideadock:' || (url.hostname !== 'shell' && !tool)) {
+  if (url.protocol !== 'dreamedge:' || (url.hostname !== 'shell' && !tool)) {
     throw new Error('未知工具地址。');
   }
   const root = resolve(dist, url.hostname === 'shell' ? 'shell' : `tools/${tool!.id}`);
@@ -28,8 +28,8 @@ export async function serveAsset(dist: string, rawUrl: string): Promise<Response
     const csp = [
       "default-src 'none'", "script-src 'self'", "style-src 'self'",
       "img-src 'self' data:", "font-src 'self'", "connect-src 'none'",
-      'frame-src ideadock://reading-log', "object-src 'none'", "base-uri 'none'",
-      "form-action 'none'", 'frame-ancestors ideadock://shell',
+      'frame-src dreamedge://reading-log', "object-src 'none'", "base-uri 'none'",
+      "form-action 'none'", 'frame-ancestors dreamedge://shell',
     ].join('; ');
     return new Response(body, { headers: {
       'Content-Type': types[extname(filename)] ?? 'application/octet-stream',

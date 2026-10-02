@@ -79,7 +79,7 @@ jobs:
       - name: Upload installation packages
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: ideadock-${{ matrix.name }}
+          name: dreamedge-${{ matrix.name }}
           path: |
             release/*.dmg
             release/*.zip
@@ -110,7 +110,7 @@ jobs:
           node-version: '22.22.2'
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          pattern: ideadock-*
+          pattern: dreamedge-*
           path: release-assets
           merge-multiple: true
       - run: node scripts/checksums.mjs release-assets
@@ -129,5 +129,5 @@ jobs:
             gh release upload "$RELEASE_TAG" release-assets/* --repo "$REPOSITORY" --clobber
           else
             gh release create "$RELEASE_TAG" release-assets/* --repo "$REPOSITORY" \
-              --verify-tag --draft --title "IdeaDock $RELEASE_TAG" --notes-file docs/release-notes.md
+              --verify-tag --draft --title "DreamEdge $RELEASE_TAG" --generate-notes
           fi

@@ -16,7 +16,7 @@ final class RecordDatabase {
         else {
             location = try FileManager.default.url(for: .applicationSupportDirectory,
                 in: .userDomainMask, appropriateFor: nil, create: true)
-                .appendingPathComponent("IdeaDock/ideadock.sqlite")
+                .appendingPathComponent("DreamEdge/dreamedge.sqlite")
         }
         let folder = location.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

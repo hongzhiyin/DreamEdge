@@ -8,7 +8,7 @@ interface NativeStorage {
   }): Promise<{ records?: { id: string; json: string }[] }>;
 }
 
-const plugin = registerPlugin<NativeStorage>('IdeaDockStorage');
+const plugin = registerPlugin<NativeStorage>('DreamEdgeStorage');
 
 export const nativeBackend: RecordBackend = {
   async execute(toolId, request: StorageRequest) {

@@ -17,7 +17,7 @@ export function App() {
 
   function loadTools() {
     setError('');
-    window.ideaDock.tools().then(setTools).catch(() => setError('工具列表无法加载，请重试。'));
+    window.dreamEdge.tools().then(setTools).catch(() => setError('工具列表无法加载，请重试。'));
   }
   useEffect(loadTools, []);
   useEffect(() => {
@@ -34,7 +34,7 @@ export function App() {
 
   return <div className="app-layout">
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark"><Layers2 size={23} /></span><span>IdeaDock<small>想法的停靠站</small></span></div>
+      <div className="brand"><span className="brand-mark"><Layers2 size={23} /></span><span>DreamEdge<small>构建你的工具空间</small></span></div>
       <div className="nav-label">我的工具 <span>{tools.length.toString().padStart(2, '0')}</span></div>
       {tools.map(item => <button key={item.id} className="tool-nav" aria-current="page">
         <BookOpen size={19} /><span>{item.name}<small>记录每一次阅读</small></span><ChevronRight size={15} />
@@ -50,7 +50,7 @@ export function App() {
       </header>
       <main className="tool-workspace">
         {error && <div className="host-error" role="alert"><p>{error}</p><button onClick={loadTools}>重试</button></div>}
-        {tool && <iframe key={`${tool.id}-${reload}`} ref={frame} title={`${tool.name}工具`} src={`ideadock://${tool.id}/${tool.entry}`}
+        {tool && <iframe key={`${tool.id}-${reload}`} ref={frame} title={`${tool.name}工具`} src={`dreamedge://${tool.id}/${tool.entry}`}
           sandbox="allow-scripts allow-same-origin allow-forms" />}
         {aiOpen && <AiPanel toolName={tool?.name ?? '阅读记录'} onClose={closeAi} />}
       </main>

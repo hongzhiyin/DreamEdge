@@ -24,6 +24,6 @@ export interface HostApi {
   storage(toolId: string, request: StorageRequest): Promise<StoredRecord[] | void>;
 }
 
-export const SHELL_URL = 'ideadock://shell/index.html';
-export const SHELL_ORIGIN = 'ideadock://shell';
-export const TOOL_CHANNEL = 'ideadock:storage';
+export const SHELL_URL = 'dreamedge://shell/index.html';
+export const SHELL_ORIGIN = 'dreamedge://shell';
+export const TOOL_CHANNEL = 'dreamedge:storage';

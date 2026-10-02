@@ -5,22 +5,22 @@ import { resolve, join } from 'node:path';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
 
-const directory = await mkdtemp(join(tmpdir(), 'ideadock-e2e-'));
+const directory = await mkdtemp(join(tmpdir(), 'dreamedge-e2e-'));
 const errors = [];
 let application;
 async function launch() {
-  const environment = { ...process.env, IDEADOCK_DATA_DIR: directory };
+  const environment = { ...process.env, DREAMEDGE_DATA_DIR: directory };
   delete environment.ELECTRON_RUN_AS_NODE;
   application = await electron.launch({
-    executablePath: process.env.IDEADOCK_EXECUTABLE_PATH || electronPath,
-    args: process.env.IDEADOCK_EXECUTABLE_PATH ? [] : [resolve('.')],
+    executablePath: process.env.DREAMEDGE_EXECUTABLE_PATH || electronPath,
+    args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')],
     env: environment,
   });
+  const page = await application.firstWindow();
   await application.evaluate(({ app, BrowserWindow }) => {
     app.focus({ steal: true });
     BrowserWindow.getAllWindows()[0].focus();
   });
-  const page = await application.firstWindow();
   await page.setViewportSize({ width: 920, height: 650 });
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -51,10 +51,10 @@ try {
   await tool.locator('.entry').waitFor();
   assert.equal(await tool.locator('.entry-content p').innerText(), '《设计数据密集型应用》第一章\n可靠性与可维护性');
   assert.equal(await tool.locator('.duration').innerText(), '45 分钟');
-  assert.equal(await tool.locator('body').evaluate(() => typeof window.ideaDock), 'undefined');
+  assert.equal(await tool.locator('body').evaluate(() => typeof window.dreamEdge), 'undefined');
   assert.equal(await tool.locator('body').evaluate(() => typeof window.require), 'undefined');
   const unknownTool = await page.evaluate(async () => {
-    try { await window.ideaDock.storage('unknown', { operation: 'list', collection: 'entries' }); return false; }
+    try { await window.dreamEdge.storage('unknown', { operation: 'list', collection: 'entries' }); return false; }
     catch { return true; }
   });
   assert.ok(unknownTool);

@@ -1,6 +1,6 @@
 {
-  "appId": "io.github.hongzhiyin.ideadock",
-  "productName": "IdeaDock",
+  "appId": "io.github.hongzhiyin.dreamedge",
+  "productName": "DreamEdge",
   "directories": { "output": "release" },
   "files": ["dist/desktop/**/*", "dist/shell/**/*", "dist/tools/**/*", "package.json", "!node_modules/@capacitor/**"],
   "asar": true,
