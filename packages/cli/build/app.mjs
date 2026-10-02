@@ -26,7 +26,8 @@ export async function buildApp(root = process.cwd()) {
   const config = {
     appId: manifest.appId, productName: manifest.name,
     directories: { output: 'release' }, files: ['dist/**/*', 'package.json'],
-    asar: true, npmRebuild: false, artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
+    asar: true, asarUnpack: ['node_modules/esbuild/**', 'node_modules/@esbuild/**'],
+    npmRebuild: false, artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
     mac: { identity: '-', category: 'public.app-category.utilities', target: ['dmg', 'zip'] },
     win: { target: ['nsis'] }, nsis: { oneClick: false, allowToChangeInstallationDirectory: true },
   };

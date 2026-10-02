@@ -2,6 +2,7 @@ import { SHELL_ORIGIN, TOOL_CHANNEL, type BridgeRequest, type Json, type StoredR
 export type { Json, AppManifest, ToolManifest, StoredRecord, StorageRequest, StorageClient } from './contracts.js';
 export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFile, WorkspaceRequest, WorkspaceResult } from './workspace.js';
 export type * from './development.js';
+export type * from './build.js';
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: number };
 const pending = new Map<string, Pending>();
 if (typeof window !== 'undefined') {

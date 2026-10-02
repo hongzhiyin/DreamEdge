@@ -30,6 +30,7 @@
   "dependencies": {
     "@capacitor/core": "8.5.2",
     "@capacitor/ios": "8.5.2",
+    "esbuild": "0.28.2",
     "lucide-react": "1.49.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -41,11 +42,11 @@
     "@types/react-dom": "19.3.0",
     "electron": "44.5.1",
     "electron-builder": "26.15.3",
+    "parse5": "8.0.1",
     "playwright": "1.63.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vite": "8.3.2",
-    "esbuild": "0.28.2"
+    "vite": "8.3.2"
   },
   "overrides": {
     "xcode": {

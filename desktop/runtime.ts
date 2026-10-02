@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { serveAsset } from './assets';
 import { ToolStorage } from './storage';
 import { loadApplication, applicationDataDirectory } from './project';
@@ -8,6 +8,9 @@ import { SHELL_URL } from '../shared/contracts';
 import { WorkspaceApi } from './workspace/api';
 import { DevelopmentApi } from './development/api';
 import { configuredModel } from './development/responses';
+import { CandidateBuildApi } from './build/api';
+import { workerEngine } from './build/runner';
+import { CandidatePreviews } from './build/preview';
 export function startApp(): void {
   const root = app.getAppPath();
   const manifest = loadApplication(root);
@@ -18,9 +21,13 @@ export function startApp(): void {
   app.setPath('userData', dataDirectory);
   app.setAppUserModelId(manifest.appId);
   const services = createServices(manifest, root, dataDirectory);
-  const workspace = manifest.capabilities.includes('workspace') ? new WorkspaceApi(dataDirectory, root) : undefined;
+  const frameworkRoot = app.isPackaged ? (process.platform === 'darwin'
+    ? resolve(dirname(app.getPath('exe')), '../..') : dirname(app.getPath('exe'))) : root;
+  const workspace = manifest.capabilities.includes('workspace') ? new WorkspaceApi(dataDirectory, frameworkRoot) : undefined;
   const development = workspace ? new DevelopmentApi(workspace, configuredModel(process.env)) : undefined;
-  protocol.registerSchemesAsPrivileged([{ scheme: 'dreamedge', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+  const previews = new CandidatePreviews();
+  const builds = workspace ? new CandidateBuildApi(workspace, workerEngine(join(__dirname, 'build-worker.cjs')), (project, record) => previews.open(project, record)) : undefined;
+  protocol.registerSchemesAsPrivileged(['dreamedge', 'dreamedge-preview'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true } })));
   let storage: ToolStorage | undefined;
   function createWindow() {
     const window = new BrowserWindow({
@@ -63,6 +70,11 @@ export function startApp(): void {
       if (!development) throw new Error('当前应用未启用工程开发能力。');
       return development.execute(request);
     });
+    handle('host:build', (event, request) => {
+      trust(event);
+      if (!builds) throw new Error('当前应用未启用工程开发能力。');
+      return builds.execute(request);
+    });
     handle('host:storage', (event, toolId, request) => {
       if (toolId !== manifest.id) throw new Error('应用身份无效。');
       trust(event, toolId);
@@ -82,6 +94,7 @@ export function startApp(): void {
   app.on('before-quit', event => {
     if (!development || closing) return;
     event.preventDefault(); closing = true;
-    void development.dispose().finally(() => app.quit());
+    previews.close();
+    void Promise.all([development.dispose(), builds?.dispose()]).finally(() => app.quit());
   });
 }

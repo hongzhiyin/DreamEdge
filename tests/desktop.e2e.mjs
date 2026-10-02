@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
+import { verifyBuildPreview } from './build-preview.e2e.mjs';
 import { SHELL_ORIGIN, TOOL_CHANNEL } from '../packages/sdk/dist/contracts.js';
 
 const directory = await mkdtemp(join(tmpdir(), 'dreamedge-framework-'));
@@ -59,8 +60,11 @@ try {
   const original = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
   await page.evaluate(({ projectId, hash }) => window.dreamEdge.workspace({ operation: 'writeFile', projectId, path: 'main.ts', content: "document.body.textContent = 'Updated HelloWorld';", expectedHash: hash }), { projectId: project.definition.id, hash: original.hash });
   await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'save', projectId, name: 'Saved framework fixture' }), project.definition.id);
+  const buildId = await verifyBuildPreview(application, page, project);
   await assert.rejects(page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: '../outside' }), project.definition.id));
-  await assert.rejects(page.evaluate(directory => window.dreamEdge.workspace({ operation: 'create', directory, name: 'Forbidden' }), resolve('forbidden-project')));
+  const runtime = await application.evaluate(({ app }) => ({ root: app.getAppPath(), executable: app.getPath('exe'), packaged: app.isPackaged }));
+  const frameworkRoot = runtime.packaged ? (process.platform === 'darwin' ? resolve(dirname(runtime.executable), '../..') : dirname(runtime.executable)) : runtime.root;
+  await assert.rejects(page.evaluate(directory => window.dreamEdge.workspace({ operation: 'create', directory, name: 'Forbidden' }), join(frameworkRoot, 'forbidden-project')));
   await storage(content, { operation: 'put', collection: 'framework-test', id: 'record', value: { message: 'persisted' } });
   await assert.rejects(storage(content, { operation: 'put', collection: '../outside', id: 'record', value: {} }));
   assert.ok(await page.evaluate(async () => { try { await window.dreamEdge.storage('other-app', { operation: 'list', collection: 'framework-test' }); return false; } catch { return true; } }));
@@ -79,6 +83,8 @@ try {
   assert.equal(restored.project.definition.name, 'Saved framework fixture');
   const recoveredSession = await page.evaluate(({ projectId, sessionId }) => window.dreamEdge.development({ operation: 'get', projectId, sessionId }), { projectId: project.definition.id, sessionId: modelSession.id });
   assert.equal(recoveredSession.turns[0].status, 'failed');
+  const restoredBuild = await page.evaluate(({ projectId, buildId }) => window.dreamEdge.build({ operation: 'get', projectId, buildId }), { projectId: project.definition.id, buildId });
+  assert.equal(restoredBuild.status, 'succeeded');
   assert.deepEqual(recoveredSession.turns[0].changes, []);
   const restoredFile = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
   assert.ok(restoredFile.content.includes('Updated HelloWorld'));
@@ -90,7 +96,7 @@ try {
   assert.equal((await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project, null);
   assert.deepEqual(await storage(content, { operation: 'list', collection: 'framework-test' }), []);
   assert.deepEqual(errors, []);
-  console.log('PASS: HelloWorld shell, host-only workspace and model sessions, source boundaries and restart recovery.');
+  console.log('PASS: HelloWorld shell, model sessions, isolated candidate build/preview and restart recovery.');
 } finally {
   if (application) {
     const closed = await Promise.race([application.close().then(() => true).catch(() => true), new Promise(resolve => setTimeout(() => resolve(false), 5000))]);
