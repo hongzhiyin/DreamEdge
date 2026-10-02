@@ -46,6 +46,11 @@ test('external edits reload without a restart and stale forms cannot overwrite m
     const state = await f.get(); assert.equal(state.model, 'other-model'); assert.notEqual(state.revision, original.revision);
     await f.service.generate(input, new AbortController().signal);
     assert.deepEqual(calls, [{ url: 'https://other.example/v1/responses', auth: 'Bearer other-key' }]);
+    await writeFile(f.path, JSON.stringify({ schemaVersion: 1, model: 'other-model', apiKey: ' other-key ', baseUrl: 'https://other.example/v1/' }));
+    await assert.rejects(f.service.assertSafeInput({ ...input, prompt: 'other-key' }), /凭据/);
+    const normalized = await f.get();
+    await f.service.execute({ ...settings, model: 'updated-model', baseUrl: 'https://other.example/v1/', apiKey: '', expectedRevision: normalized.revision });
+    assert.equal(JSON.parse(await readFile(f.path, 'utf8')).apiKey, 'other-key');
   } finally { await f.cleanup(); }
 });
 test('invalid and linked configuration files fail closed without exposing their content or overwriting targets', async () => {

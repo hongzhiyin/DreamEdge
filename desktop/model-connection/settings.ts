@@ -19,7 +19,7 @@ export class ModelSettings implements ModelProvider {
     try {
       const current = await this.file.load(); this.configuration = current.configuration; this.revision = current.revision; this.warning = current.warning;
       if (this.configuration.apiKey && !this.warning) {
-        try { normalizeConfiguration(this.configuration); }
+        try { this.configuration = normalizeConfiguration(this.configuration); }
         catch (error) { this.warning = error instanceof ModelFailure ? error.message : '工程模型配置无效。'; }
       }
     } catch (error) {
@@ -28,7 +28,7 @@ export class ModelSettings implements ModelProvider {
     }
   }
   private state(): ModelSettingsState {
-    const key = this.configuration.apiKey;
+    const key = this.configuration.apiKey?.trim();
     const publicValue = (value: string) => key && value.includes(key) ? '' : value;
     return { provider: 'responses', model: publicValue(this.configuration.model ?? ''),
       baseUrl: publicValue(this.configuration.baseUrl ?? 'https://api.openai.com/v1'), hasKey: !!key,
@@ -77,7 +77,8 @@ export class ModelSettings implements ModelProvider {
   }
   async assertSafeInput(input: ModelInput): Promise<void> {
     await this.ready; await this.queue; await this.refresh();
-    if (this.configuration.apiKey && JSON.stringify(input).includes(this.configuration.apiKey)) throw new ModelFailure('工程源码或需求中包含模型连接凭据，请移除后重试。');
+    const key = this.configuration.apiKey?.trim();
+    if (key && JSON.stringify(input).includes(key)) throw new ModelFailure('工程源码或需求中包含模型连接凭据，请移除后重试。');
   }
   async generate(input: ModelInput, signal: AbortSignal, access?: ModelAccess): Promise<unknown> {
     await this.ready;
