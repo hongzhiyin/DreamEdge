@@ -1,4 +1,5 @@
 import type { ProjectContext, WorkspaceProject } from '../../shared/contracts';
+import { dependencyList, resolveDependency } from './dependency-tools';
 import { WorkspaceApi } from '../workspace/api';
 import { hash, listSource, readText, relativeParts } from '../workspace/paths';
 import { CONTEXT_FILES, CONTEXT_LIMIT, modelDefinition, shortText, validateProposal } from './context';
@@ -6,18 +7,28 @@ import { CONTEXT_FILES, CONTEXT_LIMIT, modelDefinition, shortText, validatePropo
 /** All paths are relative to src; the model never receives a host filesystem path. */
 export class ProjectAccess {
   commitMessage?: string;
+  dependencies?: Record<string, string>;
   constructor(private readonly workspace: WorkspaceApi, private readonly projectId: string, private readonly context: ProjectContext, private readonly commitAllowed = false) {}
-  execute(name: string, args: Record<string, unknown>, signal: AbortSignal, beforeExpose: (value: unknown) => void = () => {}): Promise<unknown> {
+  async execute(name: string, args: Record<string, unknown>, signal: AbortSignal, beforeExpose: (value: unknown) => void = () => {}): Promise<unknown> {
+    if (name === 'resolve_dependency') {
+      await this.workspace.withProject(this.projectId, async project => this.assertDefinition(project));
+      beforeExpose(args); const result = await resolveDependency(args, signal); signal.throwIfAborted();
+      return this.workspace.withProject(this.projectId, async project => { this.assertDefinition(project); beforeExpose(result); return result; });
+    }
     return this.workspace.withProject(this.projectId, async project => {
       signal.throwIfAborted();
-      if (JSON.stringify(modelDefinition(project.definition)) !== JSON.stringify(this.context.definition)) throw new Error('工程描述已变化，请重新发送请求。');
+      this.assertDefinition(project);
+      if (name === 'set_dependencies') {
+        beforeExpose(args); this.dependencies = dependencyList(args.packages);
+        return { queued: true, dependencies: this.dependencies, detail: '完整依赖声明已暂存，propose_changes 后自动构建并应用。' };
+      }
       if (name === 'git_commit') {
         if (!this.commitAllowed) throw new Error('本轮没有授权 Git 提交。');
         beforeExpose(args); this.commitMessage = shortText(args.message, 'Git 提交说明', 500);
         return { queued: true, detail: '本轮修改构建并应用成功后，由框架提交 Git。' };
       }
       if (name === 'propose_changes') {
-        beforeExpose(args); await validateProposal(project, this.context, args);
+        beforeExpose(args); await validateProposal(project, this.context, { ...args, dependencies: this.dependencies });
         signal.throwIfAborted(); return { accepted: true };
       }
       if (name === 'read_file') {
@@ -35,6 +46,9 @@ export class ProjectAccess {
       if (name === 'search_files') return this.search(project, prefix, shortText(args.query, '搜索文本', 160), signal, beforeExpose);
       throw new Error('工具未开放。');
     });
+  }
+  private assertDefinition(project: WorkspaceProject) {
+    if (JSON.stringify(modelDefinition(project.definition)) !== JSON.stringify(this.context.definition)) throw new Error('工程描述已变化，请重新发送请求。');
   }
   private prefix(value: unknown): string {
     if (value === '') return '';

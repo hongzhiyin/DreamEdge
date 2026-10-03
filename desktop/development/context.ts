@@ -1,4 +1,5 @@
 import type { CandidateFile, ModelProposal, ProjectContext, ProjectDefinition, WorkspaceProject } from '../../shared/contracts';
+import { dependencies } from '../dependencies/policy';
 import { hash, listSource, readText, relativeParts } from '../workspace/paths';
 
 export const CONTEXT_LIMIT = 128 * 1024;
@@ -30,10 +31,12 @@ export async function collectContext(project: WorkspaceProject, paths: unknown):
   }
   return { definition: modelDefinition(project.definition), files };
 }
-export async function validateProposal(project: WorkspaceProject, context: ProjectContext, input: unknown): Promise<{ summary: string; changes: CandidateFile[] }> {
+export async function validateProposal(project: WorkspaceProject, context: ProjectContext, input: unknown): Promise<{ summary: string; changes: CandidateFile[]; dependencies?: Record<string, string> }> {
   const proposal = input as ModelProposal;
   if (!proposal || typeof proposal !== 'object' || Array.isArray(proposal)
       || !Array.isArray(proposal.files) || proposal.files.length > 20) throw new Error('模型返回的变更格式无效。');
+  const declared = proposal.dependencies === undefined ? undefined : dependencies(proposal.dependencies);
+  const changedDependencies = declared && JSON.stringify(declared) !== JSON.stringify(dependencies(context.definition.dependencies)) ? declared : undefined;
   const summary = shortText(proposal.summary, '模型说明', 4096);
   if (JSON.stringify(modelDefinition(project.definition)) !== JSON.stringify(context.definition)) throw new Error('工程描述已变化，请重新发送请求。');
   const existing = new Set(await listSource(project.sourceDirectory));
@@ -50,10 +53,11 @@ export async function validateProposal(project: WorkspaceProject, context: Proje
     relativeParts(file.path);
     if (seen.has(file.path)) throw new Error('模型返回了重复文件。');
     seen.add(file.path);
-    if (typeof file.content !== 'string' || file.content.includes('\0')) throw new Error('模型文件必须是 UTF-8 文本。');
-    bytes += Buffer.byteLength(file.content);
+    if (file.content !== null && (typeof file.content !== 'string' || file.content.includes('\0'))) throw new Error('模型文件必须是 UTF-8 文本。');
+    bytes += Buffer.byteLength(file.content ?? '');
     if (bytes > PROPOSAL_LIMIT) throw new Error('候选变更不能超过 128 KB。');
     const original = selected.get(file.path);
+    if (file.content === null && (!original || !existing.has(file.path))) throw new Error('只能删除已经读取的现有源码文件。');
     if (!original && existing.has(file.path)) throw new Error('模型不能修改未提供上下文的现有文件。');
     changes.push({ path: file.path, content: file.content, expectedHash: original?.hash ?? null });
   }
@@ -62,5 +66,5 @@ export async function validateProposal(project: WorkspaceProject, context: Proje
       || names.some(path => [...existing].some(other => other !== path && (path.startsWith(other + '/') || other.startsWith(path + '/'))))) {
     throw new Error('候选文件路径与其他文件冲突。');
   }
-  return { summary, changes };
+  return { summary, changes, dependencies: changedDependencies };
 }

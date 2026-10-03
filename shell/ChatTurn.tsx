@@ -11,9 +11,9 @@ export function ChatTurn({ turn, index, projectId, sessionId, expanded, expand, 
       <div className="assistant-identity"><Bot size={17} strokeWidth={1.75} aria-hidden="true" /><span>DreamEdge</span></div>
       {turn.summary && <p className="chat-reply">{turn.summary}</p>}
       {!!turn.activity?.length && <details className="ai-context chat-activity">
-        <summary>工程查阅 · {turn.activity.length} 次操作</summary>
+        <summary>{turn.activity.some(event => event.tool === 'resolve_dependency' || event.tool === 'set_dependencies') ? '工程操作' : '工程查阅'} · {turn.activity.length} 次操作</summary>
         <ul>{turn.activity.map(event => <li key={event.id}>
-          {{ list_files: '查看目录', read_file: '读取文件', search_files: '搜索源码' }[event.tool]} · {event.detail} ·
+          {{ list_files: '查看目录', read_file: '读取文件', search_files: '搜索源码', resolve_dependency: '查询依赖', set_dependencies: '声明依赖' }[event.tool]} · {event.detail} ·
           {{ running: '进行中', completed: '完成', failed: '失败', cancelled: '已停止' }[event.status]}
         </li>)}</ul>
       </details>}
@@ -24,9 +24,9 @@ export function ChatTurn({ turn, index, projectId, sessionId, expanded, expand, 
       {turn.status === 'running' && <p role="status" className="chat-progress">
         <span className="progress-dot" />{turn.phase === 'building' ? '正在自动构建修改…' : turn.phase === 'applying' ? '正在应用修改并刷新页面…' : '正在查看工程并生成修改…'}
       </p>}
-      {turn.status === 'completed' && turn.changes.length > 0 && <button className="chat-change-button" disabled={locked}
-        aria-expanded={expanded} onClick={expand}>查看第 {index + 1} 轮修改 · {turn.changes.length} 个文件<ChevronDown size={15} aria-hidden="true" /></button>}
-      {turn.status === 'completed' && !turn.changes.length && <p className="ai-hint">本次回复没有文件修改。</p>}
+      {turn.status === 'completed' && (turn.changes.length > 0 || turn.dependencies !== undefined) && <button className="chat-change-button" disabled={locked}
+        aria-expanded={expanded} onClick={expand}>查看第 {index + 1} 轮修改 · {turn.changes.length} 个文件{turn.dependencies !== undefined ? ' · 依赖变更' : ''}<ChevronDown size={15} aria-hidden="true" /></button>}
+      {turn.status === 'completed' && !turn.changes.length && turn.dependencies === undefined && <p className="ai-hint">本次回复没有文件修改。</p>}
       {expanded && <CandidateCard projectId={projectId} reference={{ sessionId, turnId: turn.id }} />}
     </div>
   </article>;

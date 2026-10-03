@@ -71,10 +71,11 @@ export class CandidateBuildApi {
     const started = await this.workspace.withProject(request.projectId, async project => {
       if (this.closed) throw new Error('候选构建服务已关闭。');
       if ([...this.jobs.values()].length >= 2) throw new Error('当前最多同时运行两个候选构建。');
-      const declared = dependencies(request.dependencies ?? project.definition.dependencies);
       const snapshot = await sourceSnapshot(project);
       const input = { files: structuredClone(snapshot.files) };
-      await applyCandidate(project, input.files, request.candidate);
+      const candidateDependencies = await applyCandidate(project, input.files, request.candidate);
+      if (candidateDependencies !== undefined && request.dependencies !== undefined) throw new Error('模型候选的依赖由候选记录确定，不能覆盖。');
+      const declared = dependencies(candidateDependencies ?? request.dependencies ?? project.definition.dependencies);
       assertSnapshot(input);
       const record: CandidateBuild = { schemaVersion: 3, id: randomUUID(), projectId: project.definition.id,
         candidate: request.candidate ?? null, status: 'running', startedAt: new Date().toISOString(), finishedAt: null,

@@ -66,7 +66,7 @@ export class DevelopmentApi {
       if (this.jobs.has(session.id)) throw new Error('该会话已有运行中的请求。');
       if (session.turns.length >= 16) throw new Error('当前阶段每个会话最多支持 16 轮，请创建新会话。');
       const context = await collectContext(project, request.paths ?? []);
-      await this.provider.assertSafeInput?.({ prompt, context, history: session.turns.filter(turn => turn.status === 'completed').slice(-4).map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) });
+      await this.provider.assertSafeInput?.({ prompt, context, history: session.turns.filter(turn => turn.status === 'completed').slice(-4).map(({ prompt, summary, changes, dependencies }) => ({ prompt, summary, changes, dependencies })) });
       const turn: DevelopmentTurn = { id: randomUUID(), prompt, startedAt: new Date().toISOString(), finishedAt: null,
         status: 'running', phase: 'thinking', applied: false, summary: null, error: null, context: context.files.map(({ path, hash }) => ({ path, hash })), changes: [], activity: [] };
       if (!session.turns.length && session.title === '新会话') session.title = prompt.slice(0, 40);
@@ -90,7 +90,7 @@ export class DevelopmentApi {
       const result = await Promise.race([
         this.provider.generate({ prompt: turn.prompt, context, history: session.turns.slice(0, -1)
           .filter(previous => previous.status === 'completed').slice(-4)
-          .map(({ prompt, summary, changes }) => ({ prompt, summary, changes })), commit }, signal, {
+          .map(({ prompt, summary, changes, dependencies }) => ({ prompt, summary, changes, dependencies })), commit }, signal, {
             execute: (...args) => access.execute(...args),
             activity: event => this.workspace.withProject(project.definition.id, async current => {
               signal.throwIfAborted();
@@ -107,16 +107,16 @@ export class DevelopmentApi {
       ]);
       await this.workspace.withProject(project.definition.id, async current => {
         signal.throwIfAborted();
-        const proposal = await validateProposal(current, context, result);
+        const proposal = await validateProposal(current, context, { ...(result as object), dependencies: access.dependencies ?? (result as { dependencies?: unknown })?.dependencies });
         signal.throwIfAborted();
         turn.context = context.files.map(({ path, hash }) => ({ path, hash }));
         await this.store.saveContext(current, session.id, turn.id, context);
-        turn.summary = proposal.summary; turn.changes = proposal.changes;
+        turn.summary = proposal.summary; turn.changes = proposal.changes; turn.dependencies = proposal.dependencies;
         await this.store.stage(current, session.id, turn);
         signal.throwIfAborted();
         await this.store.save(current, session);
       });
-      if (this.edits && turn.changes.length) {
+      if (this.edits && (turn.changes.length || turn.dependencies !== undefined)) {
         const applied = await this.edits.apply(project.definition.id, { sessionId: session.id, turnId: turn.id }, signal, async (phase, buildId) => {
           turn.phase = phase; if (buildId) turn.buildId = buildId;
           await this.workspace.withProject(project.definition.id, current => this.store.save(current, session));
@@ -135,7 +135,7 @@ export class DevelopmentApi {
         : signal.aborted ? '模型请求超时或应用已关闭；源码未被修改。'
         : error instanceof ModelFailure ? error.message
         : '模型请求或候选校验失败；请检查连接、工程状态及上下文后重试。';
-      turn.summary = null; turn.changes = []; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
+      turn.summary = null; turn.changes = []; delete turn.dependencies; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
       turn.phase = 'complete';
       for (const event of turn.activity ?? []) if (event.status === 'running') event.status = signal.aborted ? 'cancelled' : 'failed';
       // Persist into the captured project's own profile even after an active-project switch.

@@ -7,8 +7,11 @@ export async function settleInterruptedTurn(project: WorkspaceProject, turn: Dev
   let applied = false;
   if (turn.phase === 'applying' && turn.buildId) {
     try {
-      const build = await new BuildStore().load(project, turn.buildId); const current = await sourceSnapshot(project);
-      applied = build.status === 'succeeded' && equalHashes(current.hashes, build.candidateHashes);
+      const store = new BuildStore(); const build = await store.load(project, turn.buildId); const current = await sourceSnapshot(project);
+      const candidate = await store.candidateDefinition(project, build);
+      const { savedAt: _candidateTime, ...expected } = candidate;
+      const { savedAt: _currentTime, ...actual } = project.definition;
+      applied = build.status === 'succeeded' && equalHashes(current.hashes, build.candidateHashes) && JSON.stringify(expected) === JSON.stringify(actual);
     } catch {}
   }
   turn.status = applied ? 'completed' : 'interrupted'; turn.applied = applied; turn.phase = 'complete'; turn.finishedAt = new Date().toISOString();

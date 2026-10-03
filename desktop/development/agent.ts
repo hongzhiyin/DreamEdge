@@ -14,7 +14,7 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
   const messages = input.history.flatMap(turn => [
     { role: 'user' as const, content: turn.prompt, timestamp: Date.now() },
     { role: 'assistant' as const, content: [{ type: 'text' as const, text: JSON.stringify({ summary: turn.summary,
-      files: turn.changes.map(({ path, content }) => ({ path, content })) }) }], timestamp: Date.now(), api: model.api,
+      dependencies: turn.dependencies, files: turn.changes.map(({ path, content }) => ({ path, content })) }) }], timestamp: Date.now(), api: model.api,
       provider: model.provider, model: model.id, stopReason: 'stop' as const,
       usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } },
   ]);
@@ -43,10 +43,10 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
       }
       if (event.type === 'tool_execution_start' && ++calls > 48) throw new ModelFailure('本轮达到工具调用上限，请缩小任务范围。');
       if (event.type !== 'tool_execution_start' && event.type !== 'tool_execution_end') return;
-      if (!['list_files', 'read_file', 'search_files'].includes(event.toolName)) return;
+      if (!['list_files', 'read_file', 'search_files', 'resolve_dependency', 'set_dependencies'].includes(event.toolName)) return;
       if (event.type === 'tool_execution_start') {
         const args = event.args as Record<string, unknown>;
-        const path = typeof args.path === 'string' ? args.path : typeof args.directory === 'string' ? args.directory : '';
+        const path = typeof args.name === 'string' ? args.name : event.toolName === 'set_dependencies' ? '完整依赖声明' : typeof args.path === 'string' ? args.path : typeof args.directory === 'string' ? args.directory : '';
         details.set(event.toolCallId, path.slice(0, 200) || '源码目录');
       }
       await access.activity({ id: event.toolCallId, tool: event.toolName as AgentActivity['tool'],

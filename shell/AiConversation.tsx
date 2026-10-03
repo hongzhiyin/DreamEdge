@@ -9,7 +9,7 @@ export function AiConversation({ projectId, configured, active, commit, modelNam
   const chat = useDevelopmentSession(projectId); const [prompt, setPrompt] = useState('');
   const [expanded, setExpanded] = useState<string>(); const [atBottom, setAtBottom] = useState(true);
   const thread = useRef<HTMLDivElement>(null); const input = useRef<HTMLTextAreaElement>(null);
-  const pinned = useRef(true); const position = useRef(0); const locked = chat.busy || chat.running;
+  const viewportHeight = useRef(0); const pinned = useRef(true); const position = useRef(0); const locked = chat.busy || chat.running;
   useEffect(() => { setExpanded(undefined); pinned.current = true; setAtBottom(true); }, [chat.session?.id]);
   useLayoutEffect(() => {
     if (!active) return;
@@ -21,14 +21,18 @@ export function AiConversation({ projectId, configured, active, commit, modelNam
   useEffect(() => {
     if (!active || !thread.current) return;
     const observer = new ResizeObserver(() => {
-      if (pinned.current && thread.current) thread.current.scrollTop = thread.current.scrollHeight;
+      if (!thread.current) return;
+      viewportHeight.current = thread.current.clientHeight;
+      if (pinned.current) thread.current.scrollTop = thread.current.scrollHeight;
     });
     observer.observe(thread.current);
     return () => observer.disconnect();
   }, [active]);
   useLayoutEffect(() => {
     if (!active || !input.current) return;
+    const follow = pinned.current;
     input.current.style.height = 'auto'; input.current.style.height = Math.min(144, Math.max(64, input.current.scrollHeight)) + 'px';
+    if (follow && thread.current) thread.current.scrollTop = thread.current.scrollHeight;
   }, [prompt, active]);
   async function send() {
     if (locked || !configured || !prompt.trim()) return;
@@ -46,7 +50,10 @@ export function AiConversation({ projectId, configured, active, commit, modelNam
     </div>
     <div className="conversation-content">
       <div ref={thread} className="chat-thread" role="log" aria-label="会话内容" aria-live="polite" onScroll={event => {
-        const element = event.currentTarget; position.current = element.scrollTop;
+        const element = event.currentTarget;
+        // Resizing the composer/window is not the user's decision to leave the bottom.
+        if (pinned.current && viewportHeight.current && viewportHeight.current !== element.clientHeight) return;
+        position.current = element.scrollTop;
         pinned.current = element.scrollHeight - element.clientHeight - element.scrollTop < 48; setAtBottom(pinned.current);
       }}>
         {!chat.session?.turns.length && <div className="chat-empty">

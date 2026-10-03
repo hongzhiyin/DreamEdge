@@ -13,7 +13,11 @@ export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExp
       parameters: Type.Object({ path: Type.String({ minLength: 1, maxLength: 1024 }) }, { additionalProperties: false }) },
     { name: 'search_files', label: '搜索源码', description: 'Find literal text in source files, returning paths and line excerpts. Not a regular expression.',
       parameters: Type.Object({ directory, query: Type.String({ minLength: 1, maxLength: 160 }) }, { additionalProperties: false }) },
-    { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate source file contents. Read existing files first. Use files: [] for a reply without edits. This stages a proposal, never saves source.',
+    { name: 'resolve_dependency', label: '查询依赖', description: 'Query public npm for a supported browser package matching a semver range (* for the newest matching stable version). Returns an exact version and required dependencies/peers. Does not install or modify the project.',
+      parameters: Type.Object({ name: Type.String({ minLength: 1, maxLength: 180 }), range: Type.String({ minLength: 1, maxLength: 100 }) }, { additionalProperties: false }) },
+    { name: 'set_dependencies', label: '声明依赖', description: 'Stage the COMPLETE direct dependency list at exact npm versions. Preserve required current dependencies. Empty packages removes all. Changes apply only with a successful final propose_changes build; no install scripts run.',
+      parameters: Type.Object({ packages: Type.Array(Type.Object({ name: Type.String({ minLength: 1, maxLength: 180 }), version: Type.String({ minLength: 1, maxLength: 100 }) }, { additionalProperties: false }), { maxItems: 20 }) }, { additionalProperties: false }) },
+    { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate source file contents. Read existing files first. Set content: null to delete a read file. Use files: [] for dependency-only changes or a reply without edits. This stages a proposal, never saves source.',
       parameters: Type.Unsafe(proposalSchema) },
   ];
   if (commitAllowed) definitions.push({ name: 'git_commit', label: '提交 Git', description: 'Queue a Git commit after this turn is successfully built and applied. Provide a concise message, then finish using propose_changes. No remote push.',

@@ -19,7 +19,7 @@ test('pi agent discovers, searches and reads project files without manual contex
     const body = JSON.parse(String(options!.body)); requests.push(body);
     assert.equal(new Headers(options!.headers).get('Authorization'), `Bearer ${configuration.apiKey}`);
     assert.ok(!JSON.stringify(body).includes(configuration.apiKey)); assert.equal(body.store, false);
-    assert.deepEqual(body.tools.map((tool: any) => tool.name), ['list_files', 'read_file', 'search_files', 'propose_changes']);
+    assert.deepEqual(body.tools.map((tool: any) => tool.name), ['list_files', 'read_file', 'search_files', 'resolve_dependency', 'set_dependencies', 'propose_changes']);
     if (++step === 1) return response(call('list', 'list_files', { directory: '', offset: 0 }));
     if (step === 2) return response({ type: 'reasoning', id: 'reason', encrypted_content: 'opaque', summary: [] }, call('search', 'search_files', { directory: '', query: 'original-greeting' }));
     if (step === 3) {

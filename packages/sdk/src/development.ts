@@ -2,11 +2,12 @@ import type { ProjectDefinition, WorkspaceFile } from './workspace.js';
 
 export interface ModelConnection { provider: string; available: boolean; detail: string }
 export interface ProjectContext { definition: ProjectDefinition; files: WorkspaceFile[] }
-export interface ProposedFile { path: string; content: string }
-export interface ModelProposal { summary: string; files: ProposedFile[] }
+/** content=null deletes an existing file captured in the request context. */
+export interface ProposedFile { path: string; content: string | null }
+export interface ModelProposal { summary: string; files: ProposedFile[]; dependencies?: Record<string, string> }
 export interface CandidateFile extends ProposedFile { expectedHash: string | null }
 export interface AgentActivity {
-  id: string; tool: 'list_files' | 'read_file' | 'search_files';
+  id: string; tool: 'list_files' | 'read_file' | 'search_files' | 'resolve_dependency' | 'set_dependencies';
   status: 'running' | 'completed' | 'failed' | 'cancelled'; detail: string;
 }
 export interface DevelopmentTurn {
@@ -14,7 +15,7 @@ export interface DevelopmentTurn {
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
   summary: string | null; error: string | null;
   context: { path: string; hash: string }[];
-  changes: CandidateFile[];
+  changes: CandidateFile[]; dependencies?: Record<string, string>;
   activity?: AgentActivity[];
   phase?: 'thinking' | 'building' | 'applying' | 'complete';
   applied?: boolean; buildId?: string; commitId?: string | null; warning?: string;
@@ -26,7 +27,8 @@ export interface DevelopmentSession {
 }
 export interface CandidateInspection {
   reference: { sessionId: string; turnId: string }; summary: string; stale: boolean; reason: string | null;
-  files: { path: string; before: string | null; after: string }[];
+  files: { path: string; before: string | null; after: string | null }[];
+  dependencies?: { before: Record<string, string>; after: Record<string, string> };
 }
 export type DevelopmentRequest =
   | { operation: 'connection' }

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import type { DevelopmentSession, DevelopmentSessionSummary, DevelopmentTurn, ProjectContext, WorkspaceProject } from '../../shared/contracts';
 import { ensureDirectory, hash, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
+import { dependencies } from '../dependencies/policy';
 import { CONTEXT_FILES, PROPOSAL_LIMIT, shortText } from './context';
 
 export function identifier(input: unknown): string {
@@ -20,8 +21,9 @@ function validateTurn(value: DevelopmentTurn, id: string): DevelopmentTurn {
   shortText(value.prompt, '会话请求', 8192);
   if (value.phase !== undefined && !['thinking', 'building', 'applying', 'complete'].includes(value.phase)) throw new Error('会话阶段无效。');
   if (value.activity !== undefined && (!Array.isArray(value.activity) || value.activity.length > 48 || value.activity.some(event =>
-    !event || typeof event.id !== 'string' || event.id.length > 160 || !['list_files', 'read_file', 'search_files'].includes(event.tool)
+    !event || typeof event.id !== 'string' || event.id.length > 160 || !['list_files', 'read_file', 'search_files', 'resolve_dependency', 'set_dependencies'].includes(event.tool)
     || !['running', 'completed', 'failed', 'cancelled'].includes(event.status) || typeof event.detail !== 'string' || event.detail.length > 200))) throw new Error('Agent 活动记录无效。');
+  if (value.dependencies !== undefined) dependencies(value.dependencies);
   for (const file of value.context) {
     relativeParts(file.path);
     if (typeof file.hash !== 'string' || !/^[a-f0-9]{64}$/.test(file.hash)) throw new Error('上下文记录无效。');
@@ -29,9 +31,10 @@ function validateTurn(value: DevelopmentTurn, id: string): DevelopmentTurn {
   let bytes = 0;
   for (const change of value.changes) {
     relativeParts(change.path);
-    if (typeof change.content !== 'string' || change.content.includes('\0')
+    if ((change.content !== null && (typeof change.content !== 'string' || change.content.includes('\0')))
         || (change.expectedHash !== null && (typeof change.expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(change.expectedHash)))) throw new Error('候选变更记录无效。');
-    bytes += Buffer.byteLength(change.content);
+    if (change.content === null && change.expectedHash === null) throw new Error('删除记录缺少原始源码哈希。');
+    bytes += Buffer.byteLength(change.content ?? '');
   }
   if (bytes > PROPOSAL_LIMIT) throw new Error('候选变更记录过大。');
   return value;
@@ -118,7 +121,7 @@ export class SessionStore {
     const temporary = `.${randomUUID()}`;
     await mkdir(join(root, temporary));
     try {
-      for (const change of turn.changes) await writeText(root, `${temporary}/${change.path}`, change.content);
+      for (const change of turn.changes) if (change.content !== null) await writeText(root, `${temporary}/${change.path}`, change.content);
       await rename(join(root, temporary), join(root, 'candidate'));
     } finally { await rm(join(root, temporary), { recursive: true, force: true }); }
   }

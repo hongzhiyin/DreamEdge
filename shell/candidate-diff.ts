@@ -1,6 +1,6 @@
 export interface DiffLine { kind: 'same' | 'removed' | 'added'; text: string }
-export function candidateDiff(before: string | null, after: string): DiffLine[] {
-  const original = before === null ? [] : before.split('\n'); const next = after.split('\n');
+export function candidateDiff(before: string | null, after: string | null): DiffLine[] {
+  const original = before === null ? [] : before.split('\n'); const next = after === null ? [] : after.split('\n');
   let prefix = 0; let suffix = 0;
   while (prefix < original.length && prefix < next.length && original[prefix] === next[prefix]) prefix++;
   while (suffix < original.length - prefix && suffix < next.length - prefix && original[original.length - 1 - suffix] === next[next.length - 1 - suffix]) suffix++;
