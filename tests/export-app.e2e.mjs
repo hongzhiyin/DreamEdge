@@ -22,7 +22,7 @@ async function launchApp(path) {
 try {
   const env = { ...process.env, DREAMEDGE_DATA_DIR: profile }; delete env.ELECTRON_RUN_AS_NODE;
   framework = await electron.launch({ executablePath: process.env.DREAMEDGE_EXECUTABLE_PATH || electronPath,
-    args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')], env });
+    args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')], cwd: '/', env });
   const page = await framework.firstWindow(); page.setDefaultTimeout(20000); const errors = [];
   page.on('pageerror', error => errors.push(error.message)); await page.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor();
   await page.getByRole('button', { name: '打开开发侧栏' }).click();
@@ -45,8 +45,13 @@ try {
     await panel.getByLabel('应用版本', { exact: true }).fill('1.2.3');
     assert.equal(await panel.getByRole('button', { name: '导出 macOS App' }).isEnabled(), false);
     await panel.getByRole('button', { name: '保存应用信息' }).click(); await panel.getByText('应用信息已保存。', { exact: true }).waitFor();
+    const saved = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project;
+    assert.equal(saved.definition.name, project.definition.name); assert.equal(saved.definition.appName, `Export ${label}`);
+    assert.equal(saved.rootDirectory, project.rootDirectory);
+    assert.ok((await framework.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle())).includes(project.definition.name));
     await page.frameLocator('iframe').getByText(`Hello ${label}`, { exact: true }).waitFor();
     await framework.evaluate(({ dialog }, output) => { dialog.showSaveDialog = async (_parent, options) => {
+      if (options.defaultPath !== `Export ${output.endsWith('Alpha') ? 'Alpha' : 'Beta'}-导出`) throw new Error('Wrong application name');
       if (options.buttonLabel !== '导出') throw new Error('Wrong export dialog'); return { canceled: false, filePath: output };
     }; }, output);
     await panel.getByRole('button', { name: '导出 macOS App' }).click();
@@ -59,6 +64,8 @@ try {
     await panel.getByText('业务 App 已导出。', { exact: true }).waitFor();
     const files = await readdir(output); const app = files.find(name => name.endsWith('.app')); assert.ok(app && files.some(name => name.endsWith('.zip')));
     const descriptor = JSON.parse(await readFile(join(output, '工程/.dreamedge/project.json'), 'utf8'));
+    assert.equal(app, `Export ${label}.app`);
+    assert.equal(descriptor.name, project.definition.name); assert.equal(descriptor.appName, `Export ${label}`);
     assert.notEqual(descriptor.id, project.definition.id); assert.equal(descriptor.appId, `${id}${label.toLowerCase()}`);
     for (const file of ['.dreamedge/model.json', '.git', 'data', 'sessions']) await assert.rejects(access(join(output, '工程', file)));
     const asar = createRequire(import.meta.url)('@electron/asar'); const archive = join(output, app, 'Contents/Resources/app.asar');

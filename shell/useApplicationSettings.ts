@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ProjectDefinition, WorkspaceProject, WorkspaceStatus } from '../shared/contracts';
 
-export interface ApplicationFields { name: string; appId: string; version: string }
-const fields = (definition: ProjectDefinition): ApplicationFields => ({ name: definition.name, appId: definition.appId, version: definition.version });
+export interface ApplicationFields { appName: string; appId: string; version: string }
+const fields = (definition: ProjectDefinition): ApplicationFields => ({ appName: definition.appName ?? definition.name, appId: definition.appId, version: definition.version });
 async function revision(definition: ProjectDefinition) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(definition))))).map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 export function useApplicationSettings(projectId: string) {
-  const [draft, setDraft] = useState<ApplicationFields>({ name: '', appId: '', version: '' });
+  const [draft, setDraft] = useState<ApplicationFields>({ appName: '', appId: '', version: '' });
   const [state, setState] = useState<{ fields: ApplicationFields; revision: string }>();
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const current = useRef({ draft, state }); current.current = { draft, state }; const alive = useRef(true); const pending = useRef(false);

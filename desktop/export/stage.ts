@@ -5,12 +5,13 @@ import { createRequire } from 'node:module';
 import type { AppManifest } from '../../shared/contracts';
 import { hash, relativeParts } from '../workspace/paths';
 import { writeSourceTree } from '../workspace/source-tree';
+import { applicationName } from '../workspace/definition';
 import { copyResource } from './resources';
 import type { ExportResources, ExportSnapshot } from './types';
 
 export function exportedManifest(snapshot: ExportSnapshot): AppManifest {
-  const { name, version, appId } = snapshot.definition;
-  if (Buffer.byteLength(name) > 200 || /[\\/:*?"<>|\x00-\x1f]/.test(name) || name === '.' || name === '..') throw new Error('应用名称不能包含路径或特殊文件名字符。');
+  const { version, appId } = snapshot.definition;
+  const name = applicationName(snapshot.definition.appName ?? snapshot.definition.name);
   return { id: 'a' + hash(appId).slice(0, 31), name, version, appId, description: '使用 DreamEdge 开发的独立应用',
     renderer: 'src', entry: 'index.html', capabilities: ['storage'] };
 }

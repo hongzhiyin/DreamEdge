@@ -6,8 +6,8 @@ export const CONTEXT_LIMIT = 128 * 1024;
 export const CONTEXT_FILES = 64;
 export const PROPOSAL_LIMIT = 128 * 1024;
 export function modelDefinition(definition: ProjectDefinition): ProjectDefinition {
-  const { schemaVersion, id, name, appId, version, source, dependencies, build, savedAt } = definition;
-  return structuredClone({ schemaVersion, id, name, appId, version, source, dependencies,
+  const { schemaVersion, id, name, appName, appId, version, source, dependencies, build, savedAt } = definition;
+  return structuredClone({ schemaVersion, id, name, appName, appId, version, source, dependencies,
     build: { kind: build.kind, entry: build.entry }, savedAt });
 }
 export function shortText(value: unknown, label: string, limit: number): string {

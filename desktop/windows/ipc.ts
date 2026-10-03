@@ -13,9 +13,10 @@ export function registerWindowIpc(windows: ProjectWindows, manifest: AppManifest
   handle('host:export', async (context, request) => {
     context.assertAvailable(); if (!context.exports) throw new Error('当前应用未启用 App 导出。');
     if (request?.operation === 'start' && request.directory === undefined) {
-      const status = await context.info();
+      const status = await context.workspace!.execute({ operation: 'current' });
+      const definition = 'project' in status ? status.project?.definition : undefined;
       const choice = await dialog.showSaveDialog(windows.nativeWindow(context), { title: '导出独立业务 App', buttonLabel: '导出',
-        defaultPath: `${status.project?.name ?? 'App'}-导出`, properties: ['createDirectory'] });
+        defaultPath: `${definition?.appName ?? definition?.name ?? 'App'}-导出`, properties: ['createDirectory'] });
       if (choice.canceled || !choice.filePath) return null;
       return context.exports.execute({ ...request, directory: choice.filePath });
     }

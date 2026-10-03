@@ -7,8 +7,9 @@ export function ApplicationPanel({ projectId }: { projectId: string }) {
   return <section className="settings-section" aria-label="应用与导出">
     <header className="settings-heading"><h2>应用信息</h2></header>
     <form className="ai-form" onSubmit={event => { event.preventDefault(); void settings.save(); }}>
-      <label>应用名称<input value={settings.draft.name} maxLength={80} required disabled={settings.busy || !settings.state}
-        onChange={event => settings.setDraft({ ...settings.draft, name: event.target.value })} /></label>
+      <label>应用名称<input value={settings.draft.appName} maxLength={80} required disabled={settings.busy || !settings.state}
+        onChange={event => settings.setDraft({ ...settings.draft, appName: event.target.value })} /></label>
+      <p className="ai-hint">应用名称用于导出的 App，不会更改工程名称或工程目录。</p>
       <label>应用标识<input value={settings.draft.appId} maxLength={200} required spellCheck={false} disabled={settings.busy || !settings.state}
         onChange={event => settings.setDraft({ ...settings.draft, appId: event.target.value })} placeholder="io.example.myapp" /></label>
       <p className="ai-hint">不同 App 使用不同标识，决定独立安装与数据目录；同一 App 升级时保持标识不变。</p>

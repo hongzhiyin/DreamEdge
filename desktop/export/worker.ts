@@ -6,6 +6,7 @@ import type { ExportInput } from './types';
 
 async function run(input: ExportInput & { template: string; electronVersion: string }) {
   process.noAsar = true;
+  process.chdir(input.root);
   const require = createRequire(join(input.root, 'tooling/package.json'));
   const denyNetwork = () => { throw new Error('App 打包仅使用本地运行环境，禁止网络下载。'); };
   for (const protocol of ['node:http', 'node:https']) { const module = require(protocol); module.request = denyNetwork; module.get = denyNetwork; }

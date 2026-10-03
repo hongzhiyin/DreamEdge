@@ -1,7 +1,7 @@
 import { mkdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ProjectDefinition, WorkspaceProject, WorkspaceStatus } from '../../shared/contracts';
-import { applicationId, createDefinition, DEFINITION_FILE, projectName, projectVersion, validateDefinition } from './definition';
+import { applicationName, applicationId, createDefinition, DEFINITION_FILE, projectName, projectVersion, validateDefinition } from './definition';
 import { canonicalTarget, directory, ensureDirectory, hash, inside, readText, writeText } from './paths';
 import { WorkspaceRegistry, type WorkspaceSelection } from './registry';
 import { recoverTransaction } from '../changes/recovery';
@@ -103,10 +103,11 @@ export class WorkspaceManager {
     if (project.definition.id !== id) throw new Error('工程身份发生变化。');
     this.selected = project; this.definitionHash = definitionHash;
   }
-  async save(id: unknown, changes: { name?: unknown; appId?: unknown; version?: unknown; expectedDefinitionHash?: unknown }): Promise<WorkspaceProject> {
+  async save(id: unknown, changes: { name?: unknown; appName?: unknown; appId?: unknown; version?: unknown; expectedDefinitionHash?: unknown }): Promise<WorkspaceProject> {
     const project = await this.project(id);
     if (changes.expectedDefinitionHash !== undefined && changes.expectedDefinitionHash !== hash(JSON.stringify(project.definition))) throw new Error('工程设置已变化，请重新读取后再保存。');
-    const definition = { ...project.definition, appId: changes.appId === undefined ? project.definition.appId : applicationId(changes.appId), name: changes.name === undefined ? project.definition.name : projectName(changes.name),
+    const definition = { ...project.definition,
+      ...(changes.appName === undefined ? {} : { appName: applicationName(changes.appName) }), appId: changes.appId === undefined ? project.definition.appId : applicationId(changes.appId), name: changes.name === undefined ? project.definition.name : projectName(changes.name),
       version: changes.version === undefined ? project.definition.version : projectVersion(changes.version), savedAt: new Date().toISOString() };
     const content = JSON.stringify(definition, null, 2);
     await writeText(project.rootDirectory, DEFINITION_FILE, content);

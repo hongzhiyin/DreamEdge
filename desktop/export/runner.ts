@@ -7,7 +7,7 @@ export function workerExportEngine(worker: string, template: string, electronVer
     const env: NodeJS.ProcessEnv = { ELECTRON_RUN_AS_NODE: '1',
       CSC_IDENTITY_AUTO_DISCOVERY: 'false', ELECTRON_BUILDER_CACHE: input.root + '/cache' };
     for (const key of ['PATH', 'SYSTEMROOT', 'WINDIR', 'TMP', 'TEMP', 'TMPDIR']) if (process.env[key]) env[key] = process.env[key];
-    const child = spawn(process.execPath, [worker], { env, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32' });
+    const child = spawn(process.execPath, [worker], { cwd: input.root, env, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32' });
     let output = ''; let total = 0; let failure = ''; const notices: Promise<void>[] = [];
     const abort = () => { try { if (child.pid && process.platform !== 'win32') process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch {} };
     signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
