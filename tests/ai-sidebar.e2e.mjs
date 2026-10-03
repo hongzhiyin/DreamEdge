@@ -19,6 +19,16 @@ async function launch(expected = 'HelloWorld') {
 async function mockModel() {
   await application.evaluate((_electron, key) => {
     globalThis.modelMode = 'success'; globalThis.modelRequests = [];
+    const emit = output => {
+      const items = output.map((item, index) => ({ ...item, id: item.id ?? `${item.type === 'function_call' ? 'fc' : 'msg'}_fixture_${index}` }));
+      const events = [{ type: 'response.created', response: { id: 'resp_fixture', status: 'in_progress' } }];
+      items.forEach((item, output_index) => {
+        events.push({ type: 'response.output_item.added', output_index, item: { ...item, arguments: item.type === 'function_call' ? '' : undefined, content: item.type === 'message' ? [] : item.content } });
+        events.push({ type: 'response.output_item.done', output_index, item });
+      });
+      events.push({ type: 'response.completed', response: { id: 'resp_fixture', status: 'completed', output: items } });
+      return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } });
+    };
     globalThis.fetch = async (url, options) => {
       if (String(url) !== 'https://api.deepseek.com/responses') throw new Error('Unexpected service URL');
       if (new Headers(options.headers).get('Authorization') !== `Bearer ${key}`) throw new Error('Missing model credential');
@@ -35,15 +45,14 @@ async function mockModel() {
       const next = outputs.length === 0 ? ['list_files', { directory: '', offset: 0 }]
         : lastTool === 'list_files' ? ['search_files', { directory: '', query: globalThis.nextGreeting === 'Hello Agent' ? 'Hello AI' : 'HelloWorld' }]
         : lastTool === 'search_files' ? ['read_file', { path: 'main.ts' }] : null;
-      if (next) return Response.json({ status: 'completed', output: [{ type: 'function_call', call_id: `call_${globalThis.modelRequests.length}`,
-        name: next[0], arguments: JSON.stringify(next[1]) }] });
+      if (next) return emit([{ type: 'function_call', call_id: `call_${globalThis.modelRequests.length}`, name: next[0], arguments: JSON.stringify(next[1]) }]);
       const greeting = globalThis.nextGreeting || 'Hello AI';
       const result = { summary: `已将问候语改为 ${greeting}。`, files: [{ path: 'main.ts', content: `document.getElementById('root')!.textContent = '${greeting}';\n` }] };
       if (greeting === 'Hello Agent' && !globalThis.malformedFinalSent) {
         globalThis.malformedFinalSent = true;
-        return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: '说明：已完成。\n```json\n' + JSON.stringify(result) + '\n```' }] }] });
+        return emit([{ type: 'message', content: [{ type: 'output_text', text: '说明：已完成。\n```json\n' + JSON.stringify(result) + '\n```' }] }]);
       }
-      return Response.json({ status: 'completed', output: [{ type: 'function_call', call_id: `proposal_${globalThis.modelRequests.length}`, name: 'propose_changes', arguments: JSON.stringify(result) }] });
+      return emit([{ type: 'function_call', call_id: `proposal_${globalThis.modelRequests.length}`, name: 'propose_changes', arguments: JSON.stringify(result) }]);
     };
   }, key);
 }

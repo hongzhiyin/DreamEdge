@@ -1,5 +1,6 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { Type } from 'typebox';
+import { Check } from 'typebox/value';
 import { proposalSchema, type ModelAccess } from './model';
 
 export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExpose: (value: unknown) => void,
@@ -15,10 +16,20 @@ export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExp
     { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate source file contents. Read existing files first. Use files: [] for a reply without edits. This stages a proposal, never saves source.',
       parameters: Type.Unsafe(proposalSchema) },
   ];
-  return definitions.map(tool => ({ ...tool, executionMode: 'sequential', execute: async (_id, args, activeSignal) => {
+  return definitions.map(tool => ({ ...tool, constrainedSampling: { type: 'json_schema' as const, strict: 'require' as const },
+    prepareArguments: args => {
+      if (!Check(tool.parameters, args)) throw new Error('工具参数不符合声明的格式，请按 schema 重新提交。');
+      return args;
+    },
+    executionMode: 'sequential', execute: async (_id, args, activeSignal) => {
     const combined = activeSignal ? AbortSignal.any([signal, activeSignal]) : signal;
     combined.throwIfAborted();
-    const result = await access.execute(tool.name, args as Record<string, unknown>, combined, beforeExpose);
+    let result: unknown;
+    try { result = await access.execute(tool.name, args as Record<string, unknown>, combined, beforeExpose); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code) throw new Error('工程文件读取失败，请检查文件是否存在且为普通文本。');
+      throw error;
+    }
     combined.throwIfAborted(); beforeExpose(result);
     if (tool.name === 'propose_changes') submitted(args as Record<string, unknown>);
     return { content: [{ type: 'text', text: JSON.stringify(result) }], details: {}, terminate: tool.name === 'propose_changes' };

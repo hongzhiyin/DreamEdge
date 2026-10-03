@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { providerResponse } from './provider-fixture';
 import { ResponsesModel } from '../desktop/development/responses';
 import { fixture, proposal } from './development-fixture';
 
 const configuration = { apiKey: 'fixture-proposal-key', model: 'deepseek-flash', baseUrl: 'https://api.deepseek.com' };
 const call = (id: string, name: string, args: unknown) => ({ type: 'function_call', call_id: id, name, arguments: JSON.stringify(args) });
-const response = (...output: unknown[]) => Response.json({ status: 'completed', output });
+const response = (...output: unknown[]) => providerResponse(output);
 const prose = (text: string) => ({ type: 'message', content: [{ type: 'output_text', text }] });
 
 test('a fenced or explanatory final reply is corrected through the proposal tool without repeating file reads', async () => {
@@ -37,7 +38,7 @@ test('pi rejects malformed and unread-file proposals and the model can correct t
     const body = JSON.parse(String(options!.body));
     if (++step === 1) return response(call('malformed', 'propose_changes', { summary: 'Bad', files: [{ path: 'main.ts', content: 7 }] }));
     if (step === 2) {
-      assert.ok(body.input.some((item: any) => item.type === 'function_call_output' && JSON.parse(item.output).isError));
+      assert.ok(body.input.some((item: any) => item.type === 'function_call_output' && String(item.output).includes('schema')));
       return response(call('unread', 'propose_changes', proposal));
     }
     if (step === 3) {

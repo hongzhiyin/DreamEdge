@@ -31,7 +31,7 @@ export async function requestResponse(configuration: Required<ConnectionConfigur
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 
-function httpFailure(status: number, host: string): string {
+export function httpFailure(status: number, host: string): string {
   if (status === 401) return `认证失败（HTTP 401）。请确认 API Key 属于 ${host}，并检查 Key 是否完整或已失效。`;
   if (status === 402) return '账号余额不足（HTTP 402），请检查对应模型服务的余额。';
   if (status === 403) return '模型访问被拒绝（HTTP 403），请检查账号和模型权限。';

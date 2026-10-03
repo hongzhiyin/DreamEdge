@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, readFile, writeFile, symlink, link } from 'node:fs/promises';
 import { join } from 'node:path';
+import { providerResponse } from './provider-fixture';
 import { ResponsesModel } from '../desktop/development/responses';
 import { ProjectAccess } from '../desktop/development/project-access';
 import { collectContext } from '../desktop/development/context';
@@ -10,7 +11,7 @@ import { fixture, proposal } from './development-fixture';
 const configuration = { apiKey: 'fixture-agent-secret-key', model: 'fixture-model', baseUrl: 'https://model.example/v1' };
 const call = (id: string, name: string, args: object) => ({ type: 'function_call', call_id: id, name, arguments: JSON.stringify(args) });
 const answer = (value: unknown = proposal) => ({ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(value) }] });
-const response = (...output: unknown[]) => Response.json({ status: 'completed', output });
+const response = (...output: unknown[]) => providerResponse(output);
 
 test('pi agent discovers, searches and reads project files without manual context, then stages a checksummed candidate', async () => {
   const f = await fixture(async () => proposal); const requests: any[] = []; let step = 0;
@@ -66,7 +67,7 @@ test('pi validates tool arguments, returns tool errors to the model and rejects 
     const body = JSON.parse(String(options!.body));
     if (++step === 1) return response(call('schema', 'read_file', { path: 7 }));
     if (step === 2) {
-      assert.ok(body.input.some((item: any) => item.type === 'function_call_output' && JSON.parse(item.output).isError));
+      assert.ok(body.input.some((item: any) => item.type === 'function_call_output' && String(item.output).includes('schema')));
       return response(call('bad', 'read_file', { path: '../outside' }));
     }
     if (step === 3) return response(call('read', 'read_file', { path: 'main.ts' }));
