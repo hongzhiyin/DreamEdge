@@ -23,7 +23,7 @@ test('workspace creates independent source and managed directories, saves metada
     const project = await create(f.api, f.root);
     const id = project.definition.id;
     assert.equal(project.sourceDirectory, join(project.rootDirectory, 'src'));
-    for (const folder of [project.dataDirectory, project.buildDirectory, project.versionsDirectory, project.sessionsDirectory]) {
+    for (const folder of [project.dataDirectory, project.buildDirectory, project.sessionsDirectory]) {
       assert.ok(folder.startsWith(join(f.profile, 'workspaces', id)));
       assert.ok(!folder.startsWith(project.rootDirectory));
     }

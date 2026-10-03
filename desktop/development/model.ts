@@ -4,6 +4,7 @@ export interface ModelInput {
   prompt: string;
   context: ProjectContext;
   history: Pick<DevelopmentTurn, 'prompt' | 'summary' | 'changes'>[];
+  commit?: boolean;
 }
 export interface ModelProvider {
   assertSafeInput?(input: ModelInput): Promise<void>;

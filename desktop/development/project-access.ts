@@ -5,11 +5,17 @@ import { CONTEXT_FILES, CONTEXT_LIMIT, modelDefinition, shortText, validatePropo
 
 /** All paths are relative to src; the model never receives a host filesystem path. */
 export class ProjectAccess {
-  constructor(private readonly workspace: WorkspaceApi, private readonly projectId: string, private readonly context: ProjectContext) {}
+  commitMessage?: string;
+  constructor(private readonly workspace: WorkspaceApi, private readonly projectId: string, private readonly context: ProjectContext, private readonly commitAllowed = false) {}
   execute(name: string, args: Record<string, unknown>, signal: AbortSignal, beforeExpose: (value: unknown) => void = () => {}): Promise<unknown> {
     return this.workspace.withProject(this.projectId, async project => {
       signal.throwIfAborted();
       if (JSON.stringify(modelDefinition(project.definition)) !== JSON.stringify(this.context.definition)) throw new Error('工程描述已变化，请重新发送请求。');
+      if (name === 'git_commit') {
+        if (!this.commitAllowed) throw new Error('本轮没有授权 Git 提交。');
+        beforeExpose(args); this.commitMessage = shortText(args.message, 'Git 提交说明', 500);
+        return { queued: true, detail: '本轮修改构建并应用成功后，由框架提交 Git。' };
+      }
       if (name === 'propose_changes') {
         beforeExpose(args); await validateProposal(project, this.context, args);
         signal.throwIfAborted(); return { accepted: true };

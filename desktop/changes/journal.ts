@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { identifier } from '../development/sessions';
 import { validateDefinition } from '../workspace/definition';
 import { readSourceTree, validHashes } from '../workspace/source-tree';
-import { validateHistory, type VersionHistory } from './history';
 
 export const TRANSACTION = '.dreamedge/transaction';
 export async function retireTransaction(root: string, operationId: string): Promise<void> {
@@ -17,7 +16,6 @@ export interface SaveJournal {
   phase: 'prepared' | 'committed';
   beforeDefinition: string; afterDefinition: string;
   beforeHashes: Record<string, string>; afterHashes: Record<string, string>;
-  beforeHistory: VersionHistory; afterHistory: VersionHistory;
 }
 export function validateJournal(input: unknown, root: string, profile: string): SaveJournal {
   const journal = input as SaveJournal;
@@ -29,7 +27,6 @@ export function validateJournal(input: unknown, root: string, profile: string): 
   const before = validateDefinition(JSON.parse(journal.beforeDefinition));
   const after = validateDefinition(JSON.parse(journal.afterDefinition));
   if (before.id !== after.id || before.appId !== after.appId) throw new Error('保存事务工程身份无效。');
-  validateHistory(journal.beforeHistory, before.id); validateHistory(journal.afterHistory, before.id);
   return journal;
 }
 export async function treeOrNull(root: string) {

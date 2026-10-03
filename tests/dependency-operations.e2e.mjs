@@ -19,11 +19,5 @@ export async function buildCandidate(page, request) {
 }
 
 export async function confirmCandidate(page, projectId, buildId) {
-  const started = await page.evaluate(request => window.dreamEdge.versions(request), {
-    operation: 'confirm', projectId, buildId, label: '依赖接口验收',
-  });
-  const query = { operation: 'getOperation', projectId, operationId: started.id };
-  const result = await settled(page, 'versions', query);
-  assert.equal(result.status, 'completed', result.error ?? '');
-  return result;
+  return page.evaluate(request => window.dreamEdge.git(request), { operation: 'applyBuild', projectId, buildId });
 }

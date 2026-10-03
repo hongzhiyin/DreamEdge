@@ -17,7 +17,6 @@ export interface WorkspaceProject {
   sourceDirectory: string;
   dataDirectory: string;
   buildDirectory: string;
-  versionsDirectory: string;
   sessionsDirectory: string;
 }
 export interface WorkspaceStatus {

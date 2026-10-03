@@ -16,6 +16,8 @@ export interface DevelopmentTurn {
   context: { path: string; hash: string }[];
   changes: CandidateFile[];
   activity?: AgentActivity[];
+  phase?: 'thinking' | 'building' | 'applying' | 'complete';
+  applied?: boolean; buildId?: string; commitId?: string | null; warning?: string;
 }
 export interface DevelopmentSessionSummary { id: string; title: string; updatedAt: string; turnCount: number }
 export interface DevelopmentSession {
@@ -33,6 +35,6 @@ export type DevelopmentRequest =
   | { operation: 'list'; projectId: string }
   | { operation: 'candidate'; projectId: string; sessionId: string; turnId: string }
   | { operation: 'get'; projectId: string; sessionId: string }
-  | { operation: 'send'; projectId: string; sessionId: string; prompt: string; paths?: string[] }
+  | { operation: 'send'; projectId: string; sessionId: string; prompt: string; paths?: string[]; commit?: boolean }
   | { operation: 'cancel'; projectId: string; sessionId: string };
 export type DevelopmentResult = CandidateInspection | ModelConnection | DevelopmentSession | DevelopmentSession[] | DevelopmentSessionSummary[];

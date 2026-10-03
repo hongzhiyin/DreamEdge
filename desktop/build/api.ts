@@ -51,6 +51,12 @@ export class CandidateBuildApi {
       default: throw new Error('不支持的构建操作。');
     }
   }
+  async build(request: Extract<CandidateBuildRequest, { operation: 'start' }>, signal: AbortSignal): Promise<CandidateBuild> {
+    signal.throwIfAborted(); const record = await this.start(request); const job = this.jobs.get(record.id);
+    const cancel = () => job?.controller.abort('cancelled'); signal.addEventListener('abort', cancel, { once: true });
+    try { if (signal.aborted) cancel(); await job?.done; return await this.workspace.withProject(request.projectId, project => this.load(project, record.id)); }
+    finally { signal.removeEventListener('abort', cancel); }
+  }
   private async load(project: WorkspaceProject, id: string): Promise<CandidateBuild> {
     const record = await this.store.load(project, id);
     if (record.status === 'running' && !this.jobs.has(id)) {

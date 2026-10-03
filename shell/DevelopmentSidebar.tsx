@@ -5,6 +5,7 @@ import './sidebar.css';
 import './ai.css';
 import { ModelSettingsPanel } from './ModelSettingsPanel';
 import { AiConversation } from './AiConversation';
+import { GitPanel } from './GitPanel';
 
 const actions = [
   { action: 'createProject', label: '新建工程', detail: '创建独立的工程目录', icon: FolderPlus },
@@ -82,6 +83,7 @@ export function DevelopmentSidebar() {
           {loadError && <p role="alert" className="sidebar-error">{loadError}</p>}
         </div>
         {current?.project && <ModelSettingsPanel key={current.project.id} projectId={current.project.id} changed={setModel} />}
+        {current?.project && <GitPanel key={`git-${current.project.id}`} projectId={current.project.id} />}
         {current?.project && <AiConversation key={current.project.id} projectId={current.project.id}
           configured={model?.projectId === current.project.id && !!model.hasKey && !!model.model && !model.warning} />}
       </div>

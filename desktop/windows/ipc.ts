@@ -28,9 +28,9 @@ export function registerWindowIpc(windows: ProjectWindows, manifest: AppManifest
   handle('host:build', (context, request) => {
     context.assertAvailable(); if (!context.builds) throw new Error('当前应用未启用候选构建。'); return context.builds.execute(request);
   });
-  handle('host:versions', async (context, request) => {
-    context.assertAvailable(); if (!context.versions) throw new Error('当前应用未启用版本管理。');
-    const result = await context.versions.execute(request); await windows.updateTitle(context); return result;
+  handle('host:git', async (context, request) => {
+    context.assertAvailable(); if (!context.git) throw new Error('当前应用未启用版本管理。');
+    const result = await context.git.execute(request); await windows.updateTitle(context); return result;
   });
   handle('host:storage', (context, toolId, request, contextId) => context.storage(toolId, request, contextId));
   handle('host:service', (context, toolId, service, method, input, contextId) => context.service(toolId, service, method, input, contextId));

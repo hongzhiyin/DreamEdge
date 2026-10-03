@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { DEFINITION_FILE } from '../workspace/definition';
 import { directory, ensureDirectory, hash, readText, writeText } from '../workspace/paths';
 import { equalHashes } from '../workspace/source-tree';
-import { readHistory, writeHistory } from './history';
 import { retireTransaction, TRANSACTION, treeOrNull, validateJournal } from './journal';
 
 export async function recoverTransaction(root: string, dataDirectory: string): Promise<void> {
@@ -15,12 +14,8 @@ export async function recoverTransaction(root: string, dataDirectory: string): P
     try { process.kill(journal.ownerPid, 0); throw new Error('该工程仍有另一个进程执行源码保存。'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
   }
-  const projectId = journal.beforeHistory.projectId;
-  const versions = await ensureDirectory(dataDirectory, `workspaces/${projectId}/versions`);
-  const history = await readHistory(versions, projectId);
-  const knownHistory = [journal.beforeHistory, journal.afterHistory].some(value => JSON.stringify(value) === JSON.stringify(history));
   const metadata = await readText(root, DEFINITION_FILE);
-  if (!knownHistory || ![journal.beforeDefinition, journal.afterDefinition].some(value => hash(value) === hash(metadata))) {
+  if (![journal.beforeDefinition, journal.afterDefinition].some(value => hash(value) === hash(metadata))) {
     throw new Error('保存中断后工程描述或历史被外部修改；文件已保留，请核对事务目录。');
   }
   const current = await treeOrNull(join(root, 'src'));
@@ -32,7 +27,6 @@ export async function recoverTransaction(root: string, dataDirectory: string): P
   if (journal.phase === 'committed') {
     if (!current || !equalHashes(current.hashes, journal.afterHashes)) throw new Error('已提交版本的源码无法核对；文件已保留。');
     await writeText(root, DEFINITION_FILE, journal.afterDefinition);
-    await writeHistory(versions, journal.afterHistory);
   } else {
     if (previous && (!current || !equalHashes(current.hashes, journal.beforeHashes))) {
       if (current) {
@@ -46,7 +40,6 @@ export async function recoverTransaction(root: string, dataDirectory: string): P
       throw new Error('无法核对保存前的源码；事务备份已保留。');
     }
     await writeText(root, DEFINITION_FILE, journal.beforeDefinition);
-    await writeHistory(versions, journal.beforeHistory);
   }
   await retireTransaction(root, journal.operationId);
 }

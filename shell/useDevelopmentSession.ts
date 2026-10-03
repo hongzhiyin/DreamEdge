@@ -56,11 +56,11 @@ export function useDevelopmentSession(projectId: string) {
     const value = await window.dreamEdge.development({ operation: 'create', projectId, title: '新会话' }) as DevelopmentSession;
     if (alive.current && generation.current === epoch) { setSession(value); await list(); }
   });
-  const send = (prompt: string) => action(async epoch => {
+  const send = (prompt: string, commit = false) => action(async epoch => {
     let target = session;
     if (!target) target = await window.dreamEdge.development({ operation: 'create', projectId, title: '新会话' }) as DevelopmentSession;
     if (!alive.current || generation.current !== epoch) return;
-    const value = await window.dreamEdge.development({ operation: 'send', projectId, sessionId: target.id, prompt }) as DevelopmentSession;
+    const value = await window.dreamEdge.development({ operation: 'send', projectId, sessionId: target.id, prompt, commit }) as DevelopmentSession;
     if (alive.current && generation.current === epoch) { setSession(value); await list(); }
   });
   const cancel = () => action(async epoch => {

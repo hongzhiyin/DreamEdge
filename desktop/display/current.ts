@@ -8,6 +8,7 @@ import { BuildFailure } from '../build/types';
 import { dependencyPreparer, type DependencyPreparer } from '../dependencies/prepare';
 import { Capacity } from '../windows/capacity';
 import { DisplayStore, displayEntry, type DisplayRecord } from './store';
+import { reuseBuild } from './build';
 
 export class SavedProjectDisplay {
   private readonly store = new DisplayStore();
@@ -19,14 +20,14 @@ export class SavedProjectDisplay {
   constructor(private readonly workspace: WorkspaceApi, private readonly engine: BuildEngine, private readonly capacity: Capacity,
     private readonly changed: () => void, private readonly prepare: DependencyPreparer = dependencyPreparer()) {}
   get entry(): string | undefined { return this.active ? displayEntry(this.active.record) : undefined; }
-  refresh(): void {
+  refresh(buildId?: string): void {
     if (this.closed) return;
     this.job?.controller.abort(); const generation = ++this.generation;
     this.active = null; this.status = { status: 'loading', error: null }; this.changed();
     const job = { controller: new AbortController(), done: Promise.resolve() }; this.job = job;
-    job.done = this.run(job.controller.signal, generation).finally(() => { if (this.job === job) this.job = null; });
+    job.done = this.run(job.controller.signal, generation, buildId).finally(() => { if (this.job === job) this.job = null; });
   }
-  private async run(signal: AbortSignal, generation: number): Promise<void> {
+  private async run(signal: AbortSignal, generation: number, buildId?: string): Promise<void> {
     let release: (() => void) | undefined;
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -38,6 +39,7 @@ export class SavedProjectDisplay {
       if (!captured) { this.status = undefined; this.changed(); return; }
       const { project, snapshot } = captured;
       let record = await this.store.cached(project, snapshot.definitionHash, snapshot.hashes);
+      if (!record && buildId) record = await reuseBuild(this.store, project, snapshot, buildId).catch(() => null);
       if (!record) {
         while (!release) {
           signal.throwIfAborted();

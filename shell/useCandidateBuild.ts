@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CandidateBuild, CandidateReference, VersionOperation, WorkspaceProject, WorkspaceStatus } from '../shared/contracts';
+import type { CandidateBuild, CandidateReference, WorkspaceProject, WorkspaceStatus } from '../shared/contracts';
 
 export function useCandidateBuild(projectId: string) {
   const [project, setProject] = useState<WorkspaceProject>();
@@ -55,15 +55,9 @@ export function useCandidateBuild(projectId: string) {
   });
   const confirm = () => action(async () => {
     if (!record) return;
-    let operation = await window.dreamEdge.versions({ operation: 'confirm', projectId, buildId: record.id, label: '保存候选修改' }) as VersionOperation;
-    while (alive.current && operation.status === 'running') {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (!alive.current) return;
-      operation = await window.dreamEdge.versions({ operation: 'getOperation', projectId, operationId: operation.id }) as VersionOperation;
-    }
-    if (!alive.current) return;
-    if (operation.status !== 'completed') throw new Error(operation.error ?? '保存未完成，请核对工程后重试。');
-    await refresh(); if (alive.current) setSaved(true);
+    await window.dreamEdge.git({ operation: 'applyBuild', projectId, buildId: record.id });
+    setSaved(true);
+
   });
   return { project, record, busy, saved, error, notice, start, cancel, preview, confirm, clearCache };
 }

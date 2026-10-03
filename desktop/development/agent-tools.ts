@@ -1,12 +1,12 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core';
-import { Type } from 'typebox';
+import { Type, type TSchema } from 'typebox';
 import { Check } from 'typebox/value';
 import { proposalSchema, type ModelAccess } from './model';
 
 export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExpose: (value: unknown) => void,
-  submitted: (proposal: Record<string, unknown>) => void): AgentTool[] {
+  submitted: (proposal: Record<string, unknown>) => void, commitAllowed = false): AgentTool[] {
   const directory = Type.String({ maxLength: 1024, description: 'Directory relative to src; empty string for the source root.' });
-  const definitions = [
+  const definitions: { name: string; label: string; description: string; parameters: TSchema }[] = [
     { name: 'list_files', label: '查看目录', description: 'List source paths in the current project, 100 per page. No file contents.',
       parameters: Type.Object({ directory, offset: Type.Integer({ minimum: 0 }) }, { additionalProperties: false }) },
     { name: 'read_file', label: '读取文件', description: 'Read the complete UTF-8 source file before modifying it. Path is relative to src.',
@@ -16,6 +16,8 @@ export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExp
     { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate source file contents. Read existing files first. Use files: [] for a reply without edits. This stages a proposal, never saves source.',
       parameters: Type.Unsafe(proposalSchema) },
   ];
+  if (commitAllowed) definitions.push({ name: 'git_commit', label: '提交 Git', description: 'Queue a Git commit after this turn is successfully built and applied. Provide a concise message, then finish using propose_changes. No remote push.',
+    parameters: Type.Object({ message: Type.String({ minLength: 1, maxLength: 500 }) }, { additionalProperties: false }) });
   return definitions.map(tool => ({ ...tool, constrainedSampling: { type: 'json_schema' as const, strict: 'require' as const },
     prepareArguments: args => {
       if (!Check(tool.parameters, args)) throw new Error('工具参数不符合声明的格式，请按 schema 重新提交。');

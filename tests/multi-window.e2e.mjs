@@ -61,7 +61,7 @@ try {
   const restoredVersion = await verifyVersionSave(a, pa, buildId);
   assert.deepEqual(await storage(b, { operation: 'list', collection: 'window-test' }), [{ id: 'same', value: 'B' }]);
   assert.ok((await b.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), pb.definition.id)).content.includes('HelloWorld'));
-  assert.equal((await b.evaluate(projectId => window.dreamEdge.versions({ operation: 'status', projectId }), pb.definition.id)).versions.length, 0);
+  assert.equal((await b.evaluate(projectId => window.dreamEdge.git({ operation: 'status', projectId }), pb.definition.id)).commits.length, 1);
   const nativeA = await application.browserWindow(a); const nativeB = await application.browserWindow(b);
   await nativeA.evaluate(window => window.setBounds({ x: 40, y: 50, width: 980, height: 680 }));
   await nativeB.evaluate(window => window.setBounds({ x: 90, y: 80, width: 1020, height: 700 }));
@@ -83,7 +83,7 @@ try {
   assert.equal(await b.evaluate(() => localStorage.getItem('host-window')), 'B');
   assert.equal(await b.frameLocator('iframe').locator('body').evaluate(() => localStorage.getItem('same')), 'B browser');
   assert.deepEqual(await (await application.browserWindow(b)).evaluate(window => window.getNormalBounds()), boundsB);
-  assert.equal((await a.evaluate(projectId => window.dreamEdge.versions({ operation: 'status', projectId }), pa.definition.id)).head, restoredVersion.versionId);
+  assert.equal((await a.evaluate(projectId => window.dreamEdge.git({ operation: 'status', projectId }), pa.definition.id)).head, restoredVersion.versionId);
   assert.deepEqual(await storage(b, { operation: 'list', collection: 'window-test' }), [{ id: 'same', value: 'B' }]);
   await application.close(); await rename(pa.rootDirectory, join(source, 'A-missing'));
   const first = await launch(); b = await findProject(pb.definition.id);

@@ -19,7 +19,8 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
       usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } },
   ]);
   const agent = new Agent({
-    initialState: { model, systemPrompt: modelInstructions, messages, tools: projectTools(access, signal, guard, value => { proposal = value; }) },
+    initialState: { model, systemPrompt: modelInstructions + (input.commit ? ' The user authorized committing current project changes. Call git_commit with a message before propose_changes.' : ''),
+      messages, tools: projectTools(access, signal, guard, value => { proposal = value; }, input.commit) },
     streamFn: stream, toolExecution: 'sequential',
     finishTurn: ({ message, toolResults }) => {
         if (proposal) return { action: 'end' };

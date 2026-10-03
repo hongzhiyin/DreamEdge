@@ -90,11 +90,8 @@ try {
   assert.equal(recoveredSession.turns[0].status, 'failed');
   const restoredBuild = await page.evaluate(({ projectId, buildId }) => window.dreamEdge.build({ operation: 'get', projectId, buildId }), { projectId: project.definition.id, buildId });
   assert.equal(restoredBuild.status, 'succeeded');
-  const versions = await page.evaluate(projectId => window.dreamEdge.versions({ operation: 'status', projectId }), project.definition.id);
-  assert.equal(versions.versions.length, 4); assert.equal(versions.head, restoredVersion.versionId);
-  const operation = await page.evaluate(({ projectId, operationId }) => window.dreamEdge.versions({ operation: 'getOperation', projectId, operationId }),
-    { projectId: project.definition.id, operationId: restoredVersion.id });
-  assert.equal(operation.status, 'completed');
+  const versions = await page.evaluate(projectId => window.dreamEdge.git({ operation: 'status', projectId }), project.definition.id);
+  assert.equal(versions.head, restoredVersion.versionId);
   assert.deepEqual(recoveredSession.turns[0].changes, []);
   const restoredFile = await page.evaluate(projectId => window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' }), project.definition.id);
   assert.ok(restoredFile.content.includes('Updated HelloWorld'));

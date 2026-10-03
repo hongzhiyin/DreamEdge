@@ -4,10 +4,10 @@ export type Json = null | boolean | number | string | Json[] | { [key: string]: 
 import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
 import type { DevelopmentRequest, DevelopmentResult } from './development.js';
 import type { CandidateBuildRequest, CandidateBuildResult } from './build.js';
-import type { VersionRequest, VersionResult } from './versions.js';
+import type { GitRequest, GitResult } from './git.js';
 import type { ProjectAction, ProjectWindow, WindowRequest, WindowResult } from './windows.js';
 export type * from './windows.js';
-export type * from './versions.js';
+export type * from './git.js';
 export type * from './build.js';
 export type * from './development.js';
 export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFile, WorkspaceRequest, WorkspaceResult } from './workspace.js';
@@ -42,7 +42,7 @@ export interface HostApi {
   projectAction(action: ProjectAction): Promise<ProjectWindow | null>;
   windows(request: WindowRequest): Promise<WindowResult>;
   onContextChanged(listener: () => void): () => void;
-  versions(request: VersionRequest): Promise<VersionResult>;
+  git(request: GitRequest): Promise<GitResult>;
   build(request: CandidateBuildRequest): Promise<CandidateBuildResult>;
   development(request: DevelopmentRequest): Promise<DevelopmentResult>;
   workspace(request: WorkspaceRequest): Promise<WorkspaceResult>;

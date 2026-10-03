@@ -4,7 +4,8 @@ import type { ProjectDefinition, WorkspaceProject, WorkspaceStatus } from '../..
 import { createDefinition, DEFINITION_FILE, projectName, projectVersion, validateDefinition } from './definition';
 import { canonicalTarget, directory, ensureDirectory, hash, inside, readText, writeText } from './paths';
 import { WorkspaceRegistry, type WorkspaceSelection } from './registry';
-import { recoverTransaction } from '../versions/recovery';
+import { recoverTransaction } from '../changes/recovery';
+import { initializeGit } from '../git/repository';
 
 export class WorkspaceManager {
   private readonly registry: WorkspaceSelection;
@@ -40,7 +41,7 @@ export class WorkspaceManager {
     const base = await ensureDirectory(this.dataDirectory, `workspaces/${definition.id}`);
     return { definition, rootDirectory: root, sourceDirectory,
       dataDirectory: await ensureDirectory(base, 'data'), buildDirectory: await ensureDirectory(base, 'build'),
-      versionsDirectory: await ensureDirectory(base, 'versions'), sessionsDirectory: await ensureDirectory(base, 'sessions') };
+      sessionsDirectory: await ensureDirectory(base, 'sessions') };
   }
   private async inspect(path: unknown): Promise<{ project: WorkspaceProject; definitionHash: string }> {
     const root = await canonicalTarget(path, true);
@@ -50,6 +51,7 @@ export class WorkspaceManager {
     const definition = validateDefinition(JSON.parse(content));
     // Reject identity reuse before creating or accessing another project's managed directories.
     this.registry.assertIdentity({ definition, rootDirectory: root } as WorkspaceProject);
+    await initializeGit(root);
     return { project: await this.layout(root, definition), definitionHash: hash(content) };
   }
   private async select(project: WorkspaceProject, definitionHash: string): Promise<WorkspaceProject> {
@@ -74,6 +76,7 @@ export class WorkspaceManager {
     await writeText(root, 'src/main.ts', "document.getElementById('root')!.textContent = 'HelloWorld';\n");
     const content = JSON.stringify(definition, null, 2);
     await writeText(root, DEFINITION_FILE, content);
+    await initializeGit(root);
     return this.select(await this.layout(root, definition), hash(content));
   }
   async open(path: unknown): Promise<WorkspaceProject> {

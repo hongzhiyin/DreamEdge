@@ -20,7 +20,7 @@ const api: HostApi = {
     ipcRenderer.on('host:context-changed', receive);
     return () => ipcRenderer.removeListener('host:context-changed', receive);
   },
-  versions: request => invoke('host:versions', request),
+  git: request => invoke('host:git', request),
   build: request => invoke('host:build', request),
   development: request => invoke('host:development', request),
   workspace: request => invoke('host:workspace', request),

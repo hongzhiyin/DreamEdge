@@ -13,7 +13,7 @@ export async function applyCandidate(project: WorkspaceProject, files: Record<st
   const sessions = new SessionStore();
   const session = await sessions.load(project, reference.sessionId);
   const turn = session.turns.find(turn => turn.id === reference.turnId);
-  if (!turn || turn.status !== 'completed') throw new Error('只能构建已完成的模型候选变更。');
+  if (!turn || turn.status !== 'completed' && !(turn.status === 'running' && turn.phase === 'building')) throw new Error('只能构建已生成的模型修改。');
   const originalContext = await sessions.context(project, session.id, turn);
   try { await validateProposal(project, originalContext, { summary: turn.summary, files: turn.changes }); }
   catch { throw new Error('候选上下文已过期，请重新生成变更。'); }

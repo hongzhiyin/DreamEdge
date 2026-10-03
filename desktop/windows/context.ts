@@ -9,7 +9,8 @@ import { DevelopmentApi } from '../development/api';
 import type { ModelProvider } from '../development/model';
 import { CandidateBuildApi, type PreviewOpener } from '../build/api';
 import type { BuildEngine } from '../build/types';
-import { VersionsApi } from '../versions/api';
+import { ProjectGitApi } from '../git/api';
+import { AutomaticEdits } from '../development/apply';
 import { WindowState } from './state';
 import { windowSelection } from './selection';
 import { Capacity } from './capacity';
@@ -28,11 +29,12 @@ export class WindowContext {
   private readonly display?: SavedProjectDisplay;
   development?: DevelopmentApi;
   builds?: CandidateBuildApi;
-  versions?: VersionsApi;
+  git?: ProjectGitApi;
   private contextId = randomUUID();
   private selected: WorkspaceProject | null = null;
   private transitioning = false;
   private disposed = false;
+  private prepared = false;
   private transition: Promise<WorkspaceResult> | null = null;
   private readonly databases = new Map<string, ToolStorage>();
   private readonly services = new Map<string, ReturnType<typeof createServices>>();
@@ -44,12 +46,15 @@ export class WindowContext {
         }));
       this.modelSettings = new ProjectModels(() => this.selected, () => options.modelSettingsChanged?.());
       this.display = new SavedProjectDisplay(this.workspace, options.engine, options.buildCapacity, () => {
-        this.contextId = randomUUID(); options.changed();
+        if (this.display?.status?.status === 'loading') this.contextId = randomUUID();
+        options.changed();
       });
       this.startTasks();
     }
   }
   async ready(): Promise<void> {
+    if (this.prepared) return;
+    this.prepared = true;
     if (this.workspace) {
       const status = await this.workspace.execute({ operation: 'current' });
       this.selected = 'project' in status ? status.project : null;
@@ -58,9 +63,11 @@ export class WindowContext {
   }
   private startTasks(): void {
     if (!this.workspace) return;
-    this.development = new DevelopmentApi(this.workspace, this.options.provider ?? this.modelSettings!);
     this.builds = new CandidateBuildApi(this.workspace, this.options.engine, this.options.openPreview, 300000, this.options.buildCapacity);
-    this.versions = new VersionsApi(this.workspace, this.options.profile, undefined, 30000, () => { if (!this.disposed && !this.transitioning) this.display?.refresh(); });
+    const changed = (buildId?: string) => { if (!this.disposed && !this.transitioning) this.display?.refresh(buildId); };
+    this.git = new ProjectGitApi(this.workspace, this.options.profile, changed);
+    this.development = new DevelopmentApi(this.workspace, this.options.provider ?? this.modelSettings!, 300000,
+      new AutomaticEdits(this.workspace, this.options.profile, this.builds, changed));
   }
   assertAvailable(): void {
     if (this.disposed || this.transitioning) throw new Error('开发窗口正在切换工程或关闭，请稍后再试。');
@@ -133,7 +140,7 @@ export class WindowContext {
     });
   }
   private async stopTasks(): Promise<void> {
-    await Promise.all([this.development?.dispose(), this.builds?.dispose(), this.versions?.dispose(), this.modelSettings?.reset()]);
+    await Promise.all([this.development?.dispose(), this.builds?.dispose(), this.git?.dispose(), this.modelSettings?.reset()]);
   }
   async dispose(): Promise<void> {
     this.disposed = true;

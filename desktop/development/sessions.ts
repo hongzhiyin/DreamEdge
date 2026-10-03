@@ -18,6 +18,7 @@ function validateTurn(value: DevelopmentTurn, id: string): DevelopmentTurn {
     throw new Error('会话轮次记录无效。');
   }
   shortText(value.prompt, '会话请求', 8192);
+  if (value.phase !== undefined && !['thinking', 'building', 'applying', 'complete'].includes(value.phase)) throw new Error('会话阶段无效。');
   if (value.activity !== undefined && (!Array.isArray(value.activity) || value.activity.length > 48 || value.activity.some(event =>
     !event || typeof event.id !== 'string' || event.id.length > 160 || !['list_files', 'read_file', 'search_files'].includes(event.tool)
     || !['running', 'completed', 'failed', 'cancelled'].includes(event.status) || typeof event.detail !== 'string' || event.detail.length > 200))) throw new Error('Agent 活动记录无效。');

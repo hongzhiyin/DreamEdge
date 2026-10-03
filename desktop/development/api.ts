@@ -6,13 +6,16 @@ import { ModelFailure, type ModelProvider } from './model';
 import { SessionStore } from './sessions';
 import { inspectCandidate } from './candidate';
 import { ProjectAccess } from './project-access';
+import type { AutomaticEdits } from './apply';
+import { settleInterruptedTurn } from './settlement';
 
 interface Job { controller: AbortController; done: Promise<void> }
 export class DevelopmentApi {
   private readonly store = new SessionStore();
   private readonly jobs = new Map<string, Job>();
   private closed = false;
-  constructor(private readonly workspace: WorkspaceApi, private readonly provider: ModelProvider, private readonly timeoutMs = 300000) {}
+  constructor(private readonly workspace: WorkspaceApi, private readonly provider: ModelProvider, private readonly timeoutMs = 300000,
+    private readonly edits?: AutomaticEdits) {}
   async execute(input: unknown): Promise<DevelopmentResult> {
     if (this.closed) throw new Error('开发会话服务已关闭。');
     const request = structuredClone(input) as DevelopmentRequest;
@@ -49,9 +52,7 @@ export class DevelopmentApi {
     let changed = false;
     for (const turn of session.turns) {
       if (turn.status === 'running' && !this.jobs.has(session.id)) {
-        turn.status = 'interrupted'; turn.finishedAt = new Date().toISOString();
-        for (const event of turn.activity ?? []) if (event.status === 'running') event.status = 'cancelled';
-        turn.error = '上次模型请求已中断；源码未被修改，可重新发送请求。'; changed = true;
+        await settleInterruptedTurn(project, turn); changed = true;
       }
     }
     if (changed) await this.store.save(project, session);
@@ -67,7 +68,7 @@ export class DevelopmentApi {
       const context = await collectContext(project, request.paths ?? []);
       await this.provider.assertSafeInput?.({ prompt, context, history: session.turns.filter(turn => turn.status === 'completed').slice(-4).map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) });
       const turn: DevelopmentTurn = { id: randomUUID(), prompt, startedAt: new Date().toISOString(), finishedAt: null,
-        status: 'running', summary: null, error: null, context: context.files.map(({ path, hash }) => ({ path, hash })), changes: [], activity: [] };
+        status: 'running', phase: 'thinking', applied: false, summary: null, error: null, context: context.files.map(({ path, hash }) => ({ path, hash })), changes: [], activity: [] };
       if (!session.turns.length && session.title === '新会话') session.title = prompt.slice(0, 40);
       await this.store.saveContext(project, session.id, turn.id, context);
       session.turns.push(turn); session.updatedAt = turn.startedAt;
@@ -77,19 +78,19 @@ export class DevelopmentApi {
       return { project, session, turn, context, job };
     });
     // Launch outside the workspace queue so get/cancel/switch remain responsive.
-    started.job.done = this.run(started.project, started.session, started.turn, started.context, started.job);
+    started.job.done = this.run(started.project, started.session, started.turn, started.context, started.job, request.commit === true);
     return structuredClone(started.session);
   }
-  private async run(project: WorkspaceProject, session: DevelopmentSession, turn: DevelopmentTurn, context: ProjectContext, job: Job): Promise<void> {
+  private async run(project: WorkspaceProject, session: DevelopmentSession, turn: DevelopmentTurn, context: ProjectContext, job: Job, commit: boolean): Promise<void> {
     const { signal } = job.controller;
     const timer = setTimeout(() => job.controller.abort(new Error('模型请求超时；源码未被修改。')), this.timeoutMs);
     let aborted: (() => void) | undefined;
     try {
-      const access = new ProjectAccess(this.workspace, project.definition.id, context);
+      const access = new ProjectAccess(this.workspace, project.definition.id, context, commit);
       const result = await Promise.race([
         this.provider.generate({ prompt: turn.prompt, context, history: session.turns.slice(0, -1)
           .filter(previous => previous.status === 'completed').slice(-4)
-          .map(({ prompt, summary, changes }) => ({ prompt, summary, changes })) }, signal, {
+          .map(({ prompt, summary, changes }) => ({ prompt, summary, changes })), commit }, signal, {
             execute: (...args) => access.execute(...args),
             activity: event => this.workspace.withProject(project.definition.id, async current => {
               signal.throwIfAborted();
@@ -113,10 +114,21 @@ export class DevelopmentApi {
         turn.summary = proposal.summary; turn.changes = proposal.changes;
         await this.store.stage(current, session.id, turn);
         signal.throwIfAborted();
-        turn.status = 'completed'; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
         await this.store.save(current, session);
-        this.jobs.delete(session.id);
       });
+      if (this.edits && turn.changes.length) {
+        const applied = await this.edits.apply(project.definition.id, { sessionId: session.id, turnId: turn.id }, signal, async (phase, buildId) => {
+          turn.phase = phase; if (buildId) turn.buildId = buildId;
+          await this.workspace.withProject(project.definition.id, current => this.store.save(current, session));
+        });
+        turn.applied = true; turn.buildId = applied.buildId;
+      }
+      if (this.edits && commit && !signal.aborted) {
+        try { turn.commitId = await this.edits.commit(project.definition.id, access.commitMessage ?? turn.summary!); }
+        catch (error) { turn.warning = error instanceof Error ? error.message : '修改已应用，但 Git 提交失败。'; }
+      }
+      turn.status = 'completed'; turn.phase = 'complete'; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
+      await this.workspace.exclusive(() => this.store.save(project, session)); this.jobs.delete(session.id);
     } catch (error) {
       turn.status = signal.aborted ? (signal.reason === 'cancelled' ? 'cancelled' : 'failed') : 'failed';
       turn.error = signal.reason === 'cancelled' ? '请求已取消；源码未被修改。'
@@ -124,6 +136,7 @@ export class DevelopmentApi {
         : error instanceof ModelFailure ? error.message
         : '模型请求或候选校验失败；请检查连接、工程状态及上下文后重试。';
       turn.summary = null; turn.changes = []; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
+      turn.phase = 'complete';
       for (const event of turn.activity ?? []) if (event.status === 'running') event.status = signal.aborted ? 'cancelled' : 'failed';
       // Persist into the captured project's own profile even after an active-project switch.
       await this.workspace.exclusive(async () => {
