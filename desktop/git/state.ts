@@ -29,8 +29,7 @@ export async function projectGitStatus(project: WorkspaceProject, sourceHash: st
     const ref = remoteRef(state.remote);
     const local = new Set((await git(project.rootDirectory, ['rev-list', `HEAD`, '--not', ref])).trim().split('\n'));
     for (const commit of commits) commit.remoteState = local.has(commit.id) ? 'local' : 'pushed';
-    const history = await git(project.rootDirectory, ['log', '-50', '--date-order', '--format=%H%x00%s%x00%cI', `HEAD..${ref}`]);
-    for (const line of history.trim().split('\n').filter(Boolean)) { const [id, message, createdAt] = line.split('\0'); remoteCommits.push({ id, message, createdAt }); }
+    remoteCommits.push(...await gitHistory(project.rootDirectory, `HEAD..${ref}`));
   } else for (const commit of commits) commit.remoteState = state.remote ? 'unknown' : 'local';
   return { ...state, commits, remoteCommits };
 }

@@ -69,7 +69,11 @@ try {
   await gitBar.getByText('工程修改已提交 Git。', { exact: true }).waitFor();
   await page.getByRole('button', { name: '打开工程设置' }).click(); await page.getByRole('tab', { name: 'Git 历史', exact: true }).click();
   const history = page.getByRole('region', { name: 'Git 历史', exact: true });
-  await history.locator('.git-history li').filter({ hasText: baseline.slice(0, 8) }).getByRole('button', { name: '恢复此提交内容' }).click();
+  assert.equal(await history.getByRole('button', { name: '恢复此提交内容' }).count(), 0);
+  await page.evaluate(async ({ projectId, commitId }) => {
+    const status = await window.dreamEdge.git({ operation: 'status', projectId });
+    await window.dreamEdge.git({ operation: 'restore', projectId, commitId, expectedStateHash: status.stateHash });
+  }, { projectId: project.definition.id, commitId: baseline });
   await page.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor();
   assert.match(await readFile(join(project.sourceDirectory, 'unused.ts'), 'utf8'), /old/);
   assert.equal(JSON.parse(await readFile(join(project.rootDirectory, '.dreamedge/model.json'), 'utf8')).apiKey, 'fixture-structure-key');

@@ -1,0 +1,13 @@
+.git-history { list-style: none; margin: 8px 0 16px; padding: 0; overflow-x: auto; }
+.git-history li { display: grid; grid-template-columns: var(--git-graph-width) minmax(240px, 1fr); min-width: calc(var(--git-graph-width) + 240px); height: 52px; padding: 0; }
+.git-graph { display: block; color: var(--sidebar-focus); overflow: visible; }
+.git-graph path { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.git-graph .is-continuation { stroke-dasharray: 3 3; opacity: .6; }
+.git-commit-node { fill: currentColor; }
+.git-head-ring { fill: var(--sidebar-surface); stroke: currentColor; stroke-width: 1.2; }
+.git-commit-content { min-width: 0; padding: 4px 0 4px 6px; }
+.git-commit-message { margin: 0 0 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 20px; }
+.git-head-label { padding: 0 4px; font-size: 9px; line-height: 15px; color: var(--sidebar-focus); border-radius: 3px; background: #426baf0d; }
+.git-commit-meta { display: flex; align-items: baseline; gap: 7px; color: var(--sidebar-muted); font-size: 10px; line-height: 17px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.git-commit-meta code { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.git-commit-meta time { margin-left: auto; }

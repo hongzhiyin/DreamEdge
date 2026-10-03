@@ -4,9 +4,11 @@ import { validateDefinition } from '../workspace/definition';
 import { relativeParts } from '../workspace/paths';
 import { assertSnapshot } from '../build/snapshot';
 
-export async function gitHistory(root: string) {
-  const text = await git(root, ['log', '-50', '--date-order', '--format=%H%x00%s%x00%cI']).catch(() => '');
-  return text.trim().split('\n').filter(Boolean).map(line => { const [id, message, createdAt] = line.split('\0'); return { id, message, createdAt }; });
+export async function gitHistory(root: string, range?: string) {
+  const text = await git(root, ['log', '-50', '--date-order', '--format=%H%x00%s%x00%cI%x00%P', ...(range ? [range] : [])]).catch(() => '');
+  return text.trim().split('\n').filter(Boolean).map(line => {
+    const [id, message, createdAt, parents] = line.split('\0'); return { id, message, createdAt, parents: parents ? parents.split(' ') : [] };
+  });
 }
 export async function gitSnapshot(project: WorkspaceProject, id: string) {
   await assertRepository(project.rootDirectory); commitId(id);

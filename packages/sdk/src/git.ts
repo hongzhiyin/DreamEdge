@@ -1,4 +1,4 @@
-export interface GitCommit { id: string; message: string; createdAt: string; remoteState?: 'pushed' | 'local' | 'unknown' }
+export interface GitCommit { id: string; message: string; createdAt: string; parents?: string[]; remoteState?: 'pushed' | 'local' | 'unknown' }
 export interface GitRemote { name: string; url: string; branch: string; tracking: boolean; exists: boolean; ahead: number; behind: number }
 export interface GitStatus {
   head: string | null; branch: string; changed: string[]; otherChanged: string[]; stateHash: string; commits: GitCommit[];

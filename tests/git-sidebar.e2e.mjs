@@ -39,6 +39,15 @@ try {
   await dialog.waitFor(); await dialog.getByRole('button', { name: '取消', exact: true }).click();
   assert.match(await readFile(join(directory, 'src/main.ts'), 'utf8'), /Discard me/);
   await bar.getByRole('button', { name: '撤销', exact: true }).click(); await dialog.getByRole('button', { name: '确认撤销', exact: true }).click();
+  // External fixture writes can overlap a status read; retry only the explicit stale-state rejection.
+  const result = await Promise.race([
+    bar.getByText('未提交的工程修改已撤销，页面已刷新。', { exact: true }).waitFor().then(() => 'done'),
+    bar.getByRole('alert').waitFor().then(async () => bar.getByRole('alert').textContent()),
+  ]);
+  if (result !== 'done') {
+    assert.match(result, /状态已变化/);
+    await bar.getByRole('button', { name: '撤销', exact: true }).click(); await dialog.getByRole('button', { name: '确认撤销', exact: true }).click();
+  }
   await bar.getByText('未提交的工程修改已撤销，页面已刷新。', { exact: true }).waitFor();
   await page.frameLocator('iframe').getByText('Hello Git', { exact: true }).waitFor();
   assert.equal(await runGit(directory, 'rev-parse', 'HEAD'), saved);
@@ -68,6 +77,25 @@ try {
   await history.getByText('Remote greeting', { exact: true }).waitFor();
   assert.equal(await history.locator('.git-history').last().locator('li').first().locator('p').textContent(), 'Remote greeting');
   assert.ok(await history.locator('time[datetime]').count() >= 3);
+  await history.getByRole('heading', { name: '最近提交', exact: true }).waitFor();
+  assert.equal(await history.getByText('最新在前', { exact: false }).count(), 0);
+  assert.equal(await history.getByRole('button', { name: '恢复此提交内容' }).count(), 0);
+  assert.ok(await history.locator('.git-graph').count() >= 3);
+  assert.equal(await history.locator('.git-history li').last().evaluate(row => row.getBoundingClientRect().height), 52);
+  await runGit(directory, 'checkout', '-b', 'feature'); await writeFile(join(directory, 'feature.txt'), 'Feature branch');
+  await runGit(directory, 'add', '--', 'feature.txt'); await runGit(directory, 'commit', '-m', 'Feature branch change');
+  await runGit(directory, 'checkout', 'main'); await writeFile(join(directory, 'main.txt'), 'Main branch');
+  await runGit(directory, 'add', '--', 'main.txt'); await runGit(directory, 'commit', '-m', 'Main branch change');
+  await runGit(directory, 'merge', '--no-ff', '-m', 'Merge feature branch', 'feature');
+  await history.getByRole('button', { name: '刷新 Git 状态', exact: true }).click();
+  await history.getByText('Merge feature branch', { exact: true }).waitFor();
+  assert.equal(await history.locator('.git-history li').first().locator('svg').getAttribute('width'), '34');
+  assert.equal(await history.locator('.git-history li').first().locator('.git-head-label').textContent(), 'HEAD');
+  const graphStatus = await page.evaluate(async () => {
+    const { project } = await window.dreamEdge.workspace({ operation: 'current' });
+    return window.dreamEdge.git({ operation: 'status', projectId: project.definition.id });
+  });
+  assert.equal(graphStatus.commits[0].parents.length, 2);
   await mkdir('artifacts', { recursive: true }); await page.screenshot({ path: 'artifacts/dreamedge-git-history.png' });
   await page.getByRole('button', { name: '返回 AI 对话' }).click();
   await page.screenshot({ path: 'artifacts/dreamedge-git-chat.png' });
