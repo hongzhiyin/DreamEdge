@@ -1,5 +1,5 @@
 import type { WorkspaceProject, WorkspaceRequest, WorkspaceResult } from '../../shared/contracts';
-import { WorkspaceManager, type WorkspaceBinding } from './manager';
+import { WorkspaceManager } from './manager';
 import { WorkspaceFiles } from './files';
 import type { WorkspaceSelection } from './registry';
 
@@ -7,8 +7,8 @@ export class WorkspaceApi {
   private readonly manager: WorkspaceManager;
   private readonly files: WorkspaceFiles;
   private queue: Promise<unknown> = Promise.resolve();
-  constructor(dataDirectory: string, frameworkRoot: string, selection?: WorkspaceSelection, binding?: WorkspaceBinding) {
-    this.manager = new WorkspaceManager(dataDirectory, frameworkRoot, selection, binding);
+  constructor(dataDirectory: string, frameworkRoot: string, selection?: WorkspaceSelection) {
+    this.manager = new WorkspaceManager(dataDirectory, frameworkRoot, selection);
     this.files = new WorkspaceFiles(this.manager);
   }
   execute(input: unknown): Promise<WorkspaceResult> {

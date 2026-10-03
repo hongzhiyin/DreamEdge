@@ -11,8 +11,6 @@ import { readSourceTree } from '../workspace/source-tree';
 import { identifier } from '../development/sessions';
 import { prepareTooling } from './tooling';
 import { publishExport } from './publish';
-import { readLockedArchives } from '../embedded/dependencies';
-import { copyResource } from './resources';
 import { stageExport } from './stage';
 import type { ExportEngine, ExportResources } from './types';
 
@@ -52,7 +50,6 @@ export class ProjectExports {
     const record = JSON.parse(await readText(this.root(id), 'record.json')) as ProjectExport;
     if (record.id !== id || record.schemaVersion !== 1 || record.projectId !== project.definition.id
       || !['running', 'succeeded', 'failed', 'cancelled', 'interrupted'].includes(record.status) || !['building', 'packaging', 'publishing', 'complete'].includes(record.phase)
-      || record.mode !== undefined && !['standard', 'development'].includes(record.mode)
       || typeof record.directory !== 'string' || !isAbsolute(record.directory) || record.directory.includes('\0')
       || !Array.isArray(record.logs) || record.logs.length > 81 || record.logs.some(log => typeof log !== 'string' || log.length > 1800)
       || !Number.isFinite(Date.parse(record.startedAt)) || record.finishedAt !== null && !Number.isFinite(Date.parse(record.finishedAt))) throw new Error('导出记录不属于当前工程。');
@@ -67,11 +64,10 @@ export class ProjectExports {
   }
   private async start(request: Extract<ExportRequest, { operation: 'start' }>) {
     if (!this.supported) throw new Error('当前仅支持在 macOS 上导出本机架构 App。');
+    if ('mode' in request) throw new Error('导出仅生成业务运行产物，开发请在 DreamEdge 中打开原工程。');
     if (this.jobs.size || this.preparing) throw new Error('当前窗口已有导出任务，请等待或取消。');
     this.preparing = true;
     try {
-    const mode = request.mode ?? 'standard';
-    if (!['standard', 'development'].includes(mode)) throw new Error('导出模式无效。');
     const project = await this.workspace.withProject(request.projectId, async value => value);
     const target = await canonicalTarget(request.directory, false);
     for (const protectedRoot of [project.rootDirectory, this.frameworkRoot, this.profile]) {
@@ -80,7 +76,7 @@ export class ProjectExports {
     try { await lstat(target); throw new Error('导出目录已存在，请选择新目录。'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     if (this.closed) throw new Error('导出窗口已关闭。');
     const record: ProjectExport = { schemaVersion: 1, id: randomUUID(), projectId: project.definition.id, status: 'running', phase: 'building',
-      startedAt: new Date().toISOString(), finishedAt: null, logs: ['正在构建已保存的工程。'], directory: target, error: null, mode };
+      startedAt: new Date().toISOString(), finishedAt: null, logs: ['正在构建已保存的工程。'], directory: target, error: null };
     const saved = await readdir(join(this.profile, 'exports')).catch(() => []); if (saved.length >= 100) throw new Error('当前最多保留 100 次导出记录。');
     await mkdir(this.root(record.id), { recursive: true }); await this.save(record);
     const job = { record, controller: new AbortController(), done: Promise.resolve() }; this.jobs.set(record.id, job); this.latest.set(project.definition.id, record.id);
@@ -99,20 +95,19 @@ export class ProjectExports {
         const source = await readSourceTree(join(buildRoot(current, built.id), 'source')); const outputs: Record<string, string> = {};
         for (const path of Object.keys(built.outputHashes)) outputs[path] = await readFile(join(buildRoot(current, built.id), 'output', path), 'utf8');
         const definition = await store.candidateDefinition(current, built);
-        return { files: source.files, outputs, definition, ...(record.mode === 'development' ? { archives: await readLockedArchives(join(current.buildDirectory, '.dependency-cache'), definition.dependencyLock) } : {}) };
+        return { files: source.files, outputs, definition };
       });
       await this.safeSource?.(captured);
       signal.throwIfAborted(); record.phase = 'packaging'; await log('正在准备独立源码工程与固定框架运行环境。');
-      await mkdir(work); const manifest = await stageExport(work, captured, this.resources, record.mode ?? 'standard'); signal.throwIfAborted();
-      await log('正在准备本地打包工具。'); await this.prepare(work, signal, this.resources.tooling);
-      if (record.mode === 'development') await copyResource(join(work, 'tooling'), join(work, 'application/dist/framework/tooling'));
+      await mkdir(work); const manifest = await stageExport(work, captured, this.resources); signal.throwIfAborted();
+      await log('正在准备本地打包工具。'); await this.prepare(work, signal);
       await this.engine({ root: work, manifest }, signal, log); signal.throwIfAborted();
       await this.workspace.withProject(project.definition.id, current => assertSource(current, built.sourceHashes, built.definitionHash));
       if (await canonicalTarget(record.directory, false) !== record.directory) throw new Error('导出目标父目录已变化。');
       record.phase = 'publishing'; await log('正在完成导出写入。');
       await mkdir(record.directory); ownedTarget = true;
       await publishExport(join(work, 'deliverable'), record.directory);
-      record.status = 'succeeded'; record.phase = 'complete'; record.finishedAt = new Date().toISOString(); record.logs.push('导出完成：独立 App、ZIP 与可继续开发的源码工程。'); await this.save(record);
+      record.status = 'succeeded'; record.phase = 'complete'; record.finishedAt = new Date().toISOString(); record.logs.push('导出完成：业务 App 与分发 ZIP；源码保留在原工程。'); await this.save(record);
     } catch (error) {
       record.status = signal.reason === 'cancelled' || signal.reason === 'closed' ? 'cancelled' : 'failed'; record.phase = 'complete'; record.finishedAt = new Date().toISOString();
       record.error = signal.reason === 'timeout' ? '导出超时，请重试。' : error instanceof Error ? error.message.slice(-1800) : '导出失败。';

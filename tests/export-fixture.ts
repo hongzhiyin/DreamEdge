@@ -10,11 +10,10 @@ import type { ProjectExport, WorkspaceProject } from '../shared/contracts';
 
 export async function exportFixture(engine: ExportEngine = async ({ root }) => { await mkdir(join(root, 'deliverable', 'Fixture.app')); await writeFile(join(root, 'deliverable', 'Fixture.zip'), 'fixture'); }) {
   const root = await mkdtemp(join(tmpdir(), 'dreamedge-export-unit-')); const profile = join(root, 'profile'); const framework = join(root, 'framework');
-  await mkdir(profile); await mkdir(framework); const runtime = join(framework, 'runtime'); const bundles = join(framework, 'bundles');
-  await mkdir(join(runtime, 'shell'), { recursive: true }); await mkdir(bundles);
-  for (const file of ['runtime.cjs', 'preload.cjs', 'build-worker.cjs', 'export-worker.cjs', 'THIRD_PARTY_NOTICES.txt']) await writeFile(join(runtime, file), 'trusted runtime');
-  for (const name of ['sdk', 'desktop', 'cli']) await writeFile(join(bundles, `dreamedge-${name}-0.1.1.tgz`), `framework-${name}`);
-  const resources = { runtime, bundles, frameworkVersion: '0.1.1', frameworkAppId: 'io.github.hongzhiyin.dreamedge' };
+  await mkdir(profile); await mkdir(framework); const runtime = join(framework, 'runtime');
+  await mkdir(join(runtime, 'business-shell'), { recursive: true });
+  for (const file of ['business-runtime.cjs', 'preload.cjs', 'THIRD_PARTY_NOTICES.txt']) await writeFile(join(runtime, file), 'trusted runtime');
+  const resources = { runtime, frameworkAppId: 'io.github.hongzhiyin.dreamedge' };
   const workspace = new WorkspaceApi(profile, framework); const project = await workspace.execute({ operation: 'create', name: 'Fixture', directory: join(root, 'project') }) as WorkspaceProject;
   const builds = new CandidateBuildApi(workspace, input => compile(input), async () => {});
   const exports = new ProjectExports(workspace, profile, framework, resources, builds, engine, true, async work => { await mkdir(join(work, 'tooling')); await writeFile(join(work, 'tooling/package.json'), '{}'); });

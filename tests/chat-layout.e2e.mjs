@@ -49,7 +49,10 @@ try {
   await page.getByRole('button', { name: '打开工程设置' }).click();
   assert.equal(await page.getByLabel('模型名称', { exact: true }).inputValue(), '未保存的模型草稿');
   const modelTab = page.getByRole('tab', { name: '模型连接', exact: true });
+  const settingsWindow = await application.browserWindow(page); await settingsWindow.evaluate(window => window.focus());
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
   await modelTab.focus(); await modelTab.press('ArrowRight');
+  await page.waitForFunction(() => document.getElementById('settings-tab-1')?.getAttribute('aria-selected') === 'true');
   assert.equal(await page.getByRole('tab', { name: 'Git 历史', exact: true }).getAttribute('aria-selected'), 'true');
   assert.equal(await page.getByLabel('服务地址', { exact: true }).isVisible(), false);
   await page.getByRole('button', { name: '返回 AI 对话' }).click();

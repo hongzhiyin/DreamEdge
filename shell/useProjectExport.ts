@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ExportMode, ExportRequest, ExportStatus, ProjectExport } from '../shared/contracts';
+import type { ExportRequest, ExportStatus, ProjectExport } from '../shared/contracts';
 
 export function useProjectExport(projectId: string) {
   const [status, setStatus] = useState<ExportStatus>(); const [record, setRecord] = useState<ProjectExport>();
@@ -21,11 +21,11 @@ export function useProjectExport(projectId: string) {
     };
     timer = setTimeout(() => { void poll(); }, 500); return () => { cancelled = true; clearTimeout(timer); };
   }, [projectId, record?.id, record?.status]);
-  async function run(operation: 'start' | 'cancel' | 'reveal', mode: ExportMode = 'standard') {
+  async function run(operation: 'start' | 'cancel' | 'reveal') {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError('');
     try {
-      const request: ExportRequest = operation === 'start' ? { operation, projectId, mode } : { operation, projectId, exportId: record!.id };
+      const request: ExportRequest = operation === 'start' ? { operation, projectId } : { operation, projectId, exportId: record!.id };
       const result = await window.dreamEdge.exportApp(request);
       if (alive.current && result && 'status' in result) setRecord(result as ProjectExport);
     } catch (error) { if (alive.current) setError(error instanceof Error ? error.message : '导出操作失败。'); }

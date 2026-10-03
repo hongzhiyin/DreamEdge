@@ -2,7 +2,6 @@ export interface WindowBounds { x: number; y: number; width: number; height: num
 export interface ProjectWindow {
   id: string; project: { id: string; name: string; rootDirectory: string } | null;
   recoveryError: string | null;
-  embedded?: boolean;
 }
 export type WindowRequest =
   | { operation: 'current' }

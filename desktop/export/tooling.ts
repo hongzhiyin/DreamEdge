@@ -5,7 +5,7 @@ import { copyResource } from './resources';
 import { hash } from '../workspace/paths';
 
 /** Extract only the installed packing library graph; worker tools run outside ASAR. */
-export async function prepareTooling(root: string, signal: AbortSignal, installed?: string) {
+export async function prepareTooling(root: string, signal: AbortSignal) {
   const tooling = join(root, 'tooling'); const copied = new Map<string, string>();
   async function locate(name: string, require: NodeJS.Require) {
     try { return dirname(require.resolve(`${name}/package.json`)); } catch {}
@@ -26,6 +26,6 @@ export async function prepareTooling(root: string, signal: AbortSignal, installe
     }
     return target;
   }
-  const target = await copy('app-builder-lib', createRequire(installed ? join(installed, 'package.json') : __filename));
+  const target = await copy('app-builder-lib', createRequire(__filename));
   await mkdir(join(tooling, 'node_modules'), { recursive: true }); await symlink(relative(join(tooling, 'node_modules'), target), join(tooling, 'node_modules/app-builder-lib'));
 }

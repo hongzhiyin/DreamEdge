@@ -23,13 +23,7 @@ export function validateManifest(value: unknown): AppManifest {
   }
   containedPath('/application', item.renderer);
   containedPath('/application', item.entry);
-  if (item.development !== undefined) {
-    const value = item.development;
-    if (!value || !item.capabilities.includes('workspace') || value.project !== 'dist/development'
-      || typeof value.frameworkVersion !== 'string' || !/^\d+\.\d+\.\d+$/.test(value.frameworkVersion)
-      || typeof value.frameworkAppId !== 'string' || !/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9-]+){2,}$/.test(value.frameworkAppId)
-      || value.frameworkAppId === item.appId) throw new Error('开发版应用描述无效。');
-  }
+  if ('development' in item) throw new Error('开发版业务 App 已停用，请在 DreamEdge 中打开现有业务工程；原工程不会被删除。');
   if (item.services !== undefined && (!item.services || Array.isArray(item.services) || typeof item.services !== 'object')) throw new Error('服务列表无效。');
   for (const [id, service] of Object.entries(item.services ?? {})) {
     if (!/^[a-z][a-z0-9-]{0,79}$/.test(id) || !service || typeof service.entry !== 'string'

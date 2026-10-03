@@ -6,10 +6,9 @@ import type { WindowContext } from './context';
 
 export class ProjectActions {
   private readonly pending = new Set<number>();
-  constructor(private readonly windows: ProjectWindows, private readonly bound = false) {}
+  constructor(private readonly windows: ProjectWindows) {}
   async execute(input: unknown, parent: BrowserWindow | null, context?: WindowContext): Promise<ProjectWindow | null> {
     if (input !== 'new' && input !== 'createProject' && input !== 'openProject' && input !== 'revealProject') throw new Error('不支持的工程操作。');
-    if (this.bound && input !== 'revealProject') throw new Error('本应用只开发自身工程，请在 DreamEdge 中管理其他工程。');
     const operation: ProjectAction = input;
     const key = parent?.id ?? 0;
     if (this.pending.has(key)) throw new Error('工程操作正在进行，请稍后再试。');

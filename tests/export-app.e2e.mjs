@@ -16,7 +16,7 @@ async function launchApp(path) {
   apps.push(app); const page = await app.firstWindow(); page.setDefaultTimeout(20000); await page.locator('iframe').waitFor();
   const manifest = await page.evaluate(() => window.dreamEdge.info()); profiles.push(await app.evaluate(({ app }) => app.getPath('userData')));
   assert.equal(await page.getByRole('button', { name: '打开开发侧栏' }).count(), 0);
-  await assert.rejects(page.evaluate(id => window.dreamEdge.exportApp({ operation: 'current', projectId: id }), 'foreign'), /未启用 App 导出/);
+  await assert.rejects(page.evaluate(id => window.dreamEdge.exportApp({ operation: 'current', projectId: id }), 'foreign'), /不提供工程开发/);
   return { app, page, manifest, profile: profiles.at(-1) };
 }
 try {

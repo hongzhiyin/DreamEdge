@@ -19,12 +19,7 @@ async function run(input: ExportInput & { template: string; electronVersion: str
   const options: PackagerOptions & { publish: 'never' } = { projectDir: join(input.root, 'application'), targets: Platform.MAC.createTarget(['dir', 'zip'], process.arch === 'arm64' ? Arch.arm64 : Arch.x64),
     publish: 'never' as const, config: { appId: input.manifest.appId, productName: input.manifest.name, electronVersion: input.electronVersion,
       electronDist: templateRoot, electronBranding: { projectName: 'electron', productName },
-      directories: { output }, files: ['dist/**/*', 'package.json',
-        { from: 'node_modules/esbuild', to: 'node_modules/esbuild', filter: ['**/*'] },
-        { from: `node_modules/@esbuild/${process.platform}-${process.arch}`, to: `node_modules/@esbuild/${process.platform}-${process.arch}`, filter: ['**/*'] },
-        ...(input.manifest.development ? ['dist/framework/tooling/node_modules/**/*', 'dist/framework/tooling/packages/*/node_modules/**/*'] : []),
-      ], beforeBuild: async () => false,
-      asar: true, asarUnpack: ['node_modules/esbuild/**', 'node_modules/@esbuild/**'],
+      directories: { output }, files: ['dist/**/*', 'package.json'], beforeBuild: async () => false, asar: true,
       mac: { identity: '-', notarize: false, target: ['dir', 'zip'], category: 'public.app-category.utilities' },
       artifactName: '${productName}-${version}-mac-${arch}.${ext}',
     } };

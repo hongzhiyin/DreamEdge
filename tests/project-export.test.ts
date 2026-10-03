@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdir, readFile, writeFile, access, symlink } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ProjectExport, ExportStatus, WorkspaceProject } from '../shared/contracts';
 import { exportFixture } from './export-fixture';
@@ -10,20 +10,19 @@ import { compile } from '../desktop/build/compiler';
 import { exportedManifest } from '../desktop/export/stage';
 import { hash } from '../desktop/workspace/paths';
 
-test('export includes source, framework packages and app identity while excluding connection, history and data', async () => {
+test('export publishes runtime products only and preserves original source, identity, Git and configuration', async () => {
   const f = await exportFixture();
   try {
     await writeFile(join(f.project.rootDirectory, '.dreamedge/model.json'), 'fixture-private-key'); await writeFile(join(f.project.dataDirectory, 'data.txt'), 'business-data');
     await f.workspace.execute({ operation: 'save', projectId: f.project.definition.id, appName: 'Standalone Fixture', appId: 'io.example.fixture', version: '1.2.3' });
     const record = await f.exports.execute({ operation: 'start', projectId: f.project.definition.id, directory: join(f.root, 'output') }) as ProjectExport;
     const result = await f.settled(record.id); assert.equal(result.status, 'succeeded', result.error ?? '');
-    const source = join(result.directory, '工程'); const definition = JSON.parse(await readFile(join(source, '.dreamedge/project.json'), 'utf8'));
-    assert.equal(definition.name, 'Fixture'); assert.equal(definition.appName, 'Standalone Fixture');
-    assert.equal(JSON.parse(await readFile(join(result.directory, 'export.json'), 'utf8')).application, 'Standalone Fixture');
-    assert.notEqual(definition.id, f.project.definition.id); assert.equal(definition.appId, 'io.example.fixture'); assert.equal(definition.version, '1.2.3');
-    assert.match(await readFile(join(source, 'src/main.ts'), 'utf8'), /HelloWorld/);
-    assert.equal(await readFile(join(source, 'framework/dreamedge-sdk-0.1.1.tgz'), 'utf8'), 'framework-sdk');
-    for (const path of ['.dreamedge/model.json', '.git', 'data', 'sessions', 'build']) await assert.rejects(access(join(source, path)));
+    for (const path of ['工程', 'framework', 'export.json']) await assert.rejects(access(join(result.directory, path)));
+    const original = JSON.parse(await readFile(join(f.project.rootDirectory, '.dreamedge/project.json'), 'utf8'));
+    assert.equal(original.id, f.project.definition.id); assert.equal(original.appName, 'Standalone Fixture');
+    assert.equal(await readFile(join(f.project.rootDirectory, '.dreamedge/model.json'), 'utf8'), 'fixture-private-key');
+    assert.equal(await readFile(join(f.project.dataDirectory, 'data.txt'), 'utf8'), 'business-data');
+    assert.match(await readFile(join(f.project.sourceDirectory, 'main.ts'), 'utf8'), /HelloWorld/);
     const resumed = new ProjectExports(f.workspace, f.profile, f.framework, f.resources, f.builds, async () => {}, true, async () => {});
     assert.equal(((await resumed.execute({ operation: 'current', projectId: f.project.definition.id })) as ExportStatus).record?.id, record.id); await resumed.dispose();
   } finally { await f.cleanup(); }
