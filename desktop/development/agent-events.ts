@@ -32,7 +32,7 @@ export function agentEvents(access: ModelAccess, guard: (value: unknown) => void
       guard(event.args); const args = event.args as Record<string, unknown>;
       const path = typeof args.name === 'string' ? args.name : event.toolName === 'set_dependencies' ? '完整依赖声明'
         : typeof args.path === 'string' ? args.path : typeof args.directory === 'string' ? args.directory : '';
-      details.set(event.toolCallId, path.slice(0, 200) || (event.toolName === 'propose_changes' ? '候选修改' : '源码目录'));
+      details.set(event.toolCallId, path.slice(0, 200) || (event.toolName === 'propose_changes' ? '候选修改' : '工程目录'));
       await emit({ id: `tool-${event.toolCallId}`, kind: 'tool', tool: event.toolName, label: labels[event.toolName],
         status: 'running', detail: details.get(event.toolCallId), input: JSON.stringify(event.args, null, 2) });
     } else {
@@ -43,6 +43,6 @@ export function agentEvents(access: ModelAccess, guard: (value: unknown) => void
     }
     if (!['list_files', 'read_file', 'search_files', 'resolve_dependency', 'set_dependencies'].includes(event.toolName)) return;
     await access.activity({ id: event.toolCallId, tool: event.toolName as AgentActivity['tool'],
-      status: event.type === 'tool_execution_start' ? 'running' : event.isError ? 'failed' : 'completed', detail: details.get(event.toolCallId) ?? '源码目录' });
+      status: event.type === 'tool_execution_start' ? 'running' : event.isError ? 'failed' : 'completed', detail: details.get(event.toolCallId) ?? '工程目录' });
   };
 }

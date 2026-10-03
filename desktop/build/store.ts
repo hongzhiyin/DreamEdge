@@ -8,6 +8,7 @@ import { directory, ensureDirectory, hash, readText, relativeParts, writeText } 
 import type { BuildOutput } from './types';
 import { publishOutput } from './output';
 import { equalHashes, readSourceTree } from '../workspace/source-tree';
+import { projectFilePath } from '../workspace/project-files';
 
 export function previewUrl(id: string): string { return `dreamedge-preview://b${identifier(id).replaceAll('-', '')}/index.html`; }
 export function buildRoot(project: WorkspaceProject, id: string): string { return join(project.buildDirectory, identifier(id)); }
@@ -43,6 +44,18 @@ export class BuildStore {
         || (record.finishedAt !== null && !Number.isFinite(Date.parse(record.finishedAt)))
         || (record.previewUrl !== null && record.previewUrl !== previewUrl(id))) throw new Error('构建记录无效或不属于当前工程。');
     dependencies(record.dependencies);
+    if (record.projectContextHashes !== undefined && !hashes(record.projectContextHashes)) throw new Error('工程上下文校验记录无效。');
+    if (record.projectChanges !== undefined) {
+      if (!Array.isArray(record.projectChanges) || record.projectChanges.length > 20 || new Set(record.projectChanges.map(item => item?.path)).size !== record.projectChanges.length) throw new Error('工程候选记录无效。');
+      let bytes = 0;
+      for (const change of record.projectChanges) {
+        projectFilePath(change.path);
+        if (change.path === 'src' || change.path.startsWith('src/') || change.content !== null && (typeof change.content !== 'string' || change.content.includes('\0'))
+          || change.expectedHash !== null && !/^[a-f0-9]{64}$/.test(change.expectedHash)) throw new Error('工程候选文件无效。');
+        bytes += Buffer.byteLength(change.content ?? '');
+      }
+      if (bytes > 128 * 1024) throw new Error('工程候选内容过大。');
+    }
     if (record.candidate !== null) { identifier(record.candidate.sessionId); identifier(record.candidate.turnId); }
     if (record.status === 'succeeded' && (!record.previewUrl || !Object.hasOwn(record.outputHashes, 'index.html'))) throw new Error('成功构建缺少预览产物。');
     return record;

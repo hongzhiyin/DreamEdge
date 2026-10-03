@@ -17,7 +17,7 @@ test('a fenced or explanatory final reply is corrected through the proposal tool
     const body = JSON.parse(String(options!.body)); requests.push(body);
     assert.equal(body.text, undefined);
     const tool = body.tools.find((tool: any) => tool.name === 'propose_changes'); assert.equal(tool.strict, true); assert.equal(tool.parameters.additionalProperties, false);
-    if (++step === 1) return response(call('read', 'read_file', { path: 'main.ts' }));
+    if (++step === 1) return response(call('read', 'read_file', { path: 'src/main.ts' }));
     if (step === 2) return response(prose('I will make the change.\n```json\n' + JSON.stringify(proposal) + '\n```'));
     assert.ok(JSON.stringify(body.input).includes('was not submitted as a candidate'));
     return response(call('submit', 'propose_changes', proposal));
@@ -36,14 +36,14 @@ test('pi rejects malformed and unread-file proposals and the model can correct t
   const f = await fixture(async () => proposal); let step = 0;
   const model = new ResponsesModel(configuration, async (_url, options) => {
     const body = JSON.parse(String(options!.body));
-    if (++step === 1) return response(call('malformed', 'propose_changes', { summary: 'Bad', files: [{ path: 'main.ts', content: 7 }] }));
+    if (++step === 1) return response(call('malformed', 'propose_changes', { summary: 'Bad', files: [{ path: 'src/main.ts', content: 7 }] }));
     if (step === 2) {
       assert.ok(body.input.some((item: any) => item.type === 'function_call_output' && String(item.output).includes('schema')));
       return response(call('unread', 'propose_changes', proposal));
     }
     if (step === 3) {
       assert.ok(JSON.stringify(body.input).includes('未提供上下文'));
-      return response(call('read', 'read_file', { path: 'main.ts' }));
+      return response(call('read', 'read_file', { path: 'src/main.ts' }));
     }
     return response(call('submit', 'propose_changes', proposal));
   });

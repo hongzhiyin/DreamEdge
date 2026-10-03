@@ -1,6 +1,7 @@
 import type { CandidateFile, ModelProposal, ProjectContext, ProjectDefinition, WorkspaceProject } from '../../shared/contracts';
 import { dependencies } from '../dependencies/policy';
-import { hash, listSource, readText, relativeParts } from '../workspace/paths';
+import { hash } from '../workspace/paths';
+import { assertProjectFile, listProjectFiles, readProjectFile } from '../workspace/project-files';
 
 export const CONTEXT_LIMIT = 128 * 1024;
 export const CONTEXT_FILES = 64;
@@ -23,8 +24,7 @@ export async function collectContext(project: WorkspaceProject, paths: unknown):
   const files = [];
   let bytes = 0;
   for (const path of paths) {
-    relativeParts(path);
-    const content = await readText(project.sourceDirectory, path);
+    const content = await readProjectFile(project, path);
     bytes += Buffer.byteLength(content);
     if (bytes > CONTEXT_LIMIT) throw new Error('工程上下文不能超过 128 KB。');
     files.push({ path, content, hash: hash(content) });
@@ -39,18 +39,18 @@ export async function validateProposal(project: WorkspaceProject, context: Proje
   const changedDependencies = declared && JSON.stringify(declared) !== JSON.stringify(dependencies(context.definition.dependencies)) ? declared : undefined;
   const summary = shortText(proposal.summary, '模型说明', 4096);
   if (JSON.stringify(modelDefinition(project.definition)) !== JSON.stringify(context.definition)) throw new Error('工程描述已变化，请重新发送请求。');
-  const existing = new Set(await listSource(project.sourceDirectory));
+  const existing = new Set(await listProjectFiles(project));
   const selected = new Map(context.files.map(file => [file.path, file]));
   // A result based on outdated context is never advertised as a valid candidate.
   for (const file of context.files) {
-    if (hash(await readText(project.sourceDirectory, file.path)) !== file.hash) throw new Error('上下文源码已发生变化，请重新发送请求。');
+    if (hash(await readProjectFile(project, file.path)) !== file.hash) throw new Error('上下文工程文件已发生变化，请重新发送请求。');
   }
   const seen = new Set<string>();
   const changes: CandidateFile[] = [];
   let bytes = 0;
   for (const file of proposal.files) {
     if (!file || typeof file !== 'object') throw new Error('模型文件格式无效。');
-    relativeParts(file.path);
+    await assertProjectFile(project, file.path);
     if (seen.has(file.path)) throw new Error('模型返回了重复文件。');
     seen.add(file.path);
     if (file.content !== null && (typeof file.content !== 'string' || file.content.includes('\0'))) throw new Error('模型文件必须是 UTF-8 文本。');

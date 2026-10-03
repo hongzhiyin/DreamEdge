@@ -17,7 +17,7 @@ test('native pi tools stage exact npm dependencies and read-file deletion, apply
   const f = await structureFixture(); const previousFetch = globalThis.fetch; let step = 0;
   const model = new ResponsesModel({ apiKey: 'fixture-structure-secret', model: 'test', baseUrl: 'https://model.example/v1' }, async (_url, options) => {
     const body = JSON.parse(String(options!.body));
-    if (++step === 1) return providerResponse([call('read_file', { path: 'main.ts' }), { ...call('read_file', { path: 'unused.ts' }), call_id: 'read-unused' }]);
+    if (++step === 1) return providerResponse([call('read_file', { path: 'src/main.ts' }), { ...call('read_file', { path: 'src/unused.ts' }), call_id: 'read-unused' }]);
     if (step === 2) return providerResponse([call('resolve_dependency', { name: 'dreamedge-greeting', range: '*' })]);
     if (step === 3) { assert.ok(JSON.stringify(body.input).includes('1.0.0')); return providerResponse([call('set_dependencies', { packages: [{ name: 'dreamedge-greeting', version: '1.0.0' }] })]); }
     return providerResponse([call('propose_changes', structureProposal)]);
@@ -79,7 +79,7 @@ test('broken imports or registry errors preserve removed files, original metadat
     for (const version of ['1.0.0', '9.9.9']) {
       f.provider.generate = async (_input, signal, tools) => {
         await tools!.execute('set_dependencies', { packages: [{ name: 'dreamedge-greeting', version }] }, signal);
-        return { ...structureProposal, files: [{ path: 'main.ts', content: 'const broken: = ;' }, structureProposal.files[1]] };
+        return { ...structureProposal, files: [{ path: 'src/main.ts', content: 'const broken: = ;' }, structureProposal.files[1]] };
       };
       await f.send(true); const turn = await f.settled(); assert.equal(turn.status, 'failed'); assert.equal(turn.applied, false);
       assert.equal(await readFile(join(f.project.rootDirectory, '.dreamedge/project.json'), 'utf8'), before);
@@ -92,7 +92,7 @@ test('staged deletion/dependency candidates reject external edits and dependency
   const f = await structureFixture(false);
   try {
     f.provider.generate = async (_input, signal, tools) => { await tools!.execute('set_dependencies', { packages: [{ name: 'dreamedge-greeting', version: '1.0.0' }] }, signal); return structureProposal; };
-    await f.api.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: 'Stage', paths: ['main.ts', 'unused.ts'] });
+    await f.api.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: 'Stage', paths: ['src/main.ts', 'src/unused.ts'] });
     const turn = await f.settled(); const reference = { sessionId: f.session.id, turnId: turn.id };
     await assert.rejects(f.builds.execute({ operation: 'start', projectId: f.project.definition.id, candidate: reference, dependencies: {} }), /不能覆盖/);
     await writeFile(join(f.project.sourceDirectory, 'unused.ts'), 'user edit');
@@ -103,16 +103,16 @@ test('staged deletion/dependency candidates reject external edits and dependency
 test('deletion requires an existing read file and exact dependency declarations reject unsafe or conflicting inputs', async () => {
   const f = await structureFixture();
   try {
-    const context = await collectContext(f.project, ['unused.ts']);
+    const context = await collectContext(f.project, ['src/unused.ts']);
     for (const path of ['main.ts', 'missing.ts', '../outside', '.dreamedge/model.json']) {
       await assert.rejects(validateProposal(f.project, context, { summary: 'Delete', files: [{ path, content: null }] }));
     }
     const { dependencyList } = await import('../desktop/development/dependency-tools');
     for (const packages of [[{ name: 'react', version: '*' }], [{ name: 'react', version: 'file:/tmp/pkg' }],
       [{ name: 'react', version: '1.0.0' }, { name: 'react', version: '2.0.0' }], [{ name: '../unsafe', version: '1.0.0' }]]) assert.throws(() => dependencyList(packages));
-    const valid = await validateProposal(f.project, context, { summary: 'Delete', files: [{ path: 'unused.ts', content: null }] });
+    const valid = await validateProposal(f.project, context, { summary: 'Delete', files: [{ path: 'src/unused.ts', content: null }] });
     assert.equal(valid.changes[0].content, null); assert.ok(valid.changes[0].expectedHash);
     await writeFile(join(f.project.sourceDirectory, 'unused.ts'), 'changed');
-    await assert.rejects(validateProposal(f.project, context, { summary: 'Delete', files: [{ path: 'unused.ts', content: null }] }), /变化/);
+    await assert.rejects(validateProposal(f.project, context, { summary: 'Delete', files: [{ path: 'src/unused.ts', content: null }] }), /变化/);
   } finally { await f.cleanup(); }
 });

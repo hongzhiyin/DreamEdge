@@ -3,6 +3,7 @@ import { recordEvent, finishEvents } from './timeline';
 import { BuildStore } from '../build/store';
 import { sourceSnapshot } from '../build/snapshot';
 import { equalHashes } from '../workspace/source-tree';
+import { fileOrNull } from '../changes/project-files';
 
 export async function settleInterruptedTurn(project: WorkspaceProject, turn: DevelopmentTurn): Promise<void> {
   let applied = false;
@@ -13,6 +14,7 @@ export async function settleInterruptedTurn(project: WorkspaceProject, turn: Dev
       const { savedAt: _candidateTime, ...expected } = candidate;
       const { savedAt: _currentTime, ...actual } = project.definition;
       applied = build.status === 'succeeded' && equalHashes(current.hashes, build.candidateHashes) && JSON.stringify(expected) === JSON.stringify(actual);
+      for (const change of build.projectChanges ?? []) if (await fileOrNull(project.rootDirectory, change.path) !== change.content) applied = false;
     } catch {}
   }
   turn.status = applied ? 'completed' : 'interrupted'; turn.applied = applied; turn.phase = 'complete'; turn.finishedAt = new Date().toISOString();

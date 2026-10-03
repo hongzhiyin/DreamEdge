@@ -7,6 +7,8 @@ export interface CandidateBuild {
   dependencies: Record<string, string>; candidateDefinitionHash: string; phase: 'resolving' | 'installing' | 'compiling' | 'complete';
   sourceHashes: Record<string, string>; candidateHashes: Record<string, string>; outputHashes: Record<string, string>;
   logs: BuildLog[]; previewUrl: string | null;
+  projectChanges?: import('./development.js').CandidateFile[];
+  projectContextHashes?: Record<string, string>;
 }
 export type CandidateBuildRequest =
   | { operation: 'start'; projectId: string; candidate?: CandidateReference; dependencies?: Record<string, string> }

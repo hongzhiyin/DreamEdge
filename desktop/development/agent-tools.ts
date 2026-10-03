@@ -5,11 +5,11 @@ import { proposalSchema, type ModelAccess } from './model';
 
 export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExpose: (value: unknown) => void,
   submitted: (proposal: Record<string, unknown>) => void, commitAllowed = false): AgentTool[] {
-  const directory = Type.String({ maxLength: 1024, description: 'Directory relative to src; empty string for the source root.' });
+  const directory = Type.String({ maxLength: 1024, description: 'Directory relative to the business project root; empty string for the project root.' });
   const definitions: { name: string; label: string; description: string; parameters: TSchema }[] = [
-    { name: 'list_files', label: '查看目录', description: 'List source paths in the current project, 100 per page. No file contents.',
+    { name: 'list_files', label: '查看目录', description: 'List ordinary file paths relative to the business project root, 100 per page. No file contents.',
       parameters: Type.Object({ directory, offset: Type.Integer({ minimum: 0 }) }, { additionalProperties: false }) },
-    { name: 'read_file', label: '读取文件', description: 'Read the complete UTF-8 source file before modifying it. Path is relative to src.',
+    { name: 'read_file', label: '读取文件', description: 'Read a complete UTF-8 project file before modifying it. Path is relative to the business project root, e.g. .gitignore or src/main.ts.',
       parameters: Type.Object({ path: Type.String({ minLength: 1, maxLength: 1024 }) }, { additionalProperties: false }) },
     { name: 'search_files', label: '搜索源码', description: 'Find literal text in source files, returning paths and line excerpts. Not a regular expression.',
       parameters: Type.Object({ directory, query: Type.String({ minLength: 1, maxLength: 160 }) }, { additionalProperties: false }) },
@@ -17,7 +17,7 @@ export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExp
       parameters: Type.Object({ name: Type.String({ minLength: 1, maxLength: 180 }), range: Type.String({ minLength: 1, maxLength: 100 }) }, { additionalProperties: false }) },
     { name: 'set_dependencies', label: '声明依赖', description: 'Stage the COMPLETE direct dependency list at exact npm versions. Preserve required current dependencies. Empty packages removes all. Changes apply only with a successful final propose_changes build; no install scripts run.',
       parameters: Type.Object({ packages: Type.Array(Type.Object({ name: Type.String({ minLength: 1, maxLength: 180 }), version: Type.String({ minLength: 1, maxLength: 100 }) }, { additionalProperties: false }), { maxItems: 20 }) }, { additionalProperties: false }) },
-    { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate source file contents. Read existing files first. Set content: null to delete a read file. Use files: [] for dependency-only changes or a reply without edits. This stages a proposal, never saves source.',
+    { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate project file contents. Read existing files first. Set content: null to delete a read file. Use files: [] for dependency-only changes or a reply without edits. This stages a proposal, never saves source.',
       parameters: Type.Unsafe(proposalSchema) },
   ];
   if (commitAllowed) definitions.push({ name: 'git_commit', label: '提交 Git', description: 'Queue a Git commit after this turn is successfully built and applied. Provide a concise message, then finish using propose_changes. No remote push.',

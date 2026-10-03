@@ -4,6 +4,7 @@ import { DEFINITION_FILE } from '../workspace/definition';
 import { directory, ensureDirectory, hash, readText, writeText } from '../workspace/paths';
 import { equalHashes } from '../workspace/source-tree';
 import { retireTransaction, TRANSACTION, treeOrNull, validateJournal } from './journal';
+import { installProjectEdits, verifyProjectEdits } from './project-files';
 
 export async function recoverTransaction(root: string, dataDirectory: string): Promise<void> {
   const transaction = join(root, TRANSACTION);
@@ -15,6 +16,7 @@ export async function recoverTransaction(root: string, dataDirectory: string): P
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
   }
   const metadata = await readText(root, DEFINITION_FILE);
+  await verifyProjectEdits(root, journal.projectEdits);
   if (![journal.beforeDefinition, journal.afterDefinition].some(value => hash(value) === hash(metadata))) {
     throw new Error('保存中断后工程描述或历史被外部修改；文件已保留，请核对事务目录。');
   }
@@ -25,6 +27,7 @@ export async function recoverTransaction(root: string, dataDirectory: string): P
     throw new Error('中断后源码被外部修改；不自动覆盖，事务备份已保留。');
   }
   if (journal.phase === 'committed') {
+    await verifyProjectEdits(root, journal.projectEdits, 'after');
     if (!current || !equalHashes(current.hashes, journal.afterHashes)) throw new Error('已提交版本的源码无法核对；文件已保留。');
     await writeText(root, DEFINITION_FILE, journal.afterDefinition);
   } else {
@@ -40,6 +43,7 @@ export async function recoverTransaction(root: string, dataDirectory: string): P
       throw new Error('无法核对保存前的源码；事务备份已保留。');
     }
     await writeText(root, DEFINITION_FILE, journal.beforeDefinition);
+    await installProjectEdits(root, journal.projectEdits, 'before');
   }
   await retireTransaction(root, journal.operationId);
 }

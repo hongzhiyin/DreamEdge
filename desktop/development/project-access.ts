@@ -1,10 +1,11 @@
 import type { ProjectContext, WorkspaceProject } from '../../shared/contracts';
 import { dependencyList, resolveDependency } from './dependency-tools';
 import { WorkspaceApi } from '../workspace/api';
-import { hash, listSource, readText, relativeParts } from '../workspace/paths';
+import { hash, relativeParts } from '../workspace/paths';
+import { listProjectFiles, readProjectFile } from '../workspace/project-files';
 import { CONTEXT_FILES, CONTEXT_LIMIT, modelDefinition, shortText, validateProposal } from './context';
 
-/** All paths are relative to src; the model never receives a host filesystem path. */
+/** Paths are relative to the business project; host paths and private files stay hidden. */
 export class ProjectAccess {
   commitMessage?: string;
   dependencies?: Record<string, string>;
@@ -38,7 +39,7 @@ export class ProjectAccess {
       const prefix = this.prefix(args.directory);
       if (name === 'list_files') {
         if (!Number.isSafeInteger(args.offset) || (args.offset as number) < 0) throw new Error('文件列表起点无效。');
-        const files = (await listSource(project.sourceDirectory)).filter(path => path.startsWith(prefix));
+        const files = (await listProjectFiles(project)).filter(path => path.startsWith(prefix));
         const offset = args.offset as number; signal.throwIfAborted();
         const result = { files: files.slice(offset, offset + 100), total: files.length, nextOffset: offset + 100 < files.length ? offset + 100 : null };
         beforeExpose(result); return result;
@@ -55,7 +56,7 @@ export class ProjectAccess {
     relativeParts(value); return (value as string) + '/';
   }
   private async capture(project: WorkspaceProject, path: string, signal: AbortSignal, beforeExpose: (value: unknown) => void) {
-    const content = await readText(project.sourceDirectory, path); signal.throwIfAborted();
+    const content = await readProjectFile(project, path); signal.throwIfAborted();
     const previous = this.context.files.find(file => file.path === path); const checksum = hash(content);
     beforeExpose({ path, content, hash: checksum });
     if (previous && previous.hash !== checksum) throw new Error('已读取的源码发生变化，请重新发送请求。');
@@ -68,8 +69,9 @@ export class ProjectAccess {
   }
   private async search(project: WorkspaceProject, prefix: string, query: string, signal: AbortSignal, beforeExpose: (value: unknown) => void) {
     const matches: { path: string; line: number; text: string }[] = []; let bytes = 0;
-    for (const path of (await listSource(project.sourceDirectory)).filter(path => path.startsWith(prefix))) {
-      signal.throwIfAborted(); const content = await readText(project.sourceDirectory, path);
+    for (const path of (await listProjectFiles(project)).filter(path => path.startsWith(prefix))) {
+      signal.throwIfAborted(); let content: string;
+      try { content = await readProjectFile(project, path); } catch { continue; }
       bytes += Buffer.byteLength(content);
       if (bytes > 8 * 1024 * 1024) return { matches, truncated: true };
       if (!content.includes(query)) continue;

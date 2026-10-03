@@ -23,7 +23,7 @@ async function settled(api: CandidateBuildApi, id: string, buildId: string) {
   throw new Error('Dependency build did not settle');
 }
 test('dependency candidate is isolated, locks on confirmation, rebuilds offline and restores lock with source versions', async () => {
-  const f = await fixture(async () => ({ summary: 'Dependency greeting', files: [{ path: 'main.ts',
+  const f = await fixture(async () => ({ summary: 'Dependency greeting', files: [{ path: 'src/main.ts',
     content: "import { message } from 'greeting';document.body.textContent=message;" }] })); const registry = await packageRegistry();
   await registry.add('greeting', '1.0.0', { 'index.js': "import { suffix } from 'shared';export const message='HelloWorld'+suffix;" }, { shared: '^1.0.0' });
   await registry.add('shared', '1.0.0', { 'index.js': "export const suffix=' dependencies';" });

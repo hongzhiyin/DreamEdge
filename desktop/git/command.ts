@@ -16,11 +16,12 @@ export async function git(root: string, args: string[], signal?: AbortSignal): P
     }
   }
   try {
-    const { stdout } = await execute('git', ['--literal-pathspecs', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
+    const { stdout } = await execute('git', [...(args[0] === 'check-ignore' ? [] : ['--literal-pathspecs']), '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
       '-c', 'commit.gpgSign=false', '-c', 'core.quotePath=false', ...filters, '-C', root, ...args], { env, signal,
         timeout: ['fetch', 'push', 'ls-remote'].includes(args[0]) ? 120000 : 30000, maxBuffer: 8 * 1024 * 1024, encoding: 'buffer' });
     return new TextDecoder('utf-8', { fatal: true }).decode(stdout);
   } catch (error) {
+    if (args[0] === 'check-ignore' && (error as { code?: unknown }).code === 1) return '';
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new Error('此设备未安装 Git，请安装 Git 后重新打开工程。');
     if (signal?.aborted) throw signal.reason;
     if (['fetch', 'push', 'ls-remote'].includes(args[0])) throw new Error('远程 Git 操作失败，请检查网络、仓库权限和本机 Git/SSH 凭据；推送被拒绝时请先拉取。');

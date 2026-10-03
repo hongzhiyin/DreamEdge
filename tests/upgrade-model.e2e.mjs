@@ -7,10 +7,11 @@ export async function upgradeModel(application, greeting) {
       if (new Headers(options.headers).get('Authorization') !== 'Bearer fixture-upgrade-key') throw new Error('Upgrade credential missing');
       const body = JSON.parse(options.body);
       if (JSON.stringify(body).includes('fixture-upgrade-key')) throw new Error('Credential leaked into model input');
+      const path = JSON.stringify(body).includes('BUSINESS PROJECT ROOT') ? 'src/main.ts' : 'main.ts';
       const read = ++requests % 2 === 1;
       const item = { id: `fc_upgrade_${requests}`, type: 'function_call', call_id: `call_upgrade_${requests}`,
-        name: read ? 'read_file' : 'propose_changes', arguments: JSON.stringify(read ? { path: 'main.ts' }
-          : { summary: `已更新为 ${greeting}。`, files: [{ path: 'main.ts', content: `document.getElementById('root')!.textContent='${greeting}';\n` }] }) };
+        name: read ? 'read_file' : 'propose_changes', arguments: JSON.stringify(read ? { path }
+          : { summary: `已更新为 ${greeting}。`, files: [{ path, content: `document.getElementById('root')!.textContent='${greeting}';\n` }] }) };
       const events = [
         { type: 'response.created', response: { id: 'resp_upgrade', status: 'in_progress' } },
         { type: 'response.output_item.added', output_index: 0, item: { ...item, arguments: '' } },

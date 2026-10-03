@@ -44,11 +44,11 @@ async function mockModel() {
       const lastTool = functionCalls.at(-1)?.name;
       const next = outputs.length === 0 ? ['list_files', { directory: '', offset: 0 }]
         : lastTool === 'list_files' ? ['search_files', { directory: '', query: globalThis.nextGreeting === 'Hello Agent' ? 'Hello AI' : 'HelloWorld' }]
-        : lastTool === 'search_files' ? ['read_file', { path: 'main.ts' }]
+        : lastTool === 'search_files' ? ['read_file', { path: 'src/main.ts' }]
         : lastTool === 'read_file' && body.tools.some(tool => tool.name === 'git_commit') ? ['git_commit', { message: 'AI second edit' }] : null;
       if (next) return emit([{ type: 'function_call', call_id: `call_${globalThis.modelRequests.length}`, name: next[0], arguments: JSON.stringify(next[1]) }]);
       const greeting = globalThis.nextGreeting || 'Hello AI';
-      const result = { summary: `已将问候语改为 ${greeting}。`, files: [{ path: 'main.ts', content: `document.getElementById('root')!.textContent = '${greeting}';\n` }] };
+      const result = { summary: `已将问候语改为 ${greeting}。`, files: [{ path: 'src/main.ts', content: `document.getElementById('root')!.textContent = '${greeting}';\n` }] };
       if (greeting === 'Hello Agent' && !globalThis.malformedFinalSent) {
         globalThis.malformedFinalSent = true;
         return emit([{ type: 'message', content: [{ type: 'output_text', text: '说明：已完成。\n```json\n' + JSON.stringify(result) + '\n```' }] }]);
@@ -104,8 +104,8 @@ try {
   await chat.getByRole('button', { name: '查看第 1 轮修改 · 1 个文件' }).click();
   const candidate = chat.getByRole('region', { name: '修改记录' }); await candidate.waitFor();
   await candidate.locator('.ai-file-change > summary').click();
-  assert.match(await candidate.getByLabel('修改差异 main.ts', { exact: true }).textContent(), /HelloWorld/);
-  assert.match(await candidate.getByLabel('修改差异 main.ts', { exact: true }).textContent(), /Hello AI/);
+  assert.match(await candidate.getByLabel('修改差异 src/main.ts', { exact: true }).textContent(), /HelloWorld/);
+  assert.match(await candidate.getByLabel('修改差异 src/main.ts', { exact: true }).textContent(), /Hello AI/);
   assert.match(await readFile(join(project.sourceDirectory, 'main.ts'), 'utf8'), /Hello AI/);
   const request = await application.evaluate(() => globalThis.modelRequests[0]);
   assert.ok(!JSON.stringify(request.input).includes(before)); assert.ok(!JSON.stringify(request.input).includes(source));
@@ -131,7 +131,7 @@ try {
   await chat.getByRole('button', { name: '查看第 2 轮修改 · 1 个文件' }).click();
   const second = chat.getByRole('region', { name: '修改记录' });
   await second.locator('.ai-file-change > summary').click();
-  assert.match(await second.getByLabel('修改差异 main.ts', { exact: true }).textContent(), /Hello AI/);
+  assert.match(await second.getByLabel('修改差异 src/main.ts', { exact: true }).textContent(), /Hello AI/);
   await page.frameLocator('iframe').getByText('Hello Agent', { exact: true }).waitFor();
   assert.equal(await chat.getByText(/^已提交 Git：/).count(), 0);
   await gitBar.getByRole('button', { name: '提交', exact: true }).click();

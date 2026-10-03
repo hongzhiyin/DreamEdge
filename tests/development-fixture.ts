@@ -16,7 +16,7 @@ export async function fixture(generate: (input: ModelInput, signal: AbortSignal)
   const project = await workspace.execute({ operation: 'create', directory: join(root, 'project'), name: 'HelloWorld' }) as WorkspaceProject;
   const session = await api.execute({ operation: 'create', projectId: project.definition.id, title: 'Test session' }) as DevelopmentSession;
   const get = () => api.execute({ operation: 'get', projectId: project.definition.id, sessionId: session.id }) as Promise<DevelopmentSession>;
-  const send = (prompt = 'Change the greeting', paths = ['main.ts']) => api.execute({ operation: 'send', projectId: project.definition.id, sessionId: session.id, prompt, paths });
+  const send = (prompt = 'Change the greeting', paths = ['src/main.ts']) => api.execute({ operation: 'send', projectId: project.definition.id, sessionId: session.id, prompt, paths });
   async function settled() {
     const deadline = Date.now() + 8000;
     while (Date.now() < deadline) {
@@ -34,4 +34,4 @@ export function deferred<T>() {
   const promise = new Promise<T>(complete => { resolve = complete; });
   return { promise, resolve };
 }
-export const proposal = { summary: 'Update greeting', files: [{ path: 'main.ts', content: "document.body.textContent = 'Updated';\n" }] };
+export const proposal = { summary: 'Update greeting', files: [{ path: 'src/main.ts', content: "document.body.textContent = 'Updated';\n" }] };

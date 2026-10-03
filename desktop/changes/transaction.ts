@@ -6,6 +6,7 @@ import { ensureDirectory, readText, writeText } from '../workspace/paths';
 import { equalHashes, readSourceTree, writeSourceTree } from '../workspace/source-tree';
 import { retireTransaction, type SaveJournal, TRANSACTION } from './journal';
 import { recoverTransaction } from './recovery';
+import { installProjectEdits, verifyProjectEdits } from './project-files';
 
 export type SavePhase = 'prepared' | 'source-backed-up' | 'source-installed' | 'metadata-installed' | 'committed';
 export type SaveHook = (phase: SavePhase) => Promise<void>;
@@ -19,6 +20,7 @@ export async function commitTransaction(project: WorkspaceProject, dataDirectory
     await writeText(transaction, 'journal.json', JSON.stringify(journal));
     await writeSourceTree(await ensureDirectory(transaction, 'next'), files, signal);
     await hook('prepared'); signal.throwIfAborted();
+    await verifyProjectEdits(project.rootDirectory, journal.projectEdits, 'before');
     const current = await readSourceTree(project.sourceDirectory);
     if (!equalHashes(current.hashes, journal.beforeHashes)
         || await readText(project.rootDirectory, DEFINITION_FILE) !== journal.beforeDefinition) {
@@ -27,6 +29,7 @@ export async function commitTransaction(project: WorkspaceProject, dataDirectory
     // After this point cancellation cannot interrupt the swap; finish or roll back it.
     await rename(project.sourceDirectory, join(transaction, 'previous')); swapped = true; await hook('source-backed-up');
     await rename(join(transaction, 'next'), project.sourceDirectory); await hook('source-installed');
+    await installProjectEdits(project.rootDirectory, journal.projectEdits, 'after');
     await writeText(project.rootDirectory, DEFINITION_FILE, journal.afterDefinition); await hook('metadata-installed');
     await writeText(transaction, 'journal.json', JSON.stringify({ ...journal, phase: 'committed' }));
     committed = true; await hook('committed');

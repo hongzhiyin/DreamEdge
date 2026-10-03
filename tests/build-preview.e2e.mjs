@@ -10,14 +10,14 @@ export async function verifyBuildPreview(application, page, project) {
   const session = await page.evaluate(projectId => window.dreamEdge.development({ operation: 'create', projectId, title: 'Candidate fixture' }), projectId);
   const id = randomUUID(); const now = new Date().toISOString();
   const turn = { id, prompt: 'Change greeting', startedAt: now, finishedAt: now, status: 'completed', summary: 'Candidate greeting', error: null,
-    context: [{ path: 'main.ts', hash: original.hash }], changes: [{ path: 'main.ts', expectedHash: original.hash,
+    context: [{ path: 'src/main.ts', hash: original.hash }], changes: [{ path: 'src/main.ts', expectedHash: original.hash,
       content: "document.body.textContent = 'Candidate HelloWorld';" }] };
   const sessionRoot = join(project.sessionsDirectory, session.id);
   await mkdir(join(sessionRoot, id));
   await writeFile(join(sessionRoot, id, 'turn.json'), JSON.stringify(turn));
   const current = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project.definition;
   const { dependencyLock: _lock, ...definition } = current;
-  await writeFile(join(sessionRoot, id, 'request-context.json'), JSON.stringify({ definition, files: [{ path: 'main.ts', content: original.content, hash: original.hash }] }));
+  await writeFile(join(sessionRoot, id, 'request-context.json'), JSON.stringify({ definition, files: [{ path: 'src/main.ts', content: original.content, hash: original.hash }] }));
   const metadata = JSON.parse(await readFile(join(sessionRoot, 'session.json'), 'utf8'));
   await writeFile(join(sessionRoot, 'session.json'), JSON.stringify({ ...metadata, turnIds: [id] }));
   const record = await page.evaluate(({ projectId, sessionId, turnId }) => window.dreamEdge.build({ operation: 'start', projectId,

@@ -11,6 +11,7 @@ import { BuildFailure, type BuildEngine, type BuildInput } from './types';
 import { Capacity } from '../windows/capacity';
 import { dependencies } from '../dependencies/policy';
 import { dependencyPreparer, type DependencyPreparer } from '../dependencies/prepare';
+import { assertProjectChanges, assertProjectContext } from '../changes/project-files';
 
 type BuildObserver = (record: CandidateBuild) => Promise<void>;
 interface Job { controller: AbortController; done: Promise<void>; release: () => void; progress?: BuildObserver }
@@ -74,7 +75,7 @@ export class CandidateBuildApi {
       if ([...this.jobs.values()].length >= 2) throw new Error('当前最多同时运行两个候选构建。');
       const snapshot = await sourceSnapshot(project);
       const input = { files: structuredClone(snapshot.files) };
-      const candidateDependencies = await applyCandidate(project, input.files, request.candidate);
+      const candidate = await applyCandidate(project, input.files, request.candidate); const candidateDependencies = candidate.dependencies;
       if (candidateDependencies !== undefined && request.dependencies !== undefined) throw new Error('模型候选的依赖由候选记录确定，不能覆盖。');
       const declared = dependencies(candidateDependencies ?? request.dependencies ?? project.definition.dependencies);
       assertSnapshot(input);
@@ -82,6 +83,7 @@ export class CandidateBuildApi {
         candidate: request.candidate ?? null, status: 'running', startedAt: new Date().toISOString(), finishedAt: null,
         definitionHash: snapshot.definitionHash, dependencies: declared, phase: 'resolving',
         candidateDefinitionHash: hash(JSON.stringify(project.definition)), sourceHashes: snapshot.hashes, candidateHashes: treeHashes(input.files), outputHashes: {}, previewUrl: null,
+        projectChanges: candidate.projectChanges, projectContextHashes: candidate.projectContextHashes,
         logs: [{ level: 'info', message: '正在构建独立候选源码副本；源工程保持不变。' }] };
       const release = this.capacity.acquire();
       try {
@@ -107,6 +109,7 @@ export class CandidateBuildApi {
       await this.workspace.withProject(project.definition.id, async current => {
         signal.throwIfAborted();
         await assertSource(current, record.sourceHashes, record.definitionHash);
+        await assertProjectChanges(current, record.projectChanges); await assertProjectContext(current, record.projectContextHashes);
         record.outputHashes = await this.store.publish(current, record.id, output);
         signal.throwIfAborted();
         record.logs = [...record.logs, ...output.logs.slice(0, 40)].slice(-64); record.status = 'succeeded'; record.phase = 'complete'; record.previewUrl = previewUrl(record.id);

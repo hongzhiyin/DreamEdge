@@ -46,7 +46,7 @@ test('credential guards reject session titles and prompts before those values re
   try {
     await settings.execute({ operation: 'save', apiKey: secret, model: 'fixture-model', baseUrl: 'https://model.example/v1', projectId: f.project.definition.id, expectedRevision: EMPTY_REVISION });
     await assert.rejects(api.execute({ operation: 'create', projectId: f.project.definition.id, title: secret }), /凭据/);
-    await assert.rejects(api.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: secret, paths: ['main.ts'] }), /凭据/);
+    await assert.rejects(api.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: secret, paths: ['src/main.ts'] }), /凭据/);
     const session = await f.get(); assert.equal(session.turns.length, 0); assert.ok(!JSON.stringify(session).includes(secret));
   } finally { await api.dispose(); await settings.dispose(); await f.cleanup(); }
 });

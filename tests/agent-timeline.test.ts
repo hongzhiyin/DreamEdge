@@ -21,7 +21,7 @@ test('pi response summaries, messages and tool calls are persisted in order with
       return providerResponse([
         { type: 'reasoning', id: 'reasoning', encrypted_content: 'opaque-signature-never-display', summary: [{ type: 'summary_text', text: '先读取源码，再修改问候语。' }] },
         { type: 'message', content: [{ type: 'output_text', text: '我会先检查当前页面。' }] },
-        call('read', 'read_file', { path: 'main.ts' }),
+        call('read', 'read_file', { path: 'src/main.ts' }),
       ]);
     }
     return providerResponse([call('submit', 'propose_changes', proposal)]);

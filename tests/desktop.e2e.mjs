@@ -55,7 +55,7 @@ try {
   const connection = await page.evaluate(() => window.dreamEdge.development({ operation: 'connection' }));
   assert.equal(connection.available, false);
   const modelSession = await page.evaluate(projectId => window.dreamEdge.development({ operation: 'create', projectId, title: 'Model fixture' }), project.definition.id);
-  await page.evaluate(({ projectId, sessionId }) => window.dreamEdge.development({ operation: 'send', projectId, sessionId, prompt: 'Update greeting', paths: ['main.ts'] }), { projectId: project.definition.id, sessionId: modelSession.id });
+  await page.evaluate(({ projectId, sessionId }) => window.dreamEdge.development({ operation: 'send', projectId, sessionId, prompt: 'Update greeting', paths: ['src/main.ts'] }), { projectId: project.definition.id, sessionId: modelSession.id });
   await page.waitForFunction(async ({ projectId, sessionId }) => {
     const session = await window.dreamEdge.development({ operation: 'get', projectId, sessionId });
     return session.turns[0].status === 'failed';

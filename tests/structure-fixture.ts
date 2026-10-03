@@ -11,8 +11,8 @@ import { fixture } from './development-fixture';
 import { packageRegistry } from './dependency-fixture';
 
 export const structureProposal: ModelProposal = { summary: 'Use dependency and remove unused source', files: [
-  { path: 'main.ts', content: "import { greeting } from 'dreamedge-greeting';document.getElementById('root')!.textContent=greeting;" },
-  { path: 'unused.ts', content: null },
+  { path: 'src/main.ts', content: "import { greeting } from 'dreamedge-greeting';document.getElementById('root')!.textContent=greeting;" },
+  { path: 'src/unused.ts', content: null },
 ] };
 export async function structureFixture(automatic = true, prepare?: DependencyPreparer) {
   const f = await fixture(async () => structureProposal);
@@ -32,7 +32,7 @@ export async function structureFixture(automatic = true, prepare?: DependencyPre
     throw new Error('Structure edit did not settle');
   }
   const send = (commit = false) => api.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id,
-    prompt: 'Use greeting package and delete unused file', paths: ['main.ts', 'unused.ts'], commit });
+    prompt: 'Use greeting package and delete unused file', paths: ['src/main.ts', 'src/unused.ts'], commit });
   return { ...f, api, builds, registry, item, baseline, send, settled,
     cleanup: async () => { await api.dispose(); await builds.dispose(); await f.cleanup(); } };
 }

@@ -24,10 +24,10 @@ test('pi agent discovers, searches and reads project files without manual contex
     if (step === 2) return response({ type: 'reasoning', id: 'reason', encrypted_content: 'opaque', summary: [] }, call('search', 'search_files', { directory: '', query: 'original-greeting' }));
     if (step === 3) {
       assert.ok(JSON.stringify(body.input).includes('components/greeting.ts'));
-      return response(call('read', 'read_file', { path: 'components/greeting.ts' }));
+      return response(call('read', 'read_file', { path: 'src/components/greeting.ts' }));
     }
     assert.ok(body.input.some((item: any) => item.type === 'reasoning' && item.encrypted_content === 'opaque'));
-    return response(call('submit', 'propose_changes', { summary: 'Update nested greeting', files: [{ path: 'components/greeting.ts', content: 'export const greeting = "Hello Agent";' }] }));
+    return response(call('submit', 'propose_changes', { summary: 'Update nested greeting', files: [{ path: 'src/components/greeting.ts', content: 'export const greeting = "Hello Agent";' }] }));
   });
   f.provider.generate = (input, signal, access) => model.generate(input, signal, access);
   try {
@@ -49,14 +49,14 @@ test('project tools reject escaping paths, linked files, changed reads and switc
   try {
     const context = await collectContext(f.project, []); const access = new ProjectAccess(f.workspace, f.project.definition.id, context); const signal = new AbortController().signal;
     await assert.rejects(access.execute('read_file', { path: '../secret' }, signal));
-    await access.execute('read_file', { path: 'main.ts' }, signal);
+    await access.execute('read_file', { path: 'src/main.ts' }, signal);
     await writeFile(join(f.project.sourceDirectory, 'main.ts'), 'external change');
-    await assert.rejects(access.execute('read_file', { path: 'main.ts' }, signal), /发生变化/);
+    await assert.rejects(access.execute('read_file', { path: 'src/main.ts' }, signal), /发生变化/);
     await writeFile(join(f.root, 'secret.txt'), 'outside-secret');
     await symlink(join(f.root, 'secret.txt'), join(f.project.sourceDirectory, 'linked.ts'));
-    await assert.rejects(access.execute('read_file', { path: 'linked.ts' }, signal), /链接/);
+    await assert.rejects(access.execute('read_file', { path: 'src/linked.ts' }, signal), /链接/);
     await link(join(f.root, 'secret.txt'), join(f.project.sourceDirectory, 'hard.ts'));
-    await assert.rejects(access.execute('read_file', { path: 'hard.ts' }, signal), /链接/);
+    await assert.rejects(access.execute('read_file', { path: 'src/hard.ts' }, signal), /链接/);
     await f.workspace.execute({ operation: 'create', directory: join(f.root, 'other'), name: 'Other' });
     await assert.rejects(access.execute('list_files', { directory: '', offset: 0 }, signal), /当前工程/);
   } finally { await f.cleanup(); }
@@ -70,7 +70,7 @@ test('pi validates tool arguments, returns tool errors to the model and rejects 
       assert.ok(body.input.some((item: any) => item.type === 'function_call_output' && String(item.output).includes('schema')));
       return response(call('bad', 'read_file', { path: '../outside' }));
     }
-    if (step === 3) return response(call('read', 'read_file', { path: 'main.ts' }));
+    if (step === 3) return response(call('read', 'read_file', { path: 'src/main.ts' }));
     await writeFile(join(f.project.sourceDirectory, 'main.ts'), 'external edit'); return response(call('submit', 'propose_changes', proposal));
   });
   f.provider.generate = (input, signal, access) => model.generate(input, signal, access);
@@ -84,7 +84,7 @@ test('credentials in automatically read source never enter tool output, context 
   const f = await fixture(async () => proposal); let step = 0;
   const model = new ResponsesModel(configuration, async (_url, options) => {
     assert.ok(!String(options!.body).includes(configuration.apiKey));
-    if (++step === 1) return response(call('read', 'read_file', { path: 'main.ts' }));
+    if (++step === 1) return response(call('read', 'read_file', { path: 'src/main.ts' }));
     return response(call('submit', 'propose_changes', { summary: 'Cannot read credentials', files: [] }));
   });
   f.provider.generate = (input, signal, access) => model.generate(input, signal, access);

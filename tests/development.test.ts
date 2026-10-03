@@ -21,7 +21,7 @@ test('model turns stage isolated candidates, persist history and leave project s
     assert.equal(turn.status, 'completed'); assert.equal(turn.changes.length, 1);
     assert.equal(turn.changes[0].expectedHash, turn.context[0].hash);
     assert.equal(await readFile(join(f.project.sourceDirectory, 'main.ts'), 'utf8'), source);
-    assert.equal(await readFile(join(f.project.sessionsDirectory, first.id, turn.id, 'candidate/main.ts'), 'utf8'), proposal.files[0].content);
+    assert.equal(await readFile(join(f.project.sessionsDirectory, first.id, turn.id, 'candidate/src/main.ts'), 'utf8'), proposal.files[0].content);
     first.turns[0].changes[0].content = 'client tamper';
     assert.equal((await f.get()).turns[0].changes[0].content, proposal.files[0].content);
     await f.send('Explain the earlier suggestion'); await f.settled();
@@ -39,12 +39,12 @@ test('invalid context and malformed or escaping proposals cannot edit source or 
   const f = await fixture(async () => result);
   try {
     await assert.rejects(f.send('request', ['../outside']), /越界/);
-    await assert.rejects(f.send('request', ['main.ts', 'main.ts']), /重复/);
+    await assert.rejects(f.send('request', ['src/main.ts', 'src/main.ts']), /重复/);
     const cases = [null, { summary: 'bad', files: [{ path: '../outside', content: 'bad' }] },
-      { summary: 'bad', files: [{ path: 'index.html', content: 'not in context' }] },
+      { summary: 'bad', files: [{ path: 'src/index.html', content: 'not in context' }] },
       { summary: 'bad', files: [proposal.files[0], proposal.files[0]] },
-      { summary: 'bad', files: [{ path: 'main.ts/child.ts', content: 'bad' }] },
-      { summary: 'bad', files: [{ path: 'new.ts', content: 'x'.repeat(131073) }] }];
+      { summary: 'bad', files: [{ path: 'src/main.ts/child.ts', content: 'bad' }] },
+      { summary: 'bad', files: [{ path: 'src/new.ts', content: 'x'.repeat(131073) }] }];
     for (result of cases) {
       await f.send(); const session = await f.settled();
       assert.equal(session.turns.at(-1)!.status, 'failed'); assert.deepEqual(session.turns.at(-1)!.changes, []);
@@ -70,7 +70,7 @@ test('cancel and timeout settle even when a provider ignores cancellation; concu
     const cancelled = await f.api.execute({ operation: 'cancel', projectId: f.project.definition.id, sessionId: f.session.id }) as DevelopmentSession;
     assert.equal(cancelled.turns[0].status, 'cancelled');
     const timeout = new DevelopmentApi(f.workspace, f.provider, 20);
-    await timeout.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: 'timeout', paths: ['main.ts'] });
+    await timeout.execute({ operation: 'send', projectId: f.project.definition.id, sessionId: f.session.id, prompt: 'timeout', paths: ['src/main.ts'] });
     await new Promise(resolve => setTimeout(resolve, 50));
     const value = await timeout.execute({ operation: 'get', projectId: f.project.definition.id, sessionId: f.session.id }) as DevelopmentSession;
     assert.equal(value.turns.at(-1)!.status, 'failed'); assert.match(value.turns.at(-1)!.error!, /超时/);
@@ -99,7 +99,7 @@ test('switching projects rejects old session requests and in-flight results stay
   } finally { await f.cleanup(); }
 });
 test('new files are staged with null base hashes and linked managed directories are rejected', async () => {
-  const f = await fixture(async () => ({ summary: 'New file', files: [{ path: 'components/greeting.ts', content: 'export const greeting = "Hi";' }] }));
+  const f = await fixture(async () => ({ summary: 'New file', files: [{ path: 'src/components/greeting.ts', content: 'export const greeting = "Hi";' }] }));
   try {
     await f.send(); const session = await f.settled();
     assert.equal(session.turns[0].status, 'completed'); assert.equal(session.turns[0].changes[0].expectedHash, null);
@@ -113,7 +113,7 @@ test('context limits and project metadata changes are checked before accepting m
   const answer = deferred<unknown>(); const f = await fixture(() => answer.promise);
   try {
     await writeFile(join(f.project.sourceDirectory, 'large.ts'), 'x'.repeat(131073));
-    await assert.rejects(f.send('request', ['large.ts']), /128 KB/);
+    await assert.rejects(f.send('request', ['src/large.ts']), /128 KB/);
     await f.send();
     await f.workspace.execute({ operation: 'save', projectId: f.project.definition.id, version: '0.2.0' });
     answer.resolve(proposal);

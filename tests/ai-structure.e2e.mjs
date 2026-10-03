@@ -43,7 +43,7 @@ try {
   await chat.getByRole('button', { name: '查看第 1 轮修改 · 2 个文件 · 依赖变更' }).click();
   const record = chat.getByRole('region', { name: '修改记录' });
   await record.locator('.ai-file-change > summary').filter({ hasText: 'unused.ts' }).click();
-  assert.match(await record.getByLabel('修改差异 unused.ts').textContent(), /unused/);
+  assert.match(await record.getByLabel('修改差异 src/unused.ts').textContent(), /unused/);
   await record.locator('.ai-file-change > summary').filter({ hasText: '工程依赖' }).click();
   assert.match(await record.getByLabel('依赖声明差异').textContent(), /dreamedge-greeting/);
   await mkdir('artifacts', { recursive: true }); await page.screenshot({ path: 'artifacts/dreamedge-ai-structure.png' });

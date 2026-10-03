@@ -10,8 +10,8 @@ export async function timelineProvider(application) {
           dist: { tarball: 'https://registry.npmjs.org/dreamedge-timeline/-/dreamedge-timeline-1.0.0.tgz', integrity: 'sha512-' + 'A'.repeat(86) + '==' } } } })); });
       }
       const first = ++requests === 1;
-      const args = first ? { name: 'dreamedge-timeline', range: '*' } : requests === 2 ? { path: 'main.ts' }
-        : { summary: '页面修改完成。', files: [{ path: 'main.ts', content: "document.getElementById('root').textContent='Hello Timeline';" }] };
+      const args = first ? { name: 'dreamedge-timeline', range: '*' } : requests === 2 ? { path: 'src/main.ts' }
+        : { summary: '页面修改完成。', files: [{ path: 'src/main.ts', content: "document.getElementById('root').textContent='Hello Timeline';" }] };
       const tool = { id: `fc_${requests}`, type: 'function_call', call_id: `call_${requests}`, name: first ? 'resolve_dependency' : requests === 2 ? 'read_file' : 'propose_changes', arguments: JSON.stringify(args) };
       return new Response(new ReadableStream({ async start(controller) {
         const output = [];

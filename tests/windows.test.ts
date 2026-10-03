@@ -46,8 +46,8 @@ test('closing one window cancels only its own model request, while the other win
   try {
     const sa = await f.a.development!.execute({ operation: 'create', projectId: f.pa.definition.id, title: 'A session' }) as DevelopmentSession;
     const sb = await f.b.development!.execute({ operation: 'create', projectId: f.pb.definition.id, title: 'B session' }) as DevelopmentSession;
-    await Promise.all([f.a.development!.execute({ operation: 'send', projectId: f.pa.definition.id, sessionId: sa.id, prompt: 'A', paths: ['main.ts'] }),
-      f.b.development!.execute({ operation: 'send', projectId: f.pb.definition.id, sessionId: sb.id, prompt: 'B', paths: ['main.ts'] })]);
+    await Promise.all([f.a.development!.execute({ operation: 'send', projectId: f.pa.definition.id, sessionId: sa.id, prompt: 'A', paths: ['src/main.ts'] }),
+      f.b.development!.execute({ operation: 'send', projectId: f.pb.definition.id, sessionId: sb.id, prompt: 'B', paths: ['src/main.ts'] })]);
     await f.a.dispose();
     const active = await f.b.development!.execute({ operation: 'get', projectId: f.pb.definition.id, sessionId: sb.id }) as DevelopmentSession;
     assert.equal(active.turns[0].status, 'running');
