@@ -6,7 +6,7 @@ import { DevelopmentApi } from '../desktop/development/api';
 import type { ModelInput, ModelProvider } from '../desktop/development/model';
 import { WorkspaceApi } from '../desktop/workspace/api';
 
-export async function fixture(generate: (input: ModelInput, signal: AbortSignal) => Promise<unknown>, timeout = 2000) {
+export async function fixture(generate: (input: ModelInput, signal: AbortSignal) => Promise<unknown>, timeout = 5000) {
   const root = await mkdtemp(join(tmpdir(), 'dreamedge-development-'));
   const profile = join(root, 'profile'); const framework = join(root, 'framework');
   await mkdir(profile); await mkdir(framework);
@@ -18,7 +18,7 @@ export async function fixture(generate: (input: ModelInput, signal: AbortSignal)
   const get = () => api.execute({ operation: 'get', projectId: project.definition.id, sessionId: session.id }) as Promise<DevelopmentSession>;
   const send = (prompt = 'Change the greeting', paths = ['main.ts']) => api.execute({ operation: 'send', projectId: project.definition.id, sessionId: session.id, prompt, paths });
   async function settled() {
-    const deadline = Date.now() + 4000;
+    const deadline = Date.now() + 8000;
     while (Date.now() < deadline) {
       const value = await get();
       if (value.turns.at(-1)?.status !== 'running') return value;

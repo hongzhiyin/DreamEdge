@@ -12,7 +12,8 @@ import { Capacity } from '../windows/capacity';
 import { dependencies } from '../dependencies/policy';
 import { dependencyPreparer, type DependencyPreparer } from '../dependencies/prepare';
 
-interface Job { controller: AbortController; done: Promise<void>; release: () => void }
+type BuildObserver = (record: CandidateBuild) => Promise<void>;
+interface Job { controller: AbortController; done: Promise<void>; release: () => void; progress?: BuildObserver }
 export type PreviewOpener = (project: WorkspaceProject, record: CandidateBuild) => Promise<void>;
 export class CandidateBuildApi {
   private readonly store = new BuildStore();
@@ -51,8 +52,8 @@ export class CandidateBuildApi {
       default: throw new Error('不支持的构建操作。');
     }
   }
-  async build(request: Extract<CandidateBuildRequest, { operation: 'start' }>, signal: AbortSignal): Promise<CandidateBuild> {
-    signal.throwIfAborted(); const record = await this.start(request); const job = this.jobs.get(record.id);
+  async build(request: Extract<CandidateBuildRequest, { operation: 'start' }>, signal: AbortSignal, progress?: BuildObserver): Promise<CandidateBuild> {
+    signal.throwIfAborted(); const record = await this.start(request, progress); const job = this.jobs.get(record.id);
     const cancel = () => job?.controller.abort('cancelled'); signal.addEventListener('abort', cancel, { once: true });
     try { if (signal.aborted) cancel(); await job?.done; return await this.workspace.withProject(request.projectId, project => this.load(project, record.id)); }
     finally { signal.removeEventListener('abort', cancel); }
@@ -67,7 +68,7 @@ export class CandidateBuildApi {
     }
     return record;
   }
-  private async start(request: Extract<CandidateBuildRequest, { operation: 'start' }>): Promise<CandidateBuild> {
+  private async start(request: Extract<CandidateBuildRequest, { operation: 'start' }>, progress?: BuildObserver): Promise<CandidateBuild> {
     const started = await this.workspace.withProject(request.projectId, async project => {
       if (this.closed) throw new Error('候选构建服务已关闭。');
       if ([...this.jobs.values()].length >= 2) throw new Error('当前最多同时运行两个候选构建。');
@@ -88,7 +89,7 @@ export class CandidateBuildApi {
         await saveSnapshot(await ensureDirectory(root, 'source'), input);
         await writeText(root, 'candidate-definition.json', JSON.stringify(project.definition));
       } catch (error) { release(); throw error; }
-      const job: Job = { controller: new AbortController(), done: Promise.resolve(), release };
+      const job: Job = { controller: new AbortController(), done: Promise.resolve(), release, progress };
       this.jobs.set(record.id, job);
       return { project, record, input, job };
     });
@@ -100,7 +101,7 @@ export class CandidateBuildApi {
     const timer = setTimeout(() => job.controller.abort('timeout'), this.timeoutMs);
     let aborted: (() => void) | undefined;
     try {
-      const output = await Promise.race([this.compile(project, record, input, signal), new Promise<never>((_, reject) => {
+      const output = await Promise.race([this.compile(project, record, input, signal, job.progress), new Promise<never>((_, reject) => {
         aborted = () => reject(signal.reason); signal.addEventListener('abort', aborted, { once: true }); if (signal.aborted) aborted();
       })]);
       await this.workspace.withProject(project.definition.id, async current => {
@@ -111,6 +112,7 @@ export class CandidateBuildApi {
         record.logs = [...record.logs, ...output.logs.slice(0, 40)].slice(-64); record.status = 'succeeded'; record.phase = 'complete'; record.previewUrl = previewUrl(record.id);
         record.finishedAt = new Date().toISOString(); await this.store.save(current, record); this.jobs.delete(record.id);
       });
+      await job.progress?.(structuredClone(record));
     } catch (error) {
       record.status = signal.reason === 'cancelled' ? 'cancelled' : 'failed'; record.previewUrl = null; record.outputHashes = {};
       const message = signal.reason === 'cancelled' ? '候选构建已取消；源工程未被修改。'
@@ -127,7 +129,7 @@ export class CandidateBuildApi {
       job.release();
     }
   }
-  private async compile(project: WorkspaceProject, record: CandidateBuild, input: BuildInput, signal: AbortSignal) {
+  private async compile(project: WorkspaceProject, record: CandidateBuild, input: BuildInput, signal: AbortSignal, progress?: BuildObserver) {
     const report = async (message: string) => {
       await this.workspace.exclusive(async () => {
         signal.throwIfAborted();
@@ -135,6 +137,7 @@ export class CandidateBuildApi {
         record.logs = [...record.logs, { level: 'info' as const, message }].slice(-63);
         await this.store.save(project, record);
       });
+      await progress?.(structuredClone(record));
     };
     const prepared = await this.prepareDependencies(project, buildRoot(project, record.id), record.dependencies, signal, report);
     signal.throwIfAborted();

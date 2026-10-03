@@ -1,4 +1,4 @@
-import type { CandidateReference } from '../../shared/contracts';
+import type { CandidateReference, CandidateBuild, DevelopmentEvent } from '../../shared/contracts';
 import { CandidateBuildApi } from '../build/api';
 import { WorkspaceApi } from '../workspace/api';
 import { applyBuild } from '../changes/apply';
@@ -7,13 +7,19 @@ import { ModelFailure } from './model';
 
 export class AutomaticEdits {
   constructor(private readonly workspace: WorkspaceApi, private readonly profile: string, private readonly builds: CandidateBuildApi, private readonly changed: (buildId?: string) => void) {}
-  async apply(projectId: string, candidate: CandidateReference, signal: AbortSignal, phase: (value: 'building' | 'applying', buildId?: string) => Promise<void>) {
+  async apply(projectId: string, candidate: CandidateReference, signal: AbortSignal, phase: (value: 'building' | 'applying', buildId?: string) => Promise<void>, event?: (event: DevelopmentEvent) => Promise<void>) {
     await phase('building');
-    const build = await this.builds.build({ operation: 'start', projectId, candidate }, signal);
+    const report = event ? (record: CandidateBuild) => event({ id: 'build', kind: 'build', label: '构建工程',
+      status: record.status === 'running' ? 'running' : record.status === 'succeeded' ? 'completed' : record.status === 'cancelled' ? 'cancelled' : 'failed',
+      detail: record.logs.at(-1)?.message.slice(0, 200), output: record.logs.map(log => log.message).join('\n') }) : undefined;
+    await event?.({ id: 'build', kind: 'build', label: '构建工程', status: 'running' });
+    const build = await this.builds.build({ operation: 'start', projectId, candidate }, signal, report);
+    await report?.(build);
     if (build.status !== 'succeeded') throw new ModelFailure(build.logs.filter(log => log.level === 'error').map(log => log.message).join('\n').slice(0, 1800) || '自动构建失败；源码未被修改。');
     signal.throwIfAborted(); await phase('applying', build.id);
+    await event?.({ id: 'apply', kind: 'apply', label: '应用修改并刷新', status: 'running' });
     await this.workspace.mutateProject(projectId, project => applyBuild(project, this.profile, build.id, signal));
-    this.changed(build.id); return { buildId: build.id };
+    this.changed(build.id); await event?.({ id: 'apply', kind: 'apply', label: '应用修改并刷新', status: 'completed' }).catch(() => {}); return { buildId: build.id };
   }
   commit(projectId: string, message: string): Promise<string | null> {
     return this.workspace.withProject(projectId, project => commitGit(project.rootDirectory, message));

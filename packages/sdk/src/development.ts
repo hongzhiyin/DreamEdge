@@ -10,13 +10,19 @@ export interface AgentActivity {
   id: string; tool: 'list_files' | 'read_file' | 'search_files' | 'resolve_dependency' | 'set_dependencies';
   status: 'running' | 'completed' | 'failed' | 'cancelled'; detail: string;
 }
+export interface DevelopmentEvent {
+  id: string; kind: 'model' | 'thinking' | 'message' | 'tool' | 'build' | 'apply' | 'commit';
+  label: string; status: 'running' | 'completed' | 'failed' | 'cancelled';
+  tool?: string; detail?: string; content?: string; input?: string; output?: string;
+  startedAt?: string; finishedAt?: string;
+}
 export interface DevelopmentTurn {
   id: string; prompt: string; startedAt: string; finishedAt: string | null;
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
   summary: string | null; error: string | null;
   context: { path: string; hash: string }[];
   changes: CandidateFile[]; dependencies?: Record<string, string>;
-  activity?: AgentActivity[];
+  activity?: AgentActivity[]; events?: DevelopmentEvent[];
   phase?: 'thinking' | 'building' | 'applying' | 'complete';
   applied?: boolean; buildId?: string; commitId?: string | null; warning?: string;
 }

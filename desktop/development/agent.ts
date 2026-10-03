@@ -1,5 +1,5 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
-import type { AgentActivity } from '../../shared/contracts';
+import { agentEvents } from './agent-events';
 import type { ConnectionConfiguration } from '../model-connection/configuration';
 import { ModelFailure, modelInstructions, type ModelAccess, type ModelInput } from './model';
 import { projectTools } from './agent-tools';
@@ -10,7 +10,7 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
   const { model, stream } = await piProvider(configuration, transport, signal);
   const guard = (value: unknown) => { if (JSON.stringify(value).includes(configuration.apiKey)) throw new ModelFailure('读取内容包含模型连接凭据，已拒绝发送。'); };
   let final: AssistantMessage | undefined; let proposal: Record<string, unknown> | undefined; let reminders = 0;
-  const details = new Map<string, string>();
+  const progress = agentEvents(access, guard);
   const messages = input.history.flatMap(turn => [
     { role: 'user' as const, content: turn.prompt, timestamp: Date.now() },
     { role: 'assistant' as const, content: [{ type: 'text' as const, text: JSON.stringify({ summary: turn.summary,
@@ -42,15 +42,7 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
         final = event.message;
       }
       if (event.type === 'tool_execution_start' && ++calls > 48) throw new ModelFailure('本轮达到工具调用上限，请缩小任务范围。');
-      if (event.type !== 'tool_execution_start' && event.type !== 'tool_execution_end') return;
-      if (!['list_files', 'read_file', 'search_files', 'resolve_dependency', 'set_dependencies'].includes(event.toolName)) return;
-      if (event.type === 'tool_execution_start') {
-        const args = event.args as Record<string, unknown>;
-        const path = typeof args.name === 'string' ? args.name : event.toolName === 'set_dependencies' ? '完整依赖声明' : typeof args.path === 'string' ? args.path : typeof args.directory === 'string' ? args.directory : '';
-        details.set(event.toolCallId, path.slice(0, 200) || '源码目录');
-      }
-      await access.activity({ id: event.toolCallId, tool: event.toolName as AgentActivity['tool'],
-        status: event.type === 'tool_execution_start' ? 'running' : event.isError ? 'failed' : 'completed', detail: details.get(event.toolCallId) ?? '源码目录' });
+      await progress(event);
     });
   const cancel = () => agent.abort(); signal.addEventListener('abort', cancel, { once: true });
   try {

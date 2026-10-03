@@ -83,3 +83,15 @@ test('external edits during the automatic build cannot be overwritten by a late 
     assert.equal(await readFile(join(f.project.sourceDirectory, 'main.ts'), 'utf8'), 'User edit');
   } finally { resume.resolve(); await api.dispose(); await builds.dispose(); await f.cleanup(); }
 });
+
+test('a failed completion notification cannot misreport a successfully applied source transaction', async () => {
+  const f = await fixture(async () => proposal);
+  const builds = new CandidateBuildApi(f.workspace, input => compile(input), async () => {});
+  try {
+    await f.send(); const turn = (await f.settled()).turns[0];
+    const edits = new AutomaticEdits(f.workspace, f.profile, builds, () => {});
+    const result = await edits.apply(f.project.definition.id, { sessionId: f.session.id, turnId: turn.id }, new AbortController().signal,
+      async () => {}, async event => { if (event.kind === 'apply' && event.status === 'completed') throw new Error('Window closed after commit'); });
+    assert.ok(result.buildId); assert.equal(await readFile(join(f.project.sourceDirectory, 'main.ts'), 'utf8'), proposal.files[0].content);
+  } finally { await builds.dispose(); await f.cleanup(); }
+});

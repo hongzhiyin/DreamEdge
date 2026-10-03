@@ -35,15 +35,16 @@ export async function cachedArchive(cache: string, item: LockedPackage, registry
 export async function unpackArchive(bytes: Buffer, root: string, signal: AbortSignal): Promise<void> {
   await directory(root); signal.throwIfAborted();
   await new Promise<void>((resolve, reject) => {
-    let total = 0; let count = 0; const seen = new Set<string>();
+    let total = 0; let count = 0; let prefix: string | undefined; const seen = new Set<string>();
     const unpack = new Unpack({ cwd: root, strip: 1, strict: true, maxDepth: 40, chmod: false,
       filter(path, candidate) {
         const entry = candidate as import('tar').ReadEntry;
         try {
           signal.throwIfAborted();
-          const name = path.replace(/\/$/, ''); relativeParts(name);
-          if (!name.startsWith('package/') && name !== 'package' || !['File', 'Directory'].includes(entry.type)) throw new Error('依赖归档包含链接或无效路径。');
-          if (name.slice(8).split('/').includes('node_modules') || seen.has(name)) throw new Error('依赖归档包含嵌套安装目录或重复路径。');
+          const name = path.replace(/\/$/, ''); const parts = relativeParts(name);
+          prefix ??= parts[0];
+          if (parts[0] !== prefix || !['File', 'Directory'].includes(entry.type) || parts.length === 1 && entry.type !== 'Directory') throw new Error('依赖归档包含链接或无效路径。');
+          if (parts.slice(1).includes('node_modules') || seen.has(name)) throw new Error('依赖归档包含嵌套安装目录或重复路径。');
           seen.add(name); total += entry.size; count++;
           if (!Number.isSafeInteger(entry.size) || entry.size < 0 || entry.size > 4 * 1024 * 1024 || total > 64 * 1024 * 1024 || count > 3000) throw new Error('依赖解包超过文件数量或大小限制。');
           return true;

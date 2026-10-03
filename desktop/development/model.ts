@@ -1,4 +1,4 @@
-import type { AgentActivity, DevelopmentTurn, ModelConnection, ProjectContext } from '../../shared/contracts';
+import type { AgentActivity, DevelopmentEvent, DevelopmentTurn, ModelConnection, ProjectContext } from '../../shared/contracts';
 
 export interface ModelInput {
   prompt: string;
@@ -14,6 +14,7 @@ export interface ModelProvider {
 export interface ModelAccess {
   execute(name: string, args: Record<string, unknown>, signal: AbortSignal, beforeExpose?: (value: unknown) => void): Promise<unknown>;
   activity(event: AgentActivity): Promise<void>;
+  event?(event: DevelopmentEvent): Promise<void>;
 }
 export class ModelFailure extends Error {}
 export const proposalSchema = {

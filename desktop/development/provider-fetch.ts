@@ -1,5 +1,6 @@
 import type { ConnectionConfiguration } from '../model-connection/configuration';
 import { ModelFailure } from './model';
+import { guardedResponse } from './provider-stream';
 import { httpFailure } from './responses-transport';
 
 /** Framework boundary around pi's provider transport; it never parses provider events. */
@@ -20,20 +21,6 @@ export function providerFetch(configuration: Required<ConnectionConfiguration>, 
       return Response.json({ error: { message: httpFailure(response.status, new URL(configuration.baseUrl).hostname) } }, { status: response.status });
     }
     if (!response.body) throw new ModelFailure('模型响应为空。');
-    const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let bytes = 0;
-    try {
-      while (true) {
-        combined.throwIfAborted(); const next = await reader.read(); if (next.done) break;
-        bytes += next.value.byteLength;
-        if (bytes > 8 * 1024 * 1024) throw new ModelFailure('模型流式响应超过大小限制。');
-        chunks.push(next.value);
-      }
-      const buffer = Buffer.concat(chunks);
-      if (buffer.toString('utf8').includes(configuration.apiKey)) throw new ModelFailure('模型回复包含连接凭据，已拒绝使用。');
-      return new Response(buffer, { headers: { 'Content-Type': response.headers.get('Content-Type') ?? 'text/event-stream' } });
-    } catch (error) {
-      if (error instanceof ModelFailure) return Response.json({ error: { message: error.message } }, { status: 502 });
-      throw new ModelFailure('模型流式响应已中断，请重试。');
-    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    return guardedResponse(response, configuration.apiKey, combined);
   };
 }

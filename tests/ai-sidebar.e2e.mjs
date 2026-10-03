@@ -110,7 +110,8 @@ try {
   const request = await application.evaluate(() => globalThis.modelRequests[0]);
   assert.ok(!JSON.stringify(request.input).includes(before)); assert.ok(!JSON.stringify(request.input).includes(source));
   assert.equal(await chat.locator('input[type="checkbox"]').count(), 0);
-  await chat.getByText('工程查阅 · 3 次操作', { exact: true }).waitFor();
+  await chat.getByRole('list', { name: '执行过程' }).waitFor();
+  assert.ok(await chat.locator('[data-event-kind=tool]').count() >= 4);
   const requests = await application.evaluate(() => globalThis.modelRequests);
   assert.equal(requests.length, 4); assert.ok(JSON.stringify(requests.at(-1).input).includes('main.ts'));
   assert.equal(await chat.getByRole('button', { name: '构建此候选', exact: true }).count(), 0);

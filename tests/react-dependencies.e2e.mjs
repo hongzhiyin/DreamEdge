@@ -25,7 +25,7 @@ try {
   }, project.definition.id);
   await page.getByRole('button', { name: '打开开发侧栏' }).click();
   assert.equal(await page.getByRole('region', { name: '依赖与构建' }).count(), 0);
-  const candidate = await buildCandidate(page, { projectId: project.definition.id, dependencies: { react: '19.2.0', 'react-dom': '19.2.0' } });
+  const candidate = await buildCandidate(page, { projectId: project.definition.id, dependencies: { react: '19.3.0', 'react-dom': '19.3.0', '@types/react': '19.3.0', '@types/react-dom': '19.3.0' } });
   const opened = application.waitForEvent('window');
   await page.evaluate(request => window.dreamEdge.build(request), { operation: 'openPreview', projectId: project.definition.id, buildId: candidate.id });
   const preview = await opened; await preview.getByText('HelloWorld React', { exact: true }).waitFor();
@@ -34,14 +34,14 @@ try {
   await (await application.browserWindow(preview)).evaluate(window => window.close());
   await confirmCandidate(page, project.definition.id, candidate.id);
   const current = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project;
-  assert.equal(current.definition.dependencies.react, '19.2.0'); assert.equal(current.definition.dependencies['react-dom'], '19.2.0');
-  assert.equal(Object.keys(current.definition.dependencyLock.packages).length, 3);
+  assert.equal(current.definition.dependencies.react, '19.3.0'); assert.equal(current.definition.dependencies['react-dom'], '19.3.0');
+  assert.equal(Object.keys(current.definition.dependencyLock.packages).length, 6);
   const first = JSON.parse(await readFile(join(project.buildDirectory, (await readdir(project.buildDirectory)).find(name => !name.startsWith('.')), 'record.json'), 'utf8'));
   await application.evaluate(() => { globalThis.fetch = async () => { throw new Error('Locked cached rebuild must not use the registry'); }; });
   await buildCandidate(page, { projectId: project.definition.id });
   const records = await Promise.all((await readdir(project.buildDirectory)).filter(name => !name.startsWith('.')).map(async name => JSON.parse(await readFile(join(project.buildDirectory, name, 'record.json'), 'utf8'))));
   assert.equal(records.length, 2); assert.deepEqual(records.find(record => record.id !== first.id).outputHashes, first.outputHashes);
-  console.log('PASS: live npm React 19.2.0 + ReactDOM + scheduler install, TSX build, isolated browser preview, confirmed lock and identical offline cached rebuild.');
+  console.log('PASS: live npm React 19.3.0 + ReactDOM + type packages install, TSX build, isolated browser preview, confirmed lock and identical offline cached rebuild.');
 } catch (error) {
   if (project) {
     const names = await readdir(project.buildDirectory).catch(() => []);

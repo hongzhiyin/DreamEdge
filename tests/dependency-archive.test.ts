@@ -34,3 +34,22 @@ test('registry sends no credentials, forbids redirects and rejects off-registry 
     await assert.rejects(registry.resolve('example', '1.0.0', signal), /平台依赖/);
   } finally { globalThis.fetch = original; }
 });
+
+test('npm type-package roots are accepted while mixed roots, nested installs and links remain rejected', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dreamedge-type-archive-'));
+  const signal = new AbortController().signal;
+  async function tar(names: string[]) { const bytes: Buffer[] = []; for await (const chunk of c({ cwd: root, gzip: true }, names)) bytes.push(chunk); return Buffer.concat(bytes); }
+  try {
+    await mkdir(join(root, 'react')); await mkdir(join(root, 'target'));
+    await writeFile(join(root, 'react/index.d.ts'), 'export interface React {}');
+    await unpackArchive(await tar(['react']), join(root, 'target'), signal);
+    assert.match(await readFile(join(root, 'target/index.d.ts'), 'utf8'), /React/);
+    await mkdir(join(root, 'other')); await writeFile(join(root, 'other/package.json'), '{}');
+    await assert.rejects(unpackArchive(await tar(['react', 'other']), join(root, 'target'), signal), /链接|路径/);
+    await mkdir(join(root, 'react/node_modules'));
+    await assert.rejects(unpackArchive(await tar(['react']), join(root, 'target'), signal), /嵌套/);
+    await rm(join(root, 'react/node_modules'), { recursive: true });
+    await symlink(join(root, 'other/package.json'), join(root, 'react/link'));
+    await assert.rejects(unpackArchive(await tar(['react']), join(root, 'target'), signal), /链接|路径/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

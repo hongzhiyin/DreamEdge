@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import type { DevelopmentSession, DevelopmentSessionSummary, DevelopmentTurn, ProjectContext, WorkspaceProject } from '../../shared/contracts';
 import { ensureDirectory, hash, readText, relativeParts, TEXT_LIMIT, writeText } from '../workspace/paths';
+import { validateEvents } from './timeline';
 import { dependencies } from '../dependencies/policy';
 import { CONTEXT_FILES, PROPOSAL_LIMIT, shortText } from './context';
 
@@ -18,6 +19,7 @@ function validateTurn(value: DevelopmentTurn, id: string): DevelopmentTurn {
       || !Array.isArray(value.context) || value.context.length > CONTEXT_FILES || !Array.isArray(value.changes) || value.changes.length > 20) {
     throw new Error('会话轮次记录无效。');
   }
+  validateEvents(value.events);
   shortText(value.prompt, '会话请求', 8192);
   if (value.phase !== undefined && !['thinking', 'building', 'applying', 'complete'].includes(value.phase)) throw new Error('会话阶段无效。');
   if (value.activity !== undefined && (!Array.isArray(value.activity) || value.activity.length > 48 || value.activity.some(event =>

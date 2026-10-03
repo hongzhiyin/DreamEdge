@@ -1,5 +1,6 @@
 import { Bot, Check, ChevronDown } from 'lucide-react';
 import type { DevelopmentTurn } from '../shared/contracts';
+import { ChatTimeline } from './ChatTimeline';
 import { CandidateCard } from './CandidateCard';
 
 export function ChatTurn({ turn, index, projectId, sessionId, expanded, expand, locked }: {
@@ -9,14 +10,8 @@ export function ChatTurn({ turn, index, projectId, sessionId, expanded, expand, 
     <div className="chat-message user-message"><span className="sr-only">你 · 第 {index + 1} 轮</span><p>{turn.prompt}</p></div>
     <div className="chat-message assistant-message">
       <div className="assistant-identity"><Bot size={17} strokeWidth={1.75} aria-hidden="true" /><span>DreamEdge</span></div>
+      <ChatTimeline turn={turn} />
       {turn.summary && <p className="chat-reply">{turn.summary}</p>}
-      {!!turn.activity?.length && <details className="ai-context chat-activity">
-        <summary>{turn.activity.some(event => event.tool === 'resolve_dependency' || event.tool === 'set_dependencies') ? '工程操作' : '工程查阅'} · {turn.activity.length} 次操作</summary>
-        <ul>{turn.activity.map(event => <li key={event.id}>
-          {{ list_files: '查看目录', read_file: '读取文件', search_files: '搜索源码', resolve_dependency: '查询依赖', set_dependencies: '声明依赖' }[event.tool]} · {event.detail} ·
-          {{ running: '进行中', completed: '完成', failed: '失败', cancelled: '已停止' }[event.status]}
-        </li>)}</ul>
-      </details>}
       {turn.applied && <p className="chat-result"><Check size={14} aria-hidden="true" />修改已应用，页面已自动刷新。</p>}
       {turn.commitId && <p className="ai-hint">已提交 Git：{turn.commitId.slice(0, 8)}</p>}
       {turn.warning && <p role="status" className="ai-hint">{turn.warning}</p>}
