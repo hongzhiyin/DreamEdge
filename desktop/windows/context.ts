@@ -71,7 +71,9 @@ export class WindowContext {
     if (this.options.exportEngine && this.options.exportResources) this.exports = new ProjectExports(this.workspace, this.options.profile, this.options.frameworkRoot, this.options.exportResources, this.builds, this.options.exportEngine, process.platform === 'darwin', undefined,
       snapshot => this.modelSettings!.assertSafeInput({ prompt: 'Export saved source', context: { definition: snapshot.definition, files: Object.entries(snapshot.files).map(([path, content]) => ({ path, content, hash: '' })) }, history: [] }));
     const changed = (buildId?: string) => { if (!this.disposed && !this.transitioning) this.display?.refresh(buildId); };
-    this.git = new ProjectGitApi(this.workspace, this.options.profile, changed);
+    this.git = new ProjectGitApi(this.workspace, this.options.profile, changed, () => {
+      if (this.development?.running) throw new Error('AI 正在修改工程，请等本轮完成后再操作 Git。');
+    });
     this.development = new DevelopmentApi(this.workspace, this.options.provider ?? this.modelSettings!, 300000,
       new AutomaticEdits(this.workspace, this.options.profile, this.builds, changed));
   }

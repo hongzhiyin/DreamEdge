@@ -64,11 +64,12 @@ try {
   await chat.locator('.chat-turn').last().getByText('修改已应用，页面已自动刷新。', { exact: true }).waitFor();
   await page.frameLocator('iframe').getByText('Hello Without Dependencies', { exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await readFile(join(project.rootDirectory, '.dreamedge/project.json'), 'utf8')).dependencies, {});
+  const gitBar = chat.getByRole('region', { name: '工程 Git 状态' });
+  await gitBar.getByRole('button', { name: '提交', exact: true }).click();
+  await gitBar.getByText('工程修改已提交 Git。', { exact: true }).waitFor();
   await page.getByRole('button', { name: '打开工程设置' }).click(); await page.getByRole('tab', { name: 'Git 历史', exact: true }).click();
   const history = page.getByRole('region', { name: 'Git 历史', exact: true });
-  await history.getByLabel('提交说明').fill('After AI structure'); await history.getByRole('button', { name: '提交当前修改', exact: true }).click();
-  await history.getByText('工程修改已提交 Git。', { exact: true }).waitFor();
-  await history.locator('.ai-turn').filter({ hasText: baseline.slice(0, 8) }).getByRole('button', { name: '恢复此提交内容' }).click();
+  await history.locator('.git-history li').filter({ hasText: baseline.slice(0, 8) }).getByRole('button', { name: '恢复此提交内容' }).click();
   await page.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor();
   assert.match(await readFile(join(project.sourceDirectory, 'unused.ts'), 'utf8'), /old/);
   assert.equal(JSON.parse(await readFile(join(project.rootDirectory, '.dreamedge/model.json'), 'utf8')).apiKey, 'fixture-structure-key');

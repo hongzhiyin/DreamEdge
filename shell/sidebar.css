@@ -77,8 +77,6 @@
 .settings-content { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; font-size: 13px; line-height: 1.6; }
 .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .settings-heading span { font-size: 12px; color: var(--sidebar-muted); }
-.commit-setting { font-size: 13px; }
-.commit-setting + .ai-hint { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--sidebar-border); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 @media (prefers-reduced-motion: reduce) {
   .development-controls button, .development-sidebar { transition: none; }

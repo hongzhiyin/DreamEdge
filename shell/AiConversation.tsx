@@ -2,14 +2,17 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, MessageSquarePlus, Sparkles, Square } from 'lucide-react';
 import { useDevelopmentSession } from './useDevelopmentSession';
 import { ChatTurn } from './ChatTurn';
+import { ChatGitBar } from './ChatGitBar';
+import type { ProjectGit } from './useProjectGit';
 
-export function AiConversation({ projectId, configured, active, commit, modelName, openSettings }: {
-  projectId: string; configured: boolean; active: boolean; commit: boolean; modelName?: string; openSettings: () => void;
+export function AiConversation({ projectId, configured, active, git, onRunning, modelName, openSettings }: {
+  projectId: string; configured: boolean; active: boolean; git: ProjectGit; onRunning: (value: boolean) => void; modelName?: string; openSettings: () => void;
 }) {
   const chat = useDevelopmentSession(projectId); const [prompt, setPrompt] = useState('');
   const [expanded, setExpanded] = useState<string>(); const [atBottom, setAtBottom] = useState(true);
   const thread = useRef<HTMLDivElement>(null); const input = useRef<HTMLTextAreaElement>(null);
-  const viewportHeight = useRef(0); const pinned = useRef(true); const position = useRef(0); const locked = chat.busy || chat.running;
+  const viewportHeight = useRef(0); const pinned = useRef(true); const position = useRef(0); const locked = chat.busy || chat.running || !!git.busy;
+  useEffect(() => onRunning(chat.busy || !!chat.running), [chat.busy, chat.running, onRunning]);
   useEffect(() => { setExpanded(undefined); pinned.current = true; setAtBottom(true); }, [chat.session?.id]);
   useLayoutEffect(() => {
     if (!active) return;
@@ -37,7 +40,7 @@ export function AiConversation({ projectId, configured, active, commit, modelNam
   async function send() {
     if (locked || !configured || !prompt.trim()) return;
     pinned.current = true; setAtBottom(true);
-    if (await chat.send(prompt, commit)) { setPrompt(''); input.current?.focus(); }
+    if (await chat.send(prompt)) { setPrompt(''); input.current?.focus(); }
   }
   return <section className="ai-conversation" aria-label="AI 会话">
     <div className="conversation-toolbar">
@@ -69,6 +72,7 @@ export function AiConversation({ projectId, configured, active, commit, modelNam
         pinned.current = true; setAtBottom(true); thread.current?.scrollTo({ top: thread.current.scrollHeight });
       }}><ArrowDown size={15} aria-hidden="true" />最新消息</button>}
     </div>
+    <ChatGitBar git={git} locked={chat.busy || chat.running} />
     <form className="chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
       {!configured && <button type="button" className="chat-connect" onClick={openSettings}>配置模型连接，开始对话 <span aria-hidden="true">→</span></button>}
       <div className="composer-box">
@@ -80,7 +84,7 @@ export function AiConversation({ projectId, configured, active, commit, modelNam
               event.preventDefault(); void send();
             }
           }} />
-        <div className="composer-actions"><span className="composer-model">{configured ? modelName : '未连接模型'}{commit && configured ? ' · 自动提交 Git' : ''}</span>
+        <div className="composer-actions"><span className="composer-model">{configured ? modelName : '未连接模型'}</span>
           {chat.running ? <button className="composer-send" type="button" aria-label="取消请求" title="取消请求" disabled={chat.busy} onClick={() => { void chat.cancel(); }}><Square size={14} aria-hidden="true" /></button>
             : <button className="composer-send" type="submit" aria-label="发送给 AI" title="发送给 AI" disabled={locked || !configured || !prompt.trim()}><ArrowUp size={18} aria-hidden="true" /></button>}
         </div>

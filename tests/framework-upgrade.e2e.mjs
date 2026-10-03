@@ -70,7 +70,9 @@ try {
   assert.equal(connection.hasKey, true); assert.equal(connection.model, 'fixture'); assert.equal(connection.baseUrl, 'https://model.example/v1');
   assert.ok(!JSON.stringify(connection).includes('fixture-upgrade-key'));
   const history = await page.evaluate(({ projectId, sessionId }) => window.dreamEdge.development({ operation: 'get', projectId, sessionId }), { projectId, sessionId: session.id });
-  assert.deepEqual(history, session); assert.deepEqual((await git(page, projectId)).commits, committed.commits);
+  assert.deepEqual(history, session);
+  const savedCommits = commits => commits.map(({ id, message, createdAt }) => ({ id, message, createdAt }));
+  assert.deepEqual(savedCommits((await git(page, projectId)).commits), savedCommits(committed.commits));
   const restoredTool = (await page.evaluate(() => window.dreamEdge.tools()))[0]; assert.equal(restoredTool.id, tool.id);
   assert.deepEqual(await page.evaluate(tool => window.dreamEdge.storage(tool.id, { operation: 'list', collection: 'upgrade' }, tool.contextId), restoredTool), [{ id: 'record', value: { kept: true } }]);
   await page.getByRole('button', { name: '打开开发侧栏' }).click();

@@ -6,16 +6,18 @@ import { GitPanel } from './GitPanel';
 import { ApplicationPanel } from './ApplicationPanel';
 import { ProjectActions } from './ProjectActions';
 import { AiConversation } from './AiConversation';
+import { useProjectGit } from './useProjectGit';
 
 const tabs = ['模型连接', 'Git 历史', '应用与导出', '工程管理'] as const;
 export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, run, directory }: {
   directory: string; projectId: string; settingsOpen: boolean; openSettings: () => void; busy: ProjectAction | null; run: (action: ProjectAction) => Promise<void>;
 }) {
-  const settings = useModelSettings(projectId); const [tab, setTab] = useState(0); const [commit, setCommit] = useState(false);
+  const settings = useModelSettings(projectId); const [tab, setTab] = useState(0); const git = useProjectGit(projectId);
+  const [running, setRunning] = useState(false);
   const navigation = useRef<HTMLDivElement>(null);
   return <>
     <div className="sidebar-page chat-page" hidden={settingsOpen} inert={settingsOpen}>
-      <AiConversation projectId={projectId} active={!settingsOpen} commit={commit}
+      <AiConversation projectId={projectId} active={!settingsOpen} git={git} onRunning={setRunning}
         configured={!!settings.state?.hasKey && !!settings.state.model && !settings.state.warning}
         modelName={settings.state?.model} openSettings={() => { setTab(0); openSettings(); }} />
     </div>
@@ -34,9 +36,7 @@ export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, 
           <ModelSettingsPanel settings={settings} />
         </div>
         <div role="tabpanel" id="settings-panel-1" aria-labelledby="settings-tab-1" hidden={tab !== 1}>
-          <label className="ai-checkbox commit-setting"><input type="checkbox" checked={commit} onChange={event => setCommit(event.target.checked)} />本轮完成后提交工程修改到 Git</label>
-          <p className="ai-hint">开启后发送的修改将自动应用并提交 Git；默认保留为工作区修改。</p>
-          <GitPanel projectId={projectId} />
+          <GitPanel git={git} locked={running} />
         </div>
         <div role="tabpanel" id="settings-panel-2" aria-labelledby="settings-tab-2" hidden={tab !== 2}>
           <ApplicationPanel projectId={projectId} />

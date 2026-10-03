@@ -3,7 +3,7 @@
   "appId": "io.github.hongzhiyin.dreamedge",
   "name": "DreamEdge",
   "description": "DreamEdge 框架原型",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "entry": "index.html",
   "renderer": "examples/hello-world",
   "capabilities": [

@@ -15,6 +15,7 @@ export class DevelopmentApi {
   private readonly store = new SessionStore();
   private readonly jobs = new Map<string, Job>();
   private closed = false;
+  get running(): boolean { return this.jobs.size > 0; }
   constructor(private readonly workspace: WorkspaceApi, private readonly provider: ModelProvider, private readonly timeoutMs = 300000,
     private readonly edits?: AutomaticEdits) {}
   async execute(input: unknown): Promise<DevelopmentResult> {

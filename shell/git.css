@@ -1,0 +1,26 @@
+.chat-git { flex: 0 0 auto; padding: 6px 16px; border-top: 1px solid var(--sidebar-border); font-size: 11px; color: var(--sidebar-muted); }
+.git-overview > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 24px; cursor: pointer; list-style: none; }
+.git-overview > summary::-webkit-details-marker { display: none; }
+.git-overview > summary::after { content: '›'; margin-left: auto; }
+.git-overview[open] > summary::after { transform: rotate(90deg); }
+.git-overview > summary:focus-visible { outline: 2px solid var(--sidebar-focus); outline-offset: 2px; }
+.git-branch { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sidebar-text); }
+.git-overview-content { max-height: 120px; padding: 6px 0; overflow: auto; overflow-wrap: anywhere; }
+.git-overview-content ul { margin: 6px 0; padding-left: 18px; font-family: ui-monospace, monospace; }
+.git-remote-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.git-actions { display: flex; align-items: center; gap: 4px; }
+.git-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 40px; padding: 6px 8px; font: inherit; color: var(--sidebar-text); border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.git-actions button:hover:enabled { background: var(--sidebar-hover); }
+.git-actions button:disabled { color: #929298; cursor: default; }
+.git-actions .git-refresh { margin-left: auto; min-width: 40px; }
+.chat-git :is(.git-notice, .sidebar-error) { max-height: 44px; margin: 2px 0; overflow: auto; line-height: 1.5; }
+.git-discard-dialog { width: min(420px, calc(100vw - 40px)); max-height: calc(100vh - 40px); overflow: auto; padding: 20px; color: var(--sidebar-text, #27272a); border: 1px solid #e5e5e3; border-radius: 12px; background: #fafaf9; box-shadow: 0 12px 40px #00000026; }
+.git-discard-dialog::backdrop { background: #00000040; }
+.git-discard-dialog h2 { margin: 0 0 12px; font-size: 16px; }
+.git-discard-dialog p { font-size: 13px; line-height: 1.7; }
+.git-discard-dialog ul { max-height: 180px; overflow: auto; padding-left: 20px; font: 12px/1.8 ui-monospace, monospace; overflow-wrap: anywhere; }
+.git-history { list-style: none; margin: 14px 0; padding: 0; }
+.git-history li { padding: 12px 0; border-top: 1px solid var(--sidebar-border); }
+.git-history p { margin: 0 0 4px; overflow-wrap: anywhere; }
+.git-history time { font-size: 11px; font-variant-numeric: tabular-nums; }
+.git-history small { display: block; color: var(--sidebar-muted); }
