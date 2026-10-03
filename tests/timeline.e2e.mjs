@@ -33,6 +33,8 @@ try {
   await chat.getByLabel('修改需求', { exact: true }).fill('查看工程并修改问候语');
   await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await chat.getByLabel('生成回复 · 进行中', { exact: true }).waitFor();
+  const processPanel = chat.locator('.chat-process');
+  assert.notEqual(await processPanel.getAttribute('open'), null);
   const thought = chat.locator('[data-event-kind=thinking]'); await thought.waitFor();
   assert.equal(await thought.locator('details').getAttribute('open'), null);
   await thought.locator('summary').click(); await thought.getByText('先查询依赖信息，再读取当前页面并修改问候语。', { exact: true }).waitFor();
@@ -47,6 +49,9 @@ try {
   assert.notEqual(await lookup.locator('details').getAttribute('open'), null); assert.match(await lookup.textContent(), /1\.0\.0/);
   await page.frameLocator('iframe').getByText('Hello Timeline', { exact: true }).waitFor();
   await chat.getByText('修改已应用，页面已自动刷新。', { exact: true }).waitFor();
+  await page.waitForFunction(() => !document.querySelector('.chat-process').open);
+  assert.equal(await chat.locator('.chat-reply').isVisible(), true);
+  await processPanel.locator(':scope > summary').click();
   const calls = await chat.locator('[data-event-kind=tool] .timeline-label').allTextContents();
   assert.deepEqual(calls.map(text => text.split(' · ')[0]), ['查询依赖', '读取文件', '提交修改']);
   await chat.getByLabel('构建工程', { exact: false }).first().waitFor(); await chat.getByLabel('应用修改并刷新 · 完成', { exact: true }).waitFor();
@@ -54,12 +59,15 @@ try {
   await mkdir('artifacts', { recursive: true }); await page.screenshot({ path: 'artifacts/dreamedge-agent-timeline.png' });
   await application.close(); page = await launch('Hello Timeline');
   await page.getByRole('button', { name: '打开开发侧栏' }).click();
+  await page.locator('.chat-process').waitFor();
+  assert.equal(await page.locator('.chat-process').getAttribute('open'), null);
+  await page.locator('.chat-process > summary').click();
   await page.locator('[data-event-kind=thinking]').waitFor();
   assert.equal(await page.locator('.chat-timeline details[open]').count(), 0);
   await page.locator('[data-event-kind=thinking] summary').click();
   await page.getByText('先查询依赖信息，再读取当前页面并修改问候语。', { exact: true }).waitFor();
   assert.deepEqual(errors, []);
-  console.log('PASS: thinking before response EOF, ordered live tools, expandable parameters/results, build/apply status and restart persistence.');
+  console.log('PASS: live process, ordered tools, auto-collapse on completion, manual expand, visible final reply and restart persistence.');
 } finally {
   if (application) {
     const closed = await Promise.race([application.close().then(() => true).catch(() => true), new Promise(resolve => setTimeout(() => resolve(false), 5000))]);

@@ -2,16 +2,17 @@ import { Bot, Check, ChevronDown } from 'lucide-react';
 import type { DevelopmentTurn } from '../shared/contracts';
 import { ChatTimeline } from './ChatTimeline';
 import { CandidateCard } from './CandidateCard';
+import { MarkdownMessage } from './MarkdownMessage';
 
 export function ChatTurn({ turn, index, projectId, sessionId, expanded, expand, locked }: {
   turn: DevelopmentTurn; index: number; projectId: string; sessionId: string; expanded: boolean; expand: () => void; locked: boolean;
 }) {
   return <article className="chat-turn">
-    <div className="chat-message user-message"><span className="sr-only">你 · 第 {index + 1} 轮</span><p>{turn.prompt}</p></div>
+    <div className="chat-message user-message"><span className="sr-only">你 · 第 {index + 1} 轮</span><MarkdownMessage content={turn.prompt} /></div>
     <div className="chat-message assistant-message">
       <div className="assistant-identity"><Bot size={17} strokeWidth={1.75} aria-hidden="true" /><span>DreamEdge</span></div>
       <ChatTimeline turn={turn} />
-      {turn.summary && <p className="chat-reply">{turn.summary}</p>}
+      {turn.summary && <MarkdownMessage className="chat-reply" content={turn.summary} />}
       {turn.applied && <p className="chat-result"><Check size={14} aria-hidden="true" />修改已应用，页面已自动刷新。</p>}
       {turn.commitId && <p className="ai-hint">已提交 Git：{turn.commitId.slice(0, 8)}</p>}
       {turn.warning && <p role="status" className="ai-hint">{turn.warning}</p>}
