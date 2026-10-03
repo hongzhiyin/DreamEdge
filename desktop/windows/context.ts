@@ -25,6 +25,7 @@ export interface ContextOptions {
   openPreview: PreviewOpener; buildCapacity: Capacity; changed: () => void; closePreviews: () => void;
   exportEngine?: ExportEngine; exportResources?: ExportResources;
   modelSettingsChanged?: () => void;
+  boundProject?: WorkspaceProject;
 }
 export class WindowContext {
   readonly workspace?: WorkspaceApi;
@@ -47,7 +48,7 @@ export class WindowContext {
       this.workspace = new WorkspaceApi(options.profile, options.frameworkRoot,
         windowSelection(options.id, options.windows, options.catalog, project => {
           this.selected = project; this.contextId = randomUUID(); options.changed();
-        }));
+        }), options.boundProject ? { rootDirectory: options.boundProject.rootDirectory, appId: options.manifest.appId, projectId: options.boundProject.definition.id } : undefined);
       this.modelSettings = new ProjectModels(() => this.selected, () => options.modelSettingsChanged?.());
       this.display = new SavedProjectDisplay(this.workspace, options.engine, options.buildCapacity, () => {
         if (this.display?.status?.status === 'loading') this.contextId = randomUUID();
@@ -90,14 +91,17 @@ export class WindowContext {
     const project = 'project' in status ? status.project : null;
     this.selected = project;
     return { id: this.options.id, project: project ? { id: project.definition.id, name: project.definition.name, rootDirectory: project.rootDirectory } : null,
-      recoveryError: 'recoveryError' in status ? status.recoveryError : null };
+      recoveryError: 'recoveryError' in status ? status.recoveryError : null,
+      ...(this.options.boundProject ? { embedded: true } : {}) };
   }
   async executeWorkspace(request: WorkspaceRequest): Promise<WorkspaceResult> {
     this.assertAvailable();
     if (!this.workspace) throw new Error('当前应用未启用工程开发能力。');
+    if (this.options.boundProject && (request?.operation === 'create' || request?.operation === 'close'
+      || request?.operation === 'open' && request.directory !== this.options.boundProject.rootDirectory)) throw new Error('本应用只开发自身工程，请在 DreamEdge 中管理其他工程。');
     const transition = ['create', 'open', 'close'].includes(request?.operation);
     if (!transition) {
-      if (request.operation === 'save' && request.appId === this.options.manifest.appId) throw new Error('业务 App 标识不能与 DreamEdge 开发框架相同。');
+      if (!this.options.boundProject && request.operation === 'save' && request.appId === this.options.manifest.appId) throw new Error('业务 App 标识不能与 DreamEdge 开发框架相同。');
       const result = await this.workspace.execute(request);
       if (request.operation === 'save') this.display?.refresh();
       return result;
@@ -122,7 +126,7 @@ export class WindowContext {
     }
   }
   private async withData<T>(task: (root: string, namespace: string, appId: string, projectData: boolean) => Promise<T>): Promise<T> {
-    if (!this.workspace) return task(this.options.profile, this.options.manifest.id, this.options.manifest.appId, false);
+    if (!this.workspace || this.options.boundProject) return task(this.options.profile, this.options.manifest.id, this.options.manifest.appId, false);
     return this.workspace.withCurrent(async project => project
       ? task(project.dataDirectory, project.definition.id, project.definition.appId, true)
       : task(join(this.options.profile, 'window-data', this.options.id), this.options.manifest.id, this.options.manifest.appId, false));

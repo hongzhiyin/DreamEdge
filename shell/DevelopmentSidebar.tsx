@@ -66,7 +66,7 @@ export function DevelopmentSidebar() {
         {[error, loadError, current?.recoveryError].filter(Boolean).map((message, index) => <p key={index} role="alert" className="sidebar-error">{message}</p>)}
       </div>}
       {current?.project ? <WorkspaceSidebar key={current.project.id} projectId={current.project.id} settingsOpen={settingsOpen}
-        openSettings={() => showSettings(true)} busy={busy} run={run} /> : <div className="sidebar-welcome">
+        embedded={!!current.embedded} directory={current.project.rootDirectory} openSettings={() => showSettings(true)} busy={busy} run={run} /> : <div className="sidebar-welcome">
         <h2>{settingsOpen ? '工程管理' : '从一个工程开始'}</h2><p className="sidebar-hint">新建或打开工程，与 AI 一起开发你的应用。</p>
         <ProjectActions busy={busy} run={run} />
       </div>}

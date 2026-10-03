@@ -1,8 +1,11 @@
+import { useState } from 'react';
+import type { ExportMode } from '../shared/contracts';
 import { useApplicationSettings } from './useApplicationSettings';
 import { useProjectExport } from './useProjectExport';
 
 const phases = { building: '构建源码', packaging: '生成独立 App', publishing: '完成导出', complete: '结束' };
-export function ApplicationPanel({ projectId }: { projectId: string }) {
+export function ApplicationPanel({ projectId, embedded = false }: { projectId: string; embedded?: boolean }) {
+  const [mode, setMode] = useState<ExportMode>('standard');
   const settings = useApplicationSettings(projectId); const output = useProjectExport(projectId);
   return <section className="settings-section" aria-label="应用与导出">
     <header className="settings-heading"><h2>应用信息</h2></header>
@@ -10,8 +13,9 @@ export function ApplicationPanel({ projectId }: { projectId: string }) {
       <label>应用名称<input value={settings.draft.appName} maxLength={80} required disabled={settings.busy || !settings.state}
         onChange={event => settings.setDraft({ ...settings.draft, appName: event.target.value })} /></label>
       <p className="ai-hint">应用名称用于导出的 App，不会更改工程名称或工程目录。</p>
-      <label>应用标识<input value={settings.draft.appId} maxLength={200} required spellCheck={false} disabled={settings.busy || !settings.state}
+      <label>应用标识<input value={settings.draft.appId} maxLength={200} required spellCheck={false} disabled={embedded || settings.busy || !settings.state}
         onChange={event => settings.setDraft({ ...settings.draft, appId: event.target.value })} placeholder="io.example.myapp" /></label>
+      {embedded && <p className="ai-hint">当前 App 的标识固定；可在 DreamEdge 中打开导出的源码工程来创建其他 App。</p>}
       <p className="ai-hint">不同 App 使用不同标识，决定独立安装与数据目录；同一 App 升级时保持标识不变。</p>
       <label>应用版本<input value={settings.draft.version} required disabled={settings.busy || !settings.state} placeholder="0.1.0"
         onChange={event => settings.setDraft({ ...settings.draft, version: event.target.value })} /></label>
@@ -22,11 +26,15 @@ export function ApplicationPanel({ projectId }: { projectId: string }) {
     <div className="ai-candidate">
       <h3>导出业务 App</h3><p className="ai-hint">生成本机 macOS App、ZIP 和源码工程；模型配置、会话、原 Git 历史与业务数据不会复制。</p>
       <p className="ai-hint">更新已有 App：保持应用标识不变、提高版本，再次导出。退出旧 App 后用新版 .app 替换旧版；业务数据保存在 App 外。当前需手动替换。</p>
+      <div className="ai-form"><label>导出模式<select aria-label="导出模式" value={mode} disabled={output.running || output.busy} onChange={event => setMode(event.target.value as ExportMode)}>
+        <option value="standard">纯业务 App</option><option value="development">保留 DreamEdge 开发能力</option>
+      </select></label></div>
+      <p className="ai-hint">{mode === 'development' ? '保留 AI 对话、自动构建和 Git。首次运行自动准备独立工程，使用者自行配置模型；需要本机 Git。' : '只运行业务内容，继续开发时在 DreamEdge 中打开源码工程。'}</p>
       {output.supported === false && <p className="ai-hint">当前只支持 macOS 本机架构导出。</p>}
       {settings.dirty && <p className="ai-hint">先保存应用信息，再导出。</p>}
       <div className="ai-buttons">
         <button className="ai-button primary" disabled={!output.supported || output.running || output.busy || settings.busy || settings.dirty || !settings.state}
-          onClick={() => { void output.run('start'); }}>导出 macOS App</button>
+          onClick={() => { void output.run('start', mode); }}>导出 macOS App</button>
         {output.running && <button className="ai-button" disabled={output.busy || output.record?.phase === 'publishing'} onClick={() => { void output.run('cancel'); }}>取消导出</button>}
         {output.record?.status === 'succeeded' && <button className="ai-button" disabled={output.busy} onClick={() => { void output.run('reveal'); }}>在 Finder 中查看</button>}
       </div>

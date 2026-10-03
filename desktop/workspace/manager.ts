@@ -7,13 +7,15 @@ import { WorkspaceRegistry, type WorkspaceSelection } from './registry';
 import { recoverTransaction } from '../changes/recovery';
 import { initializeGit } from '../git/repository';
 
+export interface WorkspaceBinding { rootDirectory: string; appId: string; projectId: string }
+
 export class WorkspaceManager {
   private readonly registry: WorkspaceSelection;
   private selected: WorkspaceProject | null = null;
   private definitionHash = '';
   private recoveryError: string | null = null;
   readonly ready: Promise<void>;
-  constructor(private readonly dataDirectory: string, private readonly frameworkRoot: string, selection?: WorkspaceSelection) {
+  constructor(private readonly dataDirectory: string, private readonly frameworkRoot: string, selection?: WorkspaceSelection, private readonly binding?: WorkspaceBinding) {
     this.registry = selection ?? new WorkspaceRegistry(dataDirectory);
     this.ready = this.restore();
   }
@@ -32,7 +34,8 @@ export class WorkspaceManager {
   private async assertAllowed(root: string): Promise<void> {
     const framework = await realpath(this.frameworkRoot);
     const profile = await directory(this.dataDirectory);
-    if ([framework, profile].some(protectedRoot => inside(protectedRoot, root) || inside(root, protectedRoot))) {
+    if (this.binding && root !== this.binding.rootDirectory) throw new Error('本应用只能开发自身工程，请在 DreamEdge 中管理其他工程。');
+    if (inside(framework, root) || inside(root, framework) || !this.binding && (inside(profile, root) || inside(root, profile))) {
       throw new Error('工程目录不能包含或位于框架安装目录、源码目录或用户数据区。');
     }
   }
@@ -49,6 +52,7 @@ export class WorkspaceManager {
     await recoverTransaction(root, this.dataDirectory);
     const content = await readText(root, DEFINITION_FILE);
     const definition = validateDefinition(JSON.parse(content));
+    if (this.binding && (definition.id !== this.binding.projectId || definition.appId !== this.binding.appId)) throw new Error('本应用的工程身份或应用标识已变化，请修复工程描述。');
     // Reject identity reuse before creating or accessing another project's managed directories.
     this.registry.assertIdentity({ definition, rootDirectory: root } as WorkspaceProject);
     await initializeGit(root);
@@ -66,6 +70,7 @@ export class WorkspaceManager {
   }
   async create(path: unknown, name: unknown): Promise<WorkspaceProject> {
     await this.ready;
+    if (this.binding) throw new Error('本应用已绑定独立工程，请在 DreamEdge 中新建其他工程。');
     const definition = createDefinition(name);
     const root = await canonicalTarget(path, false);
     await this.assertAllowed(root);
@@ -86,6 +91,7 @@ export class WorkspaceManager {
   }
   async close(): Promise<WorkspaceStatus> {
     await this.ready;
+    if (this.binding) throw new Error('本应用的开发工程保持绑定，请关闭应用窗口。');
     await this.registry.select(null); this.selected = null; this.recoveryError = null;
     return this.current();
   }
@@ -105,6 +111,7 @@ export class WorkspaceManager {
   }
   async save(id: unknown, changes: { name?: unknown; appName?: unknown; appId?: unknown; version?: unknown; expectedDefinitionHash?: unknown }): Promise<WorkspaceProject> {
     const project = await this.project(id);
+    if (this.binding && changes.appId !== undefined && changes.appId !== this.binding.appId) throw new Error('本应用的标识保持不变；请在 DreamEdge 中创建独立 App。');
     if (changes.expectedDefinitionHash !== undefined && changes.expectedDefinitionHash !== hash(JSON.stringify(project.definition))) throw new Error('工程设置已变化，请重新读取后再保存。');
     const definition = { ...project.definition,
       ...(changes.appName === undefined ? {} : { appName: applicationName(changes.appName) }), appId: changes.appId === undefined ? project.definition.appId : applicationId(changes.appId), name: changes.name === undefined ? project.definition.name : projectName(changes.name),

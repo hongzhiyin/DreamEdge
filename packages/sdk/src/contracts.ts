@@ -22,6 +22,7 @@ export interface AppManifest extends ToolManifest {
   appId: string;
   renderer: string;
   services?: Record<string, { entry: string; methods: string[] }>;
+  development?: { project: string; frameworkVersion: string; frameworkAppId: string };
 }
 export interface StoredRecord { id: string; value: Json }
 export interface StorageClient {

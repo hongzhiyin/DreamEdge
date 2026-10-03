@@ -1,11 +1,11 @@
-import { cp, mkdir, readFile, symlink } from 'node:fs/promises';
+import { mkdir, readFile, realpath, symlink } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, relative } from 'node:path';
 import { copyResource } from './resources';
 import { hash } from '../workspace/paths';
 
 /** Extract only the installed packing library graph; worker tools run outside ASAR. */
-export async function prepareTooling(root: string, signal: AbortSignal) {
+export async function prepareTooling(root: string, signal: AbortSignal, installed?: string) {
   const tooling = join(root, 'tooling'); const copied = new Map<string, string>();
   async function locate(name: string, require: NodeJS.Require) {
     try { return dirname(require.resolve(`${name}/package.json`)); } catch {}
@@ -14,7 +14,7 @@ export async function prepareTooling(root: string, signal: AbortSignal) {
       const parent = dirname(folder); if (parent === folder) throw new Error('构建工具依赖位置无效。'); folder = parent; }
   }
   async function copy(name: string, require: NodeJS.Require): Promise<string> {
-    signal.throwIfAborted(); const source = await locate(name, require); const existing = copied.get(source); if (existing) return existing;
+    signal.throwIfAborted(); const source = await realpath(await locate(name, require)); const existing = copied.get(source); if (existing) return existing;
     if (copied.size >= 300) throw new Error('构建工具依赖过多。');
     const target = join(tooling, 'packages', hash(source).slice(0, 24)); copied.set(source, target);
     await copyResource(source, target, true);
@@ -26,6 +26,6 @@ export async function prepareTooling(root: string, signal: AbortSignal) {
     }
     return target;
   }
-  const target = await copy('app-builder-lib', createRequire(__filename));
+  const target = await copy('app-builder-lib', createRequire(installed ? join(installed, 'package.json') : __filename));
   await mkdir(join(tooling, 'node_modules'), { recursive: true }); await symlink(relative(join(tooling, 'node_modules'), target), join(tooling, 'node_modules/app-builder-lib'));
 }

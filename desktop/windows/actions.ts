@@ -1,4 +1,4 @@
-import { app, dialog, type BrowserWindow } from 'electron';
+import { app, dialog, shell, type BrowserWindow } from 'electron';
 import { basename, join } from 'node:path';
 import type { ProjectAction, ProjectWindow } from '../../shared/contracts';
 import { ProjectWindows } from './controller';
@@ -6,9 +6,10 @@ import type { WindowContext } from './context';
 
 export class ProjectActions {
   private readonly pending = new Set<number>();
-  constructor(private readonly windows: ProjectWindows) {}
+  constructor(private readonly windows: ProjectWindows, private readonly bound = false) {}
   async execute(input: unknown, parent: BrowserWindow | null, context?: WindowContext): Promise<ProjectWindow | null> {
-    if (input !== 'new' && input !== 'createProject' && input !== 'openProject') throw new Error('不支持的工程操作。');
+    if (input !== 'new' && input !== 'createProject' && input !== 'openProject' && input !== 'revealProject') throw new Error('不支持的工程操作。');
+    if (this.bound && input !== 'revealProject') throw new Error('本应用只开发自身工程，请在 DreamEdge 中管理其他工程。');
     const operation: ProjectAction = input;
     const key = parent?.id ?? 0;
     if (this.pending.has(key)) throw new Error('工程操作正在进行，请稍后再试。');
@@ -19,6 +20,10 @@ export class ProjectActions {
     };
     try {
       assertParent();
+      if (operation === 'revealProject') {
+        const info = await context?.info(); if (!info?.project) throw new Error('当前没有打开的工程。');
+        shell.showItemInFolder(info.project.rootDirectory); return info;
+      }
       if (operation === 'new') return await this.windows.openFromAction({ operation }, parent);
       if (operation === 'createProject') {
         const options: Electron.SaveDialogOptions = { title: '新建工程', buttonLabel: '创建工程',

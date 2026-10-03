@@ -8,8 +8,8 @@ import { ProjectActions } from './ProjectActions';
 import { AiConversation } from './AiConversation';
 
 const tabs = ['模型连接', 'Git 历史', '应用与导出', '工程管理'] as const;
-export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, run }: {
-  projectId: string; settingsOpen: boolean; openSettings: () => void; busy: ProjectAction | null; run: (action: ProjectAction) => Promise<void>;
+export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, run, embedded = false, directory }: {
+  embedded?: boolean; directory: string; projectId: string; settingsOpen: boolean; openSettings: () => void; busy: ProjectAction | null; run: (action: ProjectAction) => Promise<void>;
 }) {
   const settings = useModelSettings(projectId); const [tab, setTab] = useState(0); const [commit, setCommit] = useState(false);
   const navigation = useRef<HTMLDivElement>(null);
@@ -39,11 +39,13 @@ export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, 
           <GitPanel projectId={projectId} />
         </div>
         <div role="tabpanel" id="settings-panel-2" aria-labelledby="settings-tab-2" hidden={tab !== 2}>
-          <ApplicationPanel projectId={projectId} />
+          <ApplicationPanel projectId={projectId} embedded={embedded} />
         </div>
         <div role="tabpanel" id="settings-panel-3" aria-labelledby="settings-tab-3" hidden={tab !== 3}>
           <h2>工程管理</h2><p className="ai-hint">每个工程拥有独立的源码、模型连接和 Git 历史。</p>
-          <ProjectActions busy={busy} run={run} />
+          <p className="ai-hint" style={{ overflowWrap: 'anywhere' }}>{directory}</p>
+          <button className="ai-button" disabled={busy !== null} onClick={() => { void run('revealProject'); }}>在 Finder 中查看工程</button>
+          {embedded ? <p className="ai-hint">本 App 绑定自己的工程；源码、模型配置和 Git 位于 App 外，升级保留本机修改。</p> : <ProjectActions busy={busy} run={run} />}
         </div>
       </div>
     </section>

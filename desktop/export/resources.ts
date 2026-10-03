@@ -11,5 +11,11 @@ export async function copyResource(source: string, target: string, skipNodeModul
     return;
   }
   if (!stat.isFile()) throw new Error('框架资源类型不受支持。');
-  await writeFile(target, await readFile(source)); await chmod(target, stat.mode & 0o777);
+  const unpacked = source.replace(/\.asar([/\\])/, '.asar.unpacked$1');
+  const physical = unpacked !== source ? await lstat(unpacked).catch(error => {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return undefined; throw error;
+  }) : undefined;
+  // Virtual ASAR stats omit executable bits; native tools retain the real unpacked mode.
+  const mode = physical?.isFile() && !physical.isSymbolicLink() ? physical.mode : stat.mode;
+  await writeFile(target, await readFile(source)); await chmod(target, mode & 0o777);
 }

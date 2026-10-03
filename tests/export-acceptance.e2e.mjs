@@ -13,8 +13,9 @@ export async function replaceApp(source, installed) {
   await execute('/usr/bin/ditto', [source, installed]);
   await execute('/usr/bin/codesign', ['--verify', '--deep', '--strict', installed]);
 }
-export async function exportProject(framework, page, project, output) {
+export async function exportProject(framework, page, project, output, mode = 'standard') {
   const panel = page.getByRole('region', { name: '应用与导出' });
+  await panel.getByLabel('导出模式', { exact: true }).selectOption(mode);
   await framework.evaluate(({ dialog }, { output, appName }) => { dialog.showSaveDialog = async (_parent, options) => {
     if (options.defaultPath !== `${appName}-导出` || options.buttonLabel !== '导出') throw new Error('Wrong export dialog');
     return { canceled: false, filePath: output };
@@ -37,7 +38,10 @@ export async function exportProject(framework, page, project, output) {
   for (const field of ['name', 'appName', 'appId', 'version']) assert.equal(descriptor[field], project.definition[field]);
   for (const file of ['.dreamedge/model.json', '.git', 'data', 'sessions']) await assert.rejects(access(join(output, '工程', file)));
   const asar = createRequire(import.meta.url)('@electron/asar'); const archive = join(output, app, 'Contents/Resources/app.asar');
-  assert.ok(!asar.listPackage(archive).some(path => /model\.json|records\.sqlite|session\.json/.test(path)));
+  const entries = asar.listPackage(archive);
+  assert.ok(entries.includes('/node_modules/esbuild/lib/main.js'));
+  if (mode === 'development') assert.ok(entries.some(path => path.startsWith('/dist/framework/tooling/node_modules/app-builder-lib')));
+  assert.ok(!entries.some(path => /model\.json|records\.sqlite|session\.json/.test(path)));
   const manifest = JSON.parse(asar.extractFile(archive, 'dist/app.json').toString());
   assert.equal(manifest.version, project.definition.version); assert.equal(manifest.appId, project.definition.appId);
   assert.ok(!JSON.stringify(manifest).includes('fixture-export-secret'));

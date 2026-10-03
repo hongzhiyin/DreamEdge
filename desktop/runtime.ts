@@ -8,6 +8,7 @@ import { ProjectWindows } from './windows/controller';
 import { registerWindowIpc } from './windows/ipc';
 import { installProjectMenu } from './windows/menu';
 import { ProjectActions } from './windows/actions';
+import { prepareEmbeddedProject } from './embedded/project';
 
 export function startApp(): void {
   const root = app.getAppPath(); const manifest = loadApplication(root);
@@ -21,13 +22,17 @@ export function startApp(): void {
   app.whenReady().then(async () => {
     await mkdir(profile, { recursive: true });
     if (closing) return;
+    const project = await prepareEmbeddedProject(root, profile, frameworkRoot, manifest);
     windows = new ProjectWindows(manifest, root, profile, frameworkRoot, join(__dirname, 'preload.cjs'), undefined,
       workerEngine(join(__dirname, 'build-worker.cjs')),
       workerExportEngine(join(__dirname, 'export-worker.cjs'), resolve(dirname(app.getPath('exe')), '../..'), process.versions.electron),
-      { runtime: join(root, 'dist/framework/runtime'), bundles: join(root, 'dist/framework/bundles'), frameworkVersion: manifest.version, frameworkAppId: manifest.appId });
-    const actions = new ProjectActions(windows);
+      { runtime: join(root, 'dist/framework/runtime'), bundles: join(root, 'dist/framework/bundles'),
+        frameworkVersion: manifest.development?.frameworkVersion ?? manifest.version,
+        frameworkAppId: manifest.development?.frameworkAppId ?? manifest.appId,
+        ...(manifest.development ? { tooling: join(root, 'dist/framework/tooling') } : {}) }, project);
+    const actions = new ProjectActions(windows, !!project);
     registerWindowIpc(windows, manifest, actions);
-    installProjectMenu(actions, manifest.name, manifest.capabilities.includes('workspace'));
+    installProjectMenu(actions, manifest.name, manifest.capabilities.includes('workspace') && !project);
     await windows.restore();
     app.on('activate', () => { void windows?.activate().catch(() => {}); });
     app.on('second-instance', () => { void windows?.activate().catch(() => {}); });

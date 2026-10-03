@@ -2,12 +2,12 @@
 .ai-file-change summary span { float: right; margin-left: 8px; font-size: 12px; color: var(--sidebar-muted); font-weight: 400; }
 .ai-form { display: grid; gap: 12px; }
 .ai-form label { display: grid; gap: 6px; font-size: 12px; color: var(--sidebar-muted); }
-.ai-form input:not([type="checkbox"]), .ai-form textarea {
+.ai-form input:not([type="checkbox"]), .ai-form textarea, .ai-form select {
   width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid #cececb; border-radius: 6px;
   font: inherit; font-size: 13px; color: var(--sidebar-text); background: #fff;
 }
 .ai-form textarea { resize: vertical; line-height: 1.6; min-height: 96px; }
-.ai-form :is(input, textarea):focus-visible { outline: 2px solid var(--sidebar-focus); outline-offset: 2px; }
+.ai-form :is(input, textarea, select):focus-visible { outline: 2px solid var(--sidebar-focus); outline-offset: 2px; }
 .ai-context summary:focus-visible, .ai-file-change summary:focus-visible, .ai-full-source summary:focus-visible { outline: 2px solid var(--sidebar-focus); outline-offset: 2px; border-radius: 4px; }
 .ai-checkbox { display: flex !important; gap: 8px !important; align-items: center; min-height: 36px; overflow-wrap: anywhere; }
 .ai-checkbox input { accent-color: #426baf; width: 16px; height: 16px; flex: 0 0 auto; margin: 0; }
@@ -18,7 +18,7 @@
 .ai-button:active:enabled { background: #e3e3e0; }
 .ai-button.primary { color: #fff; border-color: #27272a; background: #27272a; }
 .ai-button.primary:hover:enabled { background: #414146; }
-.ai-button:disabled, .ai-form input:disabled, .ai-form textarea:disabled { opacity: .55; cursor: default; }
+.ai-button:disabled, .ai-form input:disabled, .ai-form textarea:disabled, .ai-form select:disabled { opacity: .55; cursor: default; }
 .ai-context { margin: 8px 0; }
 .ai-turn { padding: 12px 0; border-top: 1px solid var(--sidebar-border); }
 .ai-candidate { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--sidebar-border); }

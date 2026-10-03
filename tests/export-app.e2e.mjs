@@ -62,6 +62,7 @@ try {
   const readData = target => target.page.evaluate(id => window.dreamEdge.storage(id, { operation: 'list', collection: 'check' }), target.manifest.id);
   for (const [target, label] of [[a, 'Alpha'], [b, 'Beta']]) {
     await target.page.frameLocator('iframe').getByText(`Hello ${label}`, { exact: true }).waitFor();
+    const window = await target.app.browserWindow(target.page); await window.evaluate(window => window.focus());
     await target.page.frameLocator('iframe').getByRole('button', { name: '保存', exact: true }).click();
     await target.page.frameLocator('iframe').getByRole('button', { name: '已保存', exact: true }).waitFor();
     assert.deepEqual(await readData(target), [{ id: 'same-key', value: label }]);
@@ -86,6 +87,7 @@ try {
   await upgraded.page.frameLocator('iframe').getByText('Hello Alpha v2', { exact: true }).waitFor();
   assert.deepEqual(await readData(upgraded), [{ id: 'same-key', value: 'Alpha' }]);
   assert.deepEqual(await readData(b), [{ id: 'same-key', value: 'Beta' }]);
+  const window = await upgraded.app.browserWindow(upgraded.page); await window.evaluate(window => window.focus());
   await upgraded.page.frameLocator('iframe').getByRole('button', { name: '保存', exact: true }).click();
   await upgraded.page.frameLocator('iframe').getByRole('button', { name: '已保存', exact: true }).waitFor();
   await upgraded.page.screenshot({ path: 'artifacts/dreamedge-business-v2.png' });

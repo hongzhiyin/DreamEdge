@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron';
-import type { AppManifest, ProjectWindow, WindowRequest, WindowResult } from '../../shared/contracts';
+import type { AppManifest, ProjectWindow, WindowRequest, WindowResult, WorkspaceProject } from '../../shared/contracts';
 import { SHELL_URL } from '../../shared/contracts';
 import { WorkspaceRegistry } from '../workspace/registry';
 import { CandidatePreviews } from '../build/preview';
@@ -20,13 +20,18 @@ export class ProjectWindows {
   private readonly previewCapacity = new Capacity(4, '最多同时打开四个候选预览。');
   private quitting = false;
   constructor(private readonly manifest: AppManifest, private readonly root: string, private readonly profile: string,
-    private readonly frameworkRoot: string, private readonly preload: string, private readonly provider: ModelProvider | undefined, private readonly engine: BuildEngine, private readonly exportEngine?: ExportEngine, private readonly exportResources?: ExportResources) {
+    private readonly frameworkRoot: string, private readonly preload: string, private readonly provider: ModelProvider | undefined, private readonly engine: BuildEngine, private readonly exportEngine?: ExportEngine, private readonly exportResources?: ExportResources, private readonly boundProject?: WorkspaceProject) {
     this.catalog = new WorkspaceRegistry(profile); this.state = new WindowState(profile);
     void this.catalog.ready.catch(() => {}); void this.state.ready.catch(() => {});
   }
   async restore(): Promise<void> {
     await Promise.all([this.catalog.ready, this.state.ready]);
     const all = await this.state.records(); const records = all.filter(record => record.open);
+    if (this.boundProject) {
+      const chosen = records.find(record => record.project?.id === this.boundProject!.definition.id) ?? records[0] ?? await this.state.allocate();
+      for (const record of records) if (record.id !== chosen.id) await this.state.close(record.id);
+      await this.state.bind(chosen.id, this.boundProject); await this.launch(await this.state.record(chosen.id)); return;
+    }
     if (!records.length) records.push(await this.state.allocate(all.length ? null : await this.catalog.load()));
     for (const record of records) await this.launch(record);
   }
@@ -35,6 +40,7 @@ export class ProjectWindows {
     return new WindowContext({ id: record.id, manifest: this.manifest, root: this.root, profile: this.profile,
       frameworkRoot: this.frameworkRoot, catalog: this.catalog, windows: this.state, provider: this.provider, engine: this.engine,
       exportEngine: this.exportEngine, exportResources: this.exportResources,
+      boundProject: this.boundProject,
       buildCapacity: this.buildCapacity, openPreview: (project, build) => previews.open(project, build), closePreviews: () => previews.close(),
       modelSettingsChanged: () => { const live = this.windows.get(record.id); if (live) live.window.webContents.send('host:model-settings-changed'); },
       changed: () => { const live = this.windows.get(record.id); if (live) live.window.webContents.send('host:context-changed'); } });
@@ -94,6 +100,7 @@ export class ProjectWindows {
     return this.open(request as Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>);
   }
   async open(request: Extract<WindowRequest, { operation: 'new' | 'createProject' | 'openProject' }>): Promise<ProjectWindow> {
+    if (this.boundProject) throw new Error('本应用只开发自身工程，请在 DreamEdge 中打开其他工程或窗口。');
     if (this.quitting || !this.manifest.capabilities.includes('workspace')) throw new Error('当前应用无法打开开发窗口。');
     const closed = request.operation === 'openProject' ? (await this.state.records()).find(window => !window.open && window.project?.root === request.directory) : undefined;
     const record = await this.state.allocate(null, closed?.id); const next = this.context(record);
@@ -127,7 +134,11 @@ export class ProjectWindows {
   async activate(): Promise<void> {
     const live = [...this.windows.entries()].find(([, live]) => !live.closing);
     if (live) { await this.focus(live[0]); return; }
-    if (!this.quitting) await this.launch(await this.state.allocate());
+    if (!this.quitting) {
+      const record = await this.state.allocate();
+      if (this.boundProject) await this.state.bind(record.id, this.boundProject);
+      await this.launch(await this.state.record(record.id));
+    }
   }
   async shutdown(): Promise<void> {
     this.quitting = true;

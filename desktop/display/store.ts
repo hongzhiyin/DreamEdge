@@ -22,7 +22,7 @@ export class DisplayStore {
       const record = JSON.parse(await readText(await this.root(project), 'record.json')) as DisplayRecord;
       identifier(record.id);
       if (record.schemaVersion !== 1 || record.projectId !== project.definition.id || record.definitionHash !== definitionHash
-        || !validHashes(record.sourceHashes) || !validHashes(record.outputHashes) || !Object.hasOwn(record.outputHashes, 'index.html')
+        || !validHashes(record.sourceHashes) || !validHashes(record.outputHashes, 300) || !Object.hasOwn(record.outputHashes, 'index.html')
         || !equalHashes(record.sourceHashes, sourceHashes)) return null;
       const root = join(await this.root(project), record.id, 'output');
       for (const [path, expected] of Object.entries(record.outputHashes)) if (hash(await readText(root, path)) !== expected) return null;

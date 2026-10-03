@@ -31,7 +31,7 @@ export async function checkedPath(root: string, name: string, createParents = fa
   const target = join(current, parts.at(-1)!);
   try {
     const stat = await lstat(target);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) throw new Error('源码文件不能是目录、符号链接或硬链接。');
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink > 1) throw new Error('源码文件不能是目录、符号链接或硬链接。');
   } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   return target;
 }
@@ -50,7 +50,8 @@ export async function readText(root: string, name: string): Promise<string> {
   const handle = await open(filename, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.nlink !== 1 || stat.size > TEXT_LIMIT) throw new Error('仅支持不超过 1 MB 的普通文本文件。');
+    // An atomic replacement can unlink an already-open, valid snapshot; hard links remain forbidden.
+    if (!stat.isFile() || stat.nlink > 1 || stat.size > TEXT_LIMIT) throw new Error('仅支持不超过 1 MB 的普通文本文件。');
     const content = new TextDecoder('utf-8', { fatal: true }).decode(await handle.readFile());
     if (content.includes('\0')) throw new Error('仅支持 UTF-8 文本文件。');
     return content;
