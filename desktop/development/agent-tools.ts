@@ -1,8 +1,9 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { Type } from 'typebox';
-import type { ModelAccess } from './model';
+import { proposalSchema, type ModelAccess } from './model';
 
-export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExpose: (value: unknown) => void): AgentTool[] {
+export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExpose: (value: unknown) => void,
+  submitted: (proposal: Record<string, unknown>) => void): AgentTool[] {
   const directory = Type.String({ maxLength: 1024, description: 'Directory relative to src; empty string for the source root.' });
   const definitions = [
     { name: 'list_files', label: '查看目录', description: 'List source paths in the current project, 100 per page. No file contents.',
@@ -11,12 +12,15 @@ export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExp
       parameters: Type.Object({ path: Type.String({ minLength: 1, maxLength: 1024 }) }, { additionalProperties: false }) },
     { name: 'search_files', label: '搜索源码', description: 'Find literal text in source files, returning paths and line excerpts. Not a regular expression.',
       parameters: Type.Object({ directory, query: Type.String({ minLength: 1, maxLength: 160 }) }, { additionalProperties: false }) },
+    { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate source file contents. Read existing files first. Use files: [] for a reply without edits. This stages a proposal, never saves source.',
+      parameters: Type.Unsafe(proposalSchema) },
   ];
   return definitions.map(tool => ({ ...tool, executionMode: 'sequential', execute: async (_id, args, activeSignal) => {
     const combined = activeSignal ? AbortSignal.any([signal, activeSignal]) : signal;
     combined.throwIfAborted();
     const result = await access.execute(tool.name, args as Record<string, unknown>, combined, beforeExpose);
     combined.throwIfAborted(); beforeExpose(result);
-    return { content: [{ type: 'text', text: JSON.stringify(result) }], details: {} };
+    if (tool.name === 'propose_changes') submitted(args as Record<string, unknown>);
+    return { content: [{ type: 'text', text: JSON.stringify(result) }], details: {}, terminate: tool.name === 'propose_changes' };
   } }));
 }

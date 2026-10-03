@@ -1,7 +1,7 @@
 import type { AssistantMessage, Model, TranscriptContext } from '@earendil-works/pi-ai';
 import type { StreamFn } from '@earendil-works/pi-agent-core';
 import type { ConnectionConfiguration } from '../model-connection/configuration';
-import { ModelFailure, proposalSchema } from './model';
+import { ModelFailure } from './model';
 import { requestResponse } from './responses-transport';
 
 interface NativeItem { type: string; call_id?: string; name?: string; arguments?: string; content?: { type: string; text?: string }[] }
@@ -19,8 +19,7 @@ export async function responsesStream(configuration: Required<ConnectionConfigur
       if (Buffer.byteLength(JSON.stringify(input)) > 1024 * 1024) throw new ModelFailure('本轮工具上下文已达到上限，请创建新会话或缩小范围。');
       const tools = getCurrentTools(context.messages).map(tool => ({ type: 'function', name: tool.name,
         description: tool.description, parameters: tool.parameters, strict: true }));
-      const result = await requestResponse(configuration, transport, { input, tools, parallel_tool_calls: false, max_output_tokens: 16384,
-        text: { format: { type: 'json_schema', name: 'dreamedge_changes', strict: true, schema: proposalSchema } } }, signal) as { status?: string; output?: NativeItem[] };
+      const result = await requestResponse(configuration, transport, { input, tools, parallel_tool_calls: false, max_output_tokens: 16384 }, signal) as { status?: string; output?: NativeItem[] };
       if (result.status !== 'completed' || !Array.isArray(result.output)) throw new ModelFailure('模型请求未完整完成。');
       const functionCalls = result.output.filter(item => item.type === 'function_call');
       if (functionCalls.length > 8 || (calls += functionCalls.length) > 48) throw new ModelFailure('本轮达到工具调用上限，请缩小任务范围。');

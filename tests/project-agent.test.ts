@@ -18,7 +18,7 @@ test('pi agent discovers, searches and reads project files without manual contex
     const body = JSON.parse(String(options!.body)); requests.push(body);
     assert.equal(new Headers(options!.headers).get('Authorization'), `Bearer ${configuration.apiKey}`);
     assert.ok(!JSON.stringify(body).includes(configuration.apiKey)); assert.equal(body.store, false);
-    assert.deepEqual(body.tools.map((tool: any) => tool.name), ['list_files', 'read_file', 'search_files']);
+    assert.deepEqual(body.tools.map((tool: any) => tool.name), ['list_files', 'read_file', 'search_files', 'propose_changes']);
     if (++step === 1) return response(call('list', 'list_files', { directory: '', offset: 0 }));
     if (step === 2) return response({ type: 'reasoning', id: 'reason', encrypted_content: 'opaque', summary: [] }, call('search', 'search_files', { directory: '', query: 'original-greeting' }));
     if (step === 3) {
@@ -26,7 +26,7 @@ test('pi agent discovers, searches and reads project files without manual contex
       return response(call('read', 'read_file', { path: 'components/greeting.ts' }));
     }
     assert.ok(body.input.some((item: any) => item.type === 'reasoning' && item.encrypted_content === 'opaque'));
-    return response(answer({ summary: 'Update nested greeting', files: [{ path: 'components/greeting.ts', content: 'export const greeting = "Hello Agent";' }] }));
+    return response(call('submit', 'propose_changes', { summary: 'Update nested greeting', files: [{ path: 'components/greeting.ts', content: 'export const greeting = "Hello Agent";' }] }));
   });
   f.provider.generate = (input, signal, access) => model.generate(input, signal, access);
   try {
@@ -70,7 +70,7 @@ test('pi validates tool arguments, returns tool errors to the model and rejects 
       return response(call('bad', 'read_file', { path: '../outside' }));
     }
     if (step === 3) return response(call('read', 'read_file', { path: 'main.ts' }));
-    await writeFile(join(f.project.sourceDirectory, 'main.ts'), 'external edit'); return response(answer());
+    await writeFile(join(f.project.sourceDirectory, 'main.ts'), 'external edit'); return response(call('submit', 'propose_changes', proposal));
   });
   f.provider.generate = (input, signal, access) => model.generate(input, signal, access);
   try {
@@ -84,7 +84,7 @@ test('credentials in automatically read source never enter tool output, context 
   const model = new ResponsesModel(configuration, async (_url, options) => {
     assert.ok(!String(options!.body).includes(configuration.apiKey));
     if (++step === 1) return response(call('read', 'read_file', { path: 'main.ts' }));
-    return response(answer({ summary: 'Cannot read credentials', files: [] }));
+    return response(call('submit', 'propose_changes', { summary: 'Cannot read credentials', files: [] }));
   });
   f.provider.generate = (input, signal, access) => model.generate(input, signal, access);
   try {

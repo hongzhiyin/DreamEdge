@@ -1,7 +1,7 @@
 import type { ProjectContext, WorkspaceProject } from '../../shared/contracts';
 import { WorkspaceApi } from '../workspace/api';
 import { hash, listSource, readText, relativeParts } from '../workspace/paths';
-import { CONTEXT_FILES, CONTEXT_LIMIT, modelDefinition, shortText } from './context';
+import { CONTEXT_FILES, CONTEXT_LIMIT, modelDefinition, shortText, validateProposal } from './context';
 
 /** All paths are relative to src; the model never receives a host filesystem path. */
 export class ProjectAccess {
@@ -10,6 +10,10 @@ export class ProjectAccess {
     return this.workspace.withProject(this.projectId, async project => {
       signal.throwIfAborted();
       if (JSON.stringify(modelDefinition(project.definition)) !== JSON.stringify(this.context.definition)) throw new Error('工程描述已变化，请重新发送请求。');
+      if (name === 'propose_changes') {
+        beforeExpose(args); await validateProposal(project, this.context, args);
+        signal.throwIfAborted(); return { accepted: true };
+      }
       if (name === 'read_file') {
         relativeParts(args.path);
         return this.capture(project, args.path as string, signal, beforeExpose);

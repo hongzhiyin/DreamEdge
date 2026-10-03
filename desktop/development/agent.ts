@@ -11,12 +11,22 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
     baseUrl: configuration.baseUrl, input: ['text'], reasoning: false, contextWindow: 128000, maxTokens: 16384,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
   const guard = (value: unknown) => { if (JSON.stringify(value).includes(configuration.apiKey)) throw new ModelFailure('读取内容包含模型连接凭据，已拒绝发送。'); };
-  let final: AssistantMessage | undefined;
+  let final: AssistantMessage | undefined; let proposal: Record<string, unknown> | undefined; let reminders = 0;
   const details = new Map<string, string>();
   const messages = await runAgentLoop([{ role: 'user', content: JSON.stringify({ request: input.prompt, project: input.context, history: input.history }), timestamp: Date.now() }],
     { messages: [{ role: 'system', content: modelInstructions, timestamp: Date.now() }],
-      tools: projectTools(access, signal, guard) },
-    { model, convertToLlm: messages => messages as Message[], toolExecution: 'sequential' }, async event => {
+      tools: projectTools(access, signal, guard, value => { proposal = value; }) },
+    { model, convertToLlm: messages => messages as Message[], toolExecution: 'sequential',
+      finishTurn: ({ message, toolResults }) => {
+        if (proposal) return { action: 'end' };
+        if (message.stopReason === 'stop' && !toolResults.length) {
+          if (++reminders > 2) throw new ModelFailure('模型未通过候选工具提交有效修改；源码未被修改，请重试。');
+          return { action: 'continue' };
+        }
+      },
+      prepareNextTurn: ({ message, toolResults }) => !proposal && message.stopReason === 'stop' && !toolResults.length
+        ? { messages: [{ role: 'user', content: 'Finish by calling propose_changes with summary and files. Your preceding text was not submitted as a candidate. Source is unchanged. Use files: [] if no edits are needed.', timestamp: Date.now() }] } : undefined,
+    }, async event => {
       signal.throwIfAborted();
       if (event.type === 'message_end' && event.message.role === 'assistant') final = event.message;
       if (event.type !== 'tool_execution_start' && event.type !== 'tool_execution_end') return;
@@ -31,7 +41,6 @@ export async function runProjectAgent(input: ModelInput, configuration: Required
     }, signal, await responsesStream(configuration, transport, signal));
   signal.throwIfAborted();
   final = messages.filter((message): message is AssistantMessage => message.role === 'assistant').at(-1) ?? final;
-  if (!final || final.stopReason !== 'stop') throw new ModelFailure(final?.errorMessage ?? 'Agent 未返回完整候选修改。');
-  const text = final.content.filter(content => content.type === 'text').map(content => content.text).join('');
-  try { return JSON.parse(text); } catch { throw new ModelFailure('模型返回的候选变更不是有效 JSON。'); }
+  if (proposal) return proposal;
+  throw new ModelFailure(final?.errorMessage ?? 'Agent 未提交有效候选修改；源码未被修改。');
 }
