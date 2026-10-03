@@ -42,6 +42,8 @@ try {
   await sidebar.getByText('侧栏工程 A', { exact: true }).waitFor();
   const pa = await a.evaluate(() => window.dreamEdge.windows({ operation: 'current' }));
   assert.equal(pa.project.rootDirectory, await realpath(directory)); assert.equal(application.windows().length, 1);
+  await sidebar.getByRole('button', { name: '打开工程设置' }).click();
+  await sidebar.getByRole('tab', { name: '工程管理' }).click();
   const opened = application.waitForEvent('window');
   await sidebar.getByRole('button', { name: /^新窗口/ }).click();
   const b = await opened; await b.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor();
@@ -49,8 +51,8 @@ try {
   await b.getByRole('button', { name: '打开开发侧栏' }).click();
   const sidebarB = b.getByRole('complementary');
   await application.evaluate(({ dialog }) => { dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] }); });
-  await sidebarB.getByRole('button', { name: /^打开工程/ }).click();
-  await sidebarB.getByRole('button', { name: /^打开工程/ }).waitFor({ state: 'visible' });
+  await sidebarB.getByRole('navigation', { name: '工程操作' }).getByRole('button', { name: /^打开工程/ }).click();
+  await sidebarB.getByRole('navigation', { name: '工程操作' }).getByRole('button', { name: /^打开工程/ }).waitFor({ state: 'visible' });
   await b.waitForFunction(() => !document.querySelector('.sidebar-action').disabled);
   assert.equal(await sidebarB.getByRole('alert').count(), 0);
   assert.equal((await b.evaluate(() => window.dreamEdge.windows({ operation: 'current' }))).project, null);
@@ -71,7 +73,7 @@ try {
   await application.evaluate(({ dialog }, directory) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [directory] });
   }, join(source, 'missing'));
-  await sidebarB.getByRole('button', { name: /^打开工程/ }).click();
+  await sidebarB.getByRole('navigation', { name: '工程操作' }).getByRole('button', { name: /^打开工程/ }).click();
   await sidebarB.getByRole('alert').filter({ hasText: '无法打开这个位置' }).waitFor();
   await b.emulateMedia({ reducedMotion: 'reduce' });
   await nativeB.evaluate(window => window.setSize(640, 480));

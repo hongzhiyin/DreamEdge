@@ -13,7 +13,7 @@ async function launch(expected = 'HelloWorld') {
   for (const field of ['ELECTRON_RUN_AS_NODE', 'DREAMEDGE_AI_API_KEY', 'DREAMEDGE_AI_MODEL', 'DREAMEDGE_AI_BASE_URL']) delete env[field];
   application = await electron.launch({ executablePath: process.env.DREAMEDGE_EXECUTABLE_PATH || electronPath,
     args: process.env.DREAMEDGE_EXECUTABLE_PATH ? [] : [resolve('.')], env });
-  const page = await application.firstWindow(); page.on('pageerror', error => errors.push(error.message));
+  const page = await application.firstWindow(); page.setDefaultTimeout(15000); page.on('pageerror', error => errors.push(error.message));
   await page.frameLocator('iframe').getByText(expected, { exact: true }).waitFor(); return page;
 }
 async function mockModel() {
@@ -69,6 +69,9 @@ try {
   await page.getByRole('button', { name: '打开开发侧栏' }).click();
   await application.evaluate(({ dialog }, directory) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: directory }); }, join(source, 'AI HelloWorld'));
   await page.getByRole('button', { name: /^新建工程/ }).click();
+  await page.getByText('AI HelloWorld', { exact: true }).waitFor();
+  assert.equal(await page.getByLabel('服务地址', { exact: true }).isVisible(), false);
+  await page.getByRole('button', { name: '打开工程设置' }).click();
   await page.getByLabel('服务地址', { exact: true }).waitFor();
   await page.waitForFunction(() => !document.querySelector('.ai-form input[type=url]')?.disabled);
   const project = (await page.evaluate(() => window.dreamEdge.workspace({ operation: 'current' }))).project;
@@ -90,12 +93,15 @@ try {
   await page.getByRole('button', { name: '重新读取文件', exact: true }).click();
   await page.getByText('已重新读取工程配置文件。', { exact: true }).waitFor();
   assert.equal(await page.getByLabel('模型名称', { exact: true }).inputValue(), 'deepseek-v4-pro');
-  await page.locator('.ai-settings > summary').filter({ hasText: '模型连接' }).click();
+  await page.getByRole('button', { name: '返回 AI 对话' }).click();
   const chat = page.getByRole('region', { name: 'AI 会话' }); await chat.waitFor();
   const before = await readFile(join(project.sourceDirectory, 'main.ts'), 'utf8');
   await chat.getByLabel('修改需求', { exact: true }).fill('把 HelloWorld 改成 Hello AI');
-  await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
+  await chat.getByLabel('修改需求', { exact: true }).evaluate(element => element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true })));
+  assert.equal(await application.evaluate(() => globalThis.modelRequests.length), 0);
+  await chat.getByLabel('修改需求', { exact: true }).press('Enter');
   await chat.getByText('已将问候语改为 Hello AI。', { exact: true }).waitFor();
+  await chat.getByRole('button', { name: '查看第 1 轮修改 · 1 个文件' }).click();
   const candidate = chat.getByRole('region', { name: '修改记录' }); await candidate.waitFor();
   await candidate.locator('.ai-file-change > summary').click();
   assert.match(await candidate.getByLabel('修改差异 main.ts', { exact: true }).textContent(), /HelloWorld/);
@@ -103,41 +109,51 @@ try {
   assert.match(await readFile(join(project.sourceDirectory, 'main.ts'), 'utf8'), /Hello AI/);
   const request = await application.evaluate(() => globalThis.modelRequests[0]);
   assert.ok(!JSON.stringify(request.input).includes(before)); assert.ok(!JSON.stringify(request.input).includes(source));
-  assert.equal(await chat.locator('input[type="checkbox"]').count(), 1);
+  assert.equal(await chat.locator('input[type="checkbox"]').count(), 0);
   await chat.getByText('工程查阅 · 3 次操作', { exact: true }).waitFor();
   const requests = await application.evaluate(() => globalThis.modelRequests);
   assert.equal(requests.length, 4); assert.ok(JSON.stringify(requests.at(-1).input).includes('main.ts'));
   assert.equal(await chat.getByRole('button', { name: '构建此候选', exact: true }).count(), 0);
   await page.frameLocator('iframe').getByText('Hello AI', { exact: true }).waitFor();
-  const gitDetails = page.locator('details.ai-settings').filter({ has: page.locator('section[aria-label="Git 历史"]') });
-  await gitDetails.locator('summary').click();
+  await page.getByRole('button', { name: '打开工程设置' }).click();
+  await page.getByRole('tab', { name: 'Git 历史', exact: true }).click();
   const history = page.getByRole('region', { name: 'Git 历史', exact: true });
   await history.getByLabel('提交说明').fill('Manual first edit');
   await history.getByRole('button', { name: '提交当前修改', exact: true }).click();
   await history.getByText('工程修改已提交 Git。', { exact: true }).waitFor();
-  await gitDetails.locator('summary').click();
-  await chat.getByLabel('本轮完成后提交工程修改到 Git', { exact: true }).check();
+  await page.getByLabel('本轮完成后提交工程修改到 Git', { exact: true }).check();
+  await page.getByRole('button', { name: '返回 AI 对话' }).click();
   await application.evaluate(() => { globalThis.nextGreeting = 'Hello Agent'; });
   await chat.getByLabel('修改需求', { exact: true }).fill('先查看工程，把问候语改成 Hello Agent');
   await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await chat.getByText('已将问候语改为 Hello Agent。', { exact: true }).waitFor();
+  await chat.getByRole('button', { name: '查看第 2 轮修改 · 1 个文件' }).click();
   const second = chat.getByRole('region', { name: '修改记录' });
   await second.locator('.ai-file-change > summary').click();
   assert.match(await second.getByLabel('修改差异 main.ts', { exact: true }).textContent(), /Hello AI/);
   await page.frameLocator('iframe').getByText('Hello Agent', { exact: true }).waitFor();
   await chat.getByText(/^已提交 Git：/).waitFor();
-  await chat.getByLabel('本轮完成后提交工程修改到 Git', { exact: true }).uncheck();
-  await mkdir('artifacts', { recursive: true }); await candidate.scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: '打开工程设置' }).click();
+  await page.getByLabel('本轮完成后提交工程修改到 Git', { exact: true }).uncheck();
+  await page.getByRole('button', { name: '返回 AI 对话' }).click();
+  await chat.getByRole('button', { name: '查看第 2 轮修改 · 1 个文件' }).click();
+  await mkdir('artifacts', { recursive: true });
   await page.screenshot({ path: 'artifacts/dreamedge-ai-conversation.png' });
-  const nextWindow = application.waitForEvent('window'); await page.getByRole('button', { name: '新窗口', exact: true }).click();
+  await page.getByRole('button', { name: '打开工程设置' }).click();
+  await page.getByRole('tab', { name: '工程管理' }).click();
+  const nextWindow = application.waitForEvent('window'); await page.getByRole('button', { name: /^新窗口/ }).click();
   const blank = await nextWindow; await blank.frameLocator('iframe').getByText('HelloWorld', { exact: true }).waitFor();
-  assert.equal(await blank.locator('.ai-settings').count(), 0);
+  assert.equal(await blank.locator('.settings-section').count(), 0);
   await assert.rejects(blank.evaluate(projectId => window.dreamEdge.modelSettings({ operation: 'get', projectId }), project.definition.id), /当前工程/);
   const noProject = await blank.evaluate(() => window.dreamEdge.windows({ operation: 'current' })); assert.equal(noProject.project, null);
   await assert.rejects(blank.evaluate(({ id, projectId }) => window.dreamEdge.development({ operation: 'get', projectId, sessionId: id }),
     { projectId: project.definition.id, id: (await page.evaluate(id => window.dreamEdge.development({ operation: 'listSummaries', projectId: id }), project.definition.id))[0].id }), /当前工程/);
+  await page.getByRole('button', { name: '返回 AI 对话' }).click();
   await application.evaluate(() => { globalThis.modelMode = 'pending'; });
   await chat.getByLabel('修改需求', { exact: true }).fill('继续修改'); await chat.getByRole('button', { name: '发送给 AI', exact: true }).click();
+  await chat.getByRole('button', { name: '取消请求', exact: true }).waitFor();
+  await page.getByRole('button', { name: '打开工程设置' }).click();
+  await page.getByRole('button', { name: '返回 AI 对话' }).click();
   await chat.getByRole('button', { name: '取消请求', exact: true }).click(); await chat.getByText('请求已取消；源码未被修改。', { exact: true }).waitFor();
   assert.equal((await application.evaluate(() => globalThis.modelRequests.length)), 11);
   const continuation = await application.evaluate(() => globalThis.modelRequests[10].input); assert.ok(JSON.stringify(continuation).includes('Hello Agent'));
@@ -151,7 +167,7 @@ try {
   const restored = await page.evaluate(projectId => window.dreamEdge.modelSettings({ operation: 'get', projectId }), project.definition.id); assert.equal(restored.hasKey, true);
   const histories = await page.evaluate(id => window.dreamEdge.development({ operation: 'listSummaries', projectId: id }), project.definition.id);
   assert.equal(histories[0].turnCount, 4); assert.deepEqual(errors, []);
-  console.log('PASS: model configuration/probe, scoped AI conversation, captured diff, candidate build/preview/confirm, cancellation, redacted errors and restart recovery.');
+  console.log('PASS: model configuration/probe, scoped AI conversation, captured diff, automatic build/apply/refresh, separate settings and Git history, cancellation, redacted errors and restart recovery.');
 } finally {
   if (application) {
     const closed = await Promise.race([application.close().then(() => true).catch(() => true), new Promise(resolve => setTimeout(() => resolve(false), 5000))]);

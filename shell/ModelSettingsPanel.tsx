@@ -1,22 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ModelSettingsState } from '../shared/contracts';
-import { useModelSettings } from './useModelSettings';
+import { useEffect, useState } from 'react';
+import type { ModelSettingsController } from './useModelSettings';
 
-export function ModelSettingsPanel({ projectId, changed }: { projectId: string; changed: (state: ModelSettingsState) => void }) {
-  const settings = useModelSettings(projectId);
-  const initialized = useRef(false); const [open, setOpen] = useState(true);
+export function ModelSettingsPanel({ settings }: { settings: ModelSettingsController }) {
   const [model, setModel] = useState(''); const [baseUrl, setBaseUrl] = useState('https://api.openai.com/v1');
   const [key, setKey] = useState('');
   useEffect(() => {
     if (!settings.state) return;
-    if (!initialized.current) { setOpen(!settings.state.hasKey); initialized.current = true; }
-    else if (!settings.state.hasKey) setOpen(true);
     setModel(settings.state.model); setBaseUrl(settings.state.baseUrl); setKey('');
-    changed(settings.state);
-  }, [settings.state, changed]);
+  }, [settings.state]);
   const dirty = !!key || model !== settings.state?.model || baseUrl !== settings.state?.baseUrl;
-  return <details className="ai-settings" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>模型连接 <span>{settings.state?.hasKey ? '已配置' : '未配置'}</span></summary>
+  return <section className="settings-section" aria-label="模型连接">
+    <header className="settings-heading"><h2>模型连接</h2><span>{settings.state?.hasKey ? '已配置' : '未配置'}</span></header>
     <form className="ai-form" onSubmit={event => { event.preventDefault(); void settings.save(model, baseUrl, key); }}>
       <p className="ai-hint">当前工程独立配置，使用 Responses 接口。</p>
       <div className="ai-buttons">
@@ -42,5 +36,5 @@ export function ModelSettingsPanel({ projectId, changed }: { projectId: string; 
       {settings.state?.warning && <p role="alert" className="sidebar-error">{settings.state.warning}</p>}
       {settings.error && <p role="alert" className="sidebar-error">{settings.error}</p>}
     </form>
-  </details>;
+  </section>;
 }

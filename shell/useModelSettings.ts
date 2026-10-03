@@ -48,3 +48,4 @@ export function useModelSettings(projectId: string) {
   });
   return { state, busy, error: error || loadError, notice, save, test, clear, reload };
 }
+export type ModelSettingsController = ReturnType<typeof useModelSettings>;

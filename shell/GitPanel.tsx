@@ -22,8 +22,9 @@ export function GitPanel({ projectId }: { projectId: string }) {
     catch (error) { if (alive.current) setError(error instanceof Error ? error.message : 'Git 操作失败。'); }
     finally { if (alive.current) setBusy(false); }
   }
-  return <details className="ai-settings"><summary>Git 历史 <span>{status?.changed.length ? `${status.changed.length} 项修改` : '已提交'}</span></summary>
-    <section className="ai-form" aria-label="Git 历史">
+  return <section className="settings-section" aria-label="Git 历史">
+    <header className="settings-heading"><h2>Git 历史</h2><span>{status ? status.changed.length ? `${status.changed.length} 项修改` : '已提交' : '读取中'}</span></header>
+    <div className="ai-form">
       <p className="ai-hint">工程目录中的独立 Git 仓库 · {status?.branch ?? '读取中'}</p>
       <label>提交说明<input value={message} disabled={busy} onChange={event => setMessage(event.target.value)} maxLength={500} /></label>
       <div className="ai-buttons">
@@ -41,6 +42,6 @@ export function GitPanel({ projectId }: { projectId: string }) {
       </div>)}
       {status?.changed.length ? <p className="ai-hint">恢复历史前请先提交当前修改。</p> : null}
       {notice && <p role="status">{notice}</p>}{error && <p role="alert" className="sidebar-error">{error}</p>}
-    </section>
-  </details>;
+    </div>
+  </section>;
 }
