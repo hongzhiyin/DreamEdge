@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog, shell } from 'electron';
 import type { AppManifest } from '../../shared/contracts';
 import { ProjectWindows } from './controller';
 import { ProjectActions } from './actions';
@@ -10,6 +10,22 @@ export function registerWindowIpc(windows: ProjectWindows, manifest: AppManifest
       catch (error) { return { ok: false, error: error instanceof Error ? error.message : '应用操作失败，请重试。' }; }
     });
   }
+  handle('host:export', async (context, request) => {
+    context.assertAvailable(); if (!context.exports) throw new Error('当前应用未启用 App 导出。');
+    if (request?.operation === 'start' && request.directory === undefined) {
+      const status = await context.info();
+      const choice = await dialog.showSaveDialog(windows.nativeWindow(context), { title: '导出独立业务 App', buttonLabel: '导出',
+        defaultPath: `${status.project?.name ?? 'App'}-导出`, properties: ['createDirectory'] });
+      if (choice.canceled || !choice.filePath) return null;
+      return context.exports.execute({ ...request, directory: choice.filePath });
+    }
+    if (request?.operation === 'reveal') {
+      const record = await context.exports.execute({ ...request, operation: 'get' });
+      if (!record || !('status' in record) || record.status !== 'succeeded') throw new Error('只能查看成功的导出。');
+      shell.showItemInFolder(record.directory); return { revealed: true };
+    }
+    return context.exports.execute(request);
+  });
   handle('host:reload-project-view', context => context.reloadDisplay());
   handle('host:model-settings', (context, request) => {
     context.assertAvailable(); if (!context.workspace) throw new Error('当前应用未启用模型配置。');

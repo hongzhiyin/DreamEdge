@@ -16,23 +16,26 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "npm run build && npm run test:desktop",
     "package": "npm run build && electron-builder --publish never",
-    "test:desktop": "node tests/desktop.e2e.mjs && node tests/multi-window.e2e.mjs && node tests/project-menu.e2e.mjs && node tests/sidebar.e2e.mjs && node --import tsx tests/dependency-sidebar.e2e.mjs && node tests/ai-sidebar.e2e.mjs && node --import tsx tests/chat-layout.e2e.mjs && node --import tsx tests/ai-structure.e2e.mjs && node tests/timeline.e2e.mjs",
+    "test:desktop": "node tests/desktop.e2e.mjs && node tests/multi-window.e2e.mjs && node tests/project-menu.e2e.mjs && node tests/sidebar.e2e.mjs && node --import tsx tests/dependency-sidebar.e2e.mjs && node tests/ai-sidebar.e2e.mjs && node --import tsx tests/chat-layout.e2e.mjs && node --import tsx tests/ai-structure.e2e.mjs && node tests/timeline.e2e.mjs && node tests/export-app.e2e.mjs",
     "test:packaged": "node scripts/test-packaged.mjs",
     "build:mobile": "npm run typecheck && node scripts/build-mobile.mjs",
     "ios:sync": "npm run build:mobile && cap sync ios && node scripts/configure-ios.mjs",
     "ios:open": "cap open ios",
     "mobile:preview": "node scripts/preview-mobile.mjs",
     "test:mobile": "node tests/mobile.e2e.mjs",
-    "build:framework": "tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs",
+    "build:framework": "node scripts/build-sdk-source.mjs && node scripts/clean-sdk.mjs && tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs && node scripts/pack-framework.mjs",
     "framework:pack": "npm run build:framework && node scripts/pack-framework.mjs",
     "test:framework": "npm run framework:pack && node tests/derived-app.e2e.mjs",
-    "test:dependencies:live": "node tests/react-dependencies.e2e.mjs"
+    "test:dependencies:live": "node tests/react-dependencies.e2e.mjs",
+    "pretest": "node scripts/build-sdk-source.mjs",
+    "pretypecheck": "node scripts/build-sdk-source.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",
     "@capacitor/ios": "8.5.2",
     "@earendil-works/pi-agent-core": "1.0.0",
     "@earendil-works/pi-ai": "1.0.0",
+    "app-builder-lib": "26.15.3",
     "esbuild": "0.28.2",
     "lucide-react": "1.49.0",
     "react": "19.3.0",
@@ -58,6 +61,7 @@
   "overrides": {
     "xcode": {
       "uuid": "11.1.1"
-    }
+    },
+    "@electron/get": "5.1.0"
   }
 }

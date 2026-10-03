@@ -1,6 +1,8 @@
 export type * from './model-settings.js';
 export type * from './dependencies.js';
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+import type { ExportRequest, ExportResult } from './exports.js';
+export type * from './exports.js';
 import type { WorkspaceRequest, WorkspaceResult } from './workspace.js';
 import type { DevelopmentRequest, DevelopmentResult } from './development.js';
 import type { CandidateBuildRequest, CandidateBuildResult } from './build.js';
@@ -36,6 +38,7 @@ export type BridgeRequest =
   | { kind: 'service'; service: string; method: string; input: Json };
 import type { ModelSettingsRequest, ModelSettingsResult } from './model-settings.js';
 export interface HostApi {
+  exportApp(request: ExportRequest): Promise<ExportResult>;
   reloadProjectView(): Promise<void>;
   modelSettings(request: ModelSettingsRequest): Promise<ModelSettingsResult>;
   onModelSettingsChanged(listener: () => void): () => void;

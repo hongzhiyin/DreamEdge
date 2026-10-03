@@ -11,7 +11,7 @@ export async function applyState(project: WorkspaceProject, profile: string, fil
   expectedStateHash: string, signal: AbortSignal, hook?: SaveHook): Promise<void> {
   const current = await currentVersionState(project);
   if (current.stateHash !== expectedStateHash) throw new Error('工程源码已变化，拒绝覆盖当前修改。');
-  if (definition.id !== current.definition.id || definition.appId !== current.definition.appId) throw new Error('目标内容不属于当前工程。');
+  if (definition.id !== current.definition.id) throw new Error('目标内容不属于当前工程。');
   await commitTransaction(project, profile, { schemaVersion: 1, operationId: randomUUID(), ownerPid: process.pid,
     root: project.rootDirectory, profile: await directory(profile), phase: 'prepared', beforeDefinition: current.raw,
     afterDefinition: JSON.stringify(definition, null, 2), beforeHashes: current.hashes, afterHashes: treeHashes(files) }, files, signal, hook);

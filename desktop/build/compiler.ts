@@ -4,6 +4,7 @@ import type { BuildLog } from '../../shared/contracts';
 import { relativeParts } from '../workspace/paths';
 import { BUNDLE_DIRECTORY, htmlEntries, sourcePath } from './html';
 import { BuildFailure, type BuildInput, type BuildOutput } from './types';
+import { sdkBrowserSource } from './sdk-browser';
 import { DependencyModules } from './dependency-modules';
 
 const loaders: Record<string, Loader> = { '.ts': 'ts', '.tsx': 'tsx', '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.jsx': 'jsx', '.json': 'json', '.css': 'css', '.svg': 'dataurl', '.txt': 'text' };
@@ -31,6 +32,7 @@ export async function compile(input: BuildInput): Promise<BuildOutput> {
         define: { 'process.env.NODE_ENV': '"production"' },
         plugins: [{ name: 'dreamedge-source', setup(engine) {
           engine.onResolve({ filter: /.*/ }, args => {
+            if (args.path === '@dreamedge/sdk' && args.namespace !== 'dependency') return { path: '@dreamedge/sdk', namespace: 'framework-sdk' };
             if (args.namespace === 'dependency' || args.kind !== 'entry-point' && !args.path.startsWith('./') && !args.path.startsWith('../')) {
               try {
                 if (!modules) throw new Error('工程未声明外部依赖；禁止远程或 Node.js 模块。');
@@ -46,6 +48,7 @@ export async function compile(input: BuildInput): Promise<BuildOutput> {
               return { path: resolved, namespace: 'project' };
             } catch { return { errors: [{ text: '禁止导入工程源码范围之外的资源。' }] }; }
           });
+          engine.onLoad({ filter: /.*/, namespace: 'framework-sdk' }, () => ({ contents: sdkBrowserSource, loader: 'js' }));
           engine.onLoad({ filter: /.*/, namespace: 'dependency' }, args => {
             if (args.path === '__empty__') return { contents: '', loader: 'js' };
             const loader = loaders[posix.extname(args.path)];

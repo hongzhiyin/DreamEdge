@@ -2,6 +2,7 @@ import { app, dialog, protocol } from 'electron';
 import { dirname, join, resolve } from 'node:path';
 import { loadApplication, applicationDataDirectory } from './project';
 import { mkdir } from 'node:fs/promises';
+import { workerExportEngine } from './export/runner';
 import { workerEngine } from './build/runner';
 import { ProjectWindows } from './windows/controller';
 import { registerWindowIpc } from './windows/ipc';
@@ -21,7 +22,9 @@ export function startApp(): void {
     await mkdir(profile, { recursive: true });
     if (closing) return;
     windows = new ProjectWindows(manifest, root, profile, frameworkRoot, join(__dirname, 'preload.cjs'), undefined,
-      workerEngine(join(__dirname, 'build-worker.cjs')));
+      workerEngine(join(__dirname, 'build-worker.cjs')),
+      workerExportEngine(join(__dirname, 'export-worker.cjs'), resolve(dirname(app.getPath('exe')), '../..'), process.versions.electron),
+      { runtime: join(root, 'dist/framework/runtime'), bundles: join(root, 'dist/framework/bundles'), frameworkVersion: manifest.version, frameworkAppId: manifest.appId });
     const actions = new ProjectActions(windows);
     registerWindowIpc(windows, manifest, actions);
     installProjectMenu(actions, manifest.name, manifest.capabilities.includes('workspace'));

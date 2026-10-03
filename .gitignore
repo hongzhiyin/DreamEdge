@@ -20,3 +20,6 @@ artifacts/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Generated trusted browser SDK used by the fixed compiler.
+desktop/build/sdk-browser.ts

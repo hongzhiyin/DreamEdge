@@ -12,7 +12,7 @@ export async function gitSnapshot(project: WorkspaceProject, id: string) {
   await assertRepository(project.rootDirectory); commitId(id);
   await git(project.rootDirectory, ['cat-file', '-e', `${id}^{commit}`]);
   const definition = validateDefinition(JSON.parse(await git(project.rootDirectory, ['show', `${id}:.dreamedge/project.json`])));
-  if (definition.id !== project.definition.id || definition.appId !== project.definition.appId) throw new Error('Git 历史内容不属于当前工程。');
+  if (definition.id !== project.definition.id) throw new Error('Git 历史内容不属于当前工程。');
   const entries = (await git(project.rootDirectory, ['ls-tree', '-r', '-z', id, '--', 'src'])).split('\0').filter(Boolean);
   if (entries.length > 200) throw new Error('Git 源码历史最多支持 200 个文件。');
   const files: Record<string, string> = Object.create(null);

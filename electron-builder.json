@@ -1,18 +1,41 @@
 {
   "appId": "io.github.hongzhiyin.dreamedge",
   "productName": "DreamEdge",
-  "directories": { "output": "release" },
-  "files": ["dist/app.json", "dist/desktop/**/*", "dist/shell/**/*", "dist/tools/**/*", "package.json", "!node_modules/@capacitor/**"],
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/app.json",
+    "dist/desktop/**/*",
+    "dist/shell/**/*",
+    "dist/tools/**/*",
+    "dist/framework/**/*",
+    "package.json",
+    "!node_modules/@capacitor/**"
+  ],
   "asar": true,
-  "asarUnpack": ["node_modules/esbuild/**", "node_modules/@esbuild/**"],
+  "asarUnpack": [
+    "node_modules/esbuild/**",
+    "node_modules/@esbuild/**",
+    "node_modules/app-builder-lib/node_modules/app-builder-bin/**",
+    "node_modules/app-builder-bin/**",
+    "node_modules/**/7zip-bin/**"
+  ],
   "npmRebuild": false,
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
   "mac": {
     "category": "public.app-category.productivity",
     "identity": "-",
-    "target": ["dmg", "zip"]
+    "target": [
+      "dmg",
+      "zip"
+    ]
   },
-  "win": { "target": ["nsis"] },
+  "win": {
+    "target": [
+      "nsis"
+    ]
+  },
   "nsis": {
     "oneClick": false,
     "perMachine": false,

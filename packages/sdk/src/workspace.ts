@@ -29,7 +29,7 @@ export type WorkspaceRequest =
   | { operation: 'create'; directory: string; name: string }
   | { operation: 'open'; directory: string }
   | { operation: 'close' }
-  | { operation: 'save'; projectId: string; name?: string; version?: string }
+  | { operation: 'save'; projectId: string; name?: string; appId?: string; version?: string; expectedDefinitionHash?: string }
   | { operation: 'listFiles'; projectId: string }
   | { operation: 'readFile'; projectId: string; path: string }
   | { operation: 'writeFile'; projectId: string; path: string; content: string; expectedHash: string | null };

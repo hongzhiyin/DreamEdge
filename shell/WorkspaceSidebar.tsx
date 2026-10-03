@@ -3,10 +3,11 @@ import type { ProjectAction } from '../shared/contracts';
 import { useModelSettings } from './useModelSettings';
 import { ModelSettingsPanel } from './ModelSettingsPanel';
 import { GitPanel } from './GitPanel';
+import { ApplicationPanel } from './ApplicationPanel';
 import { ProjectActions } from './ProjectActions';
 import { AiConversation } from './AiConversation';
 
-const tabs = ['模型连接', 'Git 历史', '工程管理'] as const;
+const tabs = ['模型连接', 'Git 历史', '应用与导出', '工程管理'] as const;
 export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, run }: {
   projectId: string; settingsOpen: boolean; openSettings: () => void; busy: ProjectAction | null; run: (action: ProjectAction) => Promise<void>;
 }) {
@@ -38,6 +39,9 @@ export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, 
           <GitPanel projectId={projectId} />
         </div>
         <div role="tabpanel" id="settings-panel-2" aria-labelledby="settings-tab-2" hidden={tab !== 2}>
+          <ApplicationPanel projectId={projectId} />
+        </div>
+        <div role="tabpanel" id="settings-panel-3" aria-labelledby="settings-tab-3" hidden={tab !== 3}>
           <h2>工程管理</h2><p className="ai-hint">每个工程拥有独立的源码、模型连接和 Git 历史。</p>
           <ProjectActions busy={busy} run={run} />
         </div>

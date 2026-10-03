@@ -15,12 +15,15 @@ import { WindowState } from './state';
 import { windowSelection } from './selection';
 import { Capacity } from './capacity';
 import { SavedProjectDisplay } from '../display/current';
+import { ProjectExports } from '../export/api';
+import type { ExportEngine, ExportResources } from '../export/types';
 import { ProjectModels } from '../model-connection/project';
 
 export interface ContextOptions {
   id: string; manifest: AppManifest; root: string; profile: string; frameworkRoot: string;
   catalog: WorkspaceRegistry; windows: WindowState; provider?: ModelProvider; engine: BuildEngine;
   openPreview: PreviewOpener; buildCapacity: Capacity; changed: () => void; closePreviews: () => void;
+  exportEngine?: ExportEngine; exportResources?: ExportResources;
   modelSettingsChanged?: () => void;
 }
 export class WindowContext {
@@ -30,6 +33,7 @@ export class WindowContext {
   development?: DevelopmentApi;
   builds?: CandidateBuildApi;
   git?: ProjectGitApi;
+  exports?: ProjectExports;
   private contextId = randomUUID();
   private selected: WorkspaceProject | null = null;
   private transitioning = false;
@@ -64,6 +68,8 @@ export class WindowContext {
   private startTasks(): void {
     if (!this.workspace) return;
     this.builds = new CandidateBuildApi(this.workspace, this.options.engine, this.options.openPreview, 300000, this.options.buildCapacity);
+    if (this.options.exportEngine && this.options.exportResources) this.exports = new ProjectExports(this.workspace, this.options.profile, this.options.frameworkRoot, this.options.exportResources, this.builds, this.options.exportEngine, process.platform === 'darwin', undefined,
+      snapshot => this.modelSettings!.assertSafeInput({ prompt: 'Export saved source', context: { definition: snapshot.definition, files: Object.entries(snapshot.files).map(([path, content]) => ({ path, content, hash: '' })) }, history: [] }));
     const changed = (buildId?: string) => { if (!this.disposed && !this.transitioning) this.display?.refresh(buildId); };
     this.git = new ProjectGitApi(this.workspace, this.options.profile, changed);
     this.development = new DevelopmentApi(this.workspace, this.options.provider ?? this.modelSettings!, 300000,
@@ -91,6 +97,7 @@ export class WindowContext {
     if (!this.workspace) throw new Error('当前应用未启用工程开发能力。');
     const transition = ['create', 'open', 'close'].includes(request?.operation);
     if (!transition) {
+      if (request.operation === 'save' && request.appId === this.options.manifest.appId) throw new Error('业务 App 标识不能与 DreamEdge 开发框架相同。');
       const result = await this.workspace.execute(request);
       if (request.operation === 'save') this.display?.refresh();
       return result;
@@ -140,6 +147,7 @@ export class WindowContext {
     });
   }
   private async stopTasks(): Promise<void> {
+    await this.exports?.dispose(); this.exports = undefined;
     await Promise.all([this.development?.dispose(), this.builds?.dispose(), this.git?.dispose(), this.modelSettings?.reset()]);
   }
   async dispose(): Promise<void> {

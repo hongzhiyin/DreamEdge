@@ -20,6 +20,7 @@ export async function createApp(directory, options) {
   const pkg = { name: id, version: '0.1.0', private: true, main: 'dist/main.cjs',
     scripts: { build: 'dreamedge build', start: 'npm run build && electron .', package: 'dreamedge package' },
     dependencies: { '@dreamedge/desktop': `file:vendor/${basename(options.runtime)}`, '@dreamedge/sdk': `file:vendor/${basename(options.sdk)}` },
+    overrides: { '@electron/get': '5.1.0' },
     devDependencies: { '@dreamedge/cli': `file:vendor/${basename(options.cli)}`, electron: '44.5.1', 'electron-builder': '26.15.3' } };
   await writeFile(resolve(root, 'package.json'), JSON.stringify(pkg, null, 2));
   await writeFile(resolve(root, 'app.config.json'), JSON.stringify(manifest, null, 2));

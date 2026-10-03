@@ -83,3 +83,5 @@
 @media (prefers-reduced-motion: reduce) {
   .development-controls button, .development-sidebar { transition: none; }
 }
+
+.export-logs { max-height: 240px; overflow: auto; padding: 10px; border: 1px solid var(--sidebar-border); border-radius: 6px; font: 11px/1.7 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; }

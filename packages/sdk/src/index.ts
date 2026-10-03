@@ -6,6 +6,7 @@ export type { ProjectDefinition, WorkspaceProject, WorkspaceStatus, WorkspaceFil
 export type * from './development.js';
 export type * from './build.js';
 export type * from './git.js';
+export type * from './exports.js';
 export type * from './windows.js';
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: number };
 const pending = new Map<string, Pending>();

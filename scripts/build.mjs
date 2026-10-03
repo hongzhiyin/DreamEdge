@@ -13,9 +13,14 @@ await rm('dist/desktop', { recursive: true, force: true });
 await rm('dist/shell', { recursive: true, force: true });
 await mkdir('dist/desktop/desktop', { recursive: true });
 await bundle({ entryPoints: ['desktop/main.ts'], bundle: true, platform: 'node', format: 'cjs',
-    target: 'node22', external: ['electron'], outfile: 'dist/desktop/desktop/main.js' });
+    target: 'node22', external: ['electron', 'app-builder-lib'], outfile: 'dist/desktop/desktop/main.js' });
 await cp('packages/desktop/dist/THIRD_PARTY_NOTICES.txt', 'dist/desktop/THIRD_PARTY_NOTICES.txt');
 await cp('packages/desktop/dist/preload.cjs', 'dist/desktop/desktop/preload.cjs');
+await cp('packages/desktop/dist/export-worker.cjs', 'dist/desktop/desktop/export-worker.cjs');
 await cp('packages/desktop/dist/build-worker.cjs', 'dist/desktop/desktop/build-worker.cjs');
 await cp('packages/desktop/dist/shell', 'dist/shell', { recursive: true });
 await writeFile('dist/app.json', JSON.stringify(manifest, null, 2));
+
+await rm('dist/framework', { recursive: true, force: true });
+await cp('packages/desktop/dist', 'dist/framework/runtime', { recursive: true });
+await cp('artifacts/framework', 'dist/framework/bundles', { recursive: true });

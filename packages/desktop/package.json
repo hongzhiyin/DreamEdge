@@ -2,9 +2,20 @@
   "name": "@dreamedge/desktop",
   "version": "0.1.1",
   "main": "dist/runtime.cjs",
-  "exports": { ".": "./dist/runtime.cjs", "./manifest": "./dist/project.cjs", "./package.json": "./package.json" },
-  "files": ["dist"],
-  "peerDependencies": { "electron": ">=44" },
-  "dependencies": { "esbuild": "0.28.2" },
+  "exports": {
+    ".": "./dist/runtime.cjs",
+    "./manifest": "./dist/project.cjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "electron": ">=44"
+  },
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "app-builder-lib": "26.15.3"
+  },
   "license": "UNLICENSED"
 }
