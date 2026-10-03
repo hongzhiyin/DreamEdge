@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
 
+const frameworkVersion = JSON.parse(await readFile('package.json', 'utf8')).version;
 const temporary = await mkdtemp(join(tmpdir(), 'dreamedge-derived-'));
 const second = join(temporary, 'second');
 const firstProject = join(temporary, 'first');
@@ -33,9 +34,9 @@ async function launch(path) {
 try {
   for (const [project, suffix] of [[firstProject, 'a'], [second, 'b']]) {
     run(process.execPath, ['packages/cli/bin/cli.mjs', 'create', project, '--name', `Framework fixture ${suffix}`, '--id', `${id}${suffix}`,
-      '--runtime', resolve('artifacts/framework/dreamedge-desktop-0.1.1.tgz'),
-      '--sdk', resolve('artifacts/framework/dreamedge-sdk-0.1.1.tgz'),
-      '--cli', resolve('artifacts/framework/dreamedge-cli-0.1.1.tgz')]);
+      '--runtime', resolve(`artifacts/framework/dreamedge-desktop-${frameworkVersion}.tgz`),
+      '--sdk', resolve(`artifacts/framework/dreamedge-sdk-${frameworkVersion}.tgz`),
+      '--cli', resolve(`artifacts/framework/dreamedge-cli-${frameworkVersion}.tgz`)]);
     run('npm', ['install', '--offline', '--ignore-scripts'], project);
     run('npm', ['run', 'build'], project);
   }

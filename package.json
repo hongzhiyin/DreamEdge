@@ -1,6 +1,6 @@
 {
   "name": "dreamedge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "A framework for independently installable, AI-editable business apps",
   "author": "hongzhiyin",
@@ -23,12 +23,13 @@
     "ios:open": "cap open ios",
     "mobile:preview": "node scripts/preview-mobile.mjs",
     "test:mobile": "node tests/mobile.e2e.mjs",
-    "build:framework": "node scripts/build-sdk-source.mjs && node scripts/clean-sdk.mjs && tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs && node scripts/pack-framework.mjs",
+    "build:framework": "node scripts/check-framework-version.mjs && node scripts/build-sdk-source.mjs && node scripts/clean-sdk.mjs && tsc -p tsconfig.sdk.json && node scripts/build-framework.mjs && node scripts/pack-framework.mjs",
     "framework:pack": "npm run build:framework && node scripts/pack-framework.mjs",
     "test:framework": "npm run framework:pack && node tests/derived-app.e2e.mjs",
     "test:dependencies:live": "node tests/react-dependencies.e2e.mjs",
     "pretest": "node scripts/build-sdk-source.mjs",
-    "pretypecheck": "node scripts/build-sdk-source.mjs"
+    "pretypecheck": "node scripts/build-sdk-source.mjs",
+    "test:upgrade": "node tests/framework-upgrade.e2e.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",

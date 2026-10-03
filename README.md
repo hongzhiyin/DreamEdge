@@ -17,6 +17,8 @@ npm start
 
 工程设置的“应用与导出”可保存应用名称、反向域名 App 标识及数字版本，并选择一个不存在的新目录导出。应用名称独立保存在 `.dreamedge/project.json` 的 `appName`，工程名称使用 `name`；更改应用名称不会重命名工程或目录。不同 App 使用不同标识；升级同一 App 保持标识不变。导出生成本机架构的独立 `.app`、ZIP、可再次打开的“工程”目录及固定框架包快照，不复制 API Key、会话、原 Git 历史或业务数据。源码副本使用新工程 UUID；业务 App 数据命名随 App 标识稳定，两个 App 可同时安装和运行。打包复用安装中的 Electron 和固定 electron-builder 库，禁止打包器联网或执行工程脚本，无需另外安装 Node.js/npm；当前为本地 ad-hoc 签名，尚未 Developer ID 公证，不作为公开分发就绪承诺。
 
+更新业务 App 时保持 `appId` 不变、提高应用版本，再次导出到新目录。退出旧 App 后，将新版 `.app` 放到旧版位置，在 Finder 中选择替换。业务数据位于 App 外并按 `appId` 隔离；替换程序不需要复制或清空数据目录。当前由用户手动替换，尚无自动更新。
+
 业务源码可直接从内置 `@dreamedge/sdk` 导入 `storage`、`callService`，无需把 SDK 添加为 npm 依赖。当前导出的 App 默认只有存储能力，不带开发侧栏；原工程继续在 DreamEdge 中开发。源码或描述在导出准备期间发生变化会拒绝发布，取消停止构建/打包，写入临界阶段完成当前操作；失败保留待核对的部分目标目录，不覆盖已有目录。
 
 TypeScript/TSX、CSS 与依赖需要编译成浏览器可运行的产物，这一步由框架完成。刷新复用成功构建的校验产物；重新打开时使用对应源码的缓存或自动构建。
@@ -33,7 +35,9 @@ TypeScript/TSX、CSS 与依赖需要编译成浏览器可运行的产物，这�
 
 ## 验证与当前限制
 
-`npm test`、`npm run build`、`npm run test:desktop`、`npm run test:packaged` 验证框架与 App。`npm run test:framework` 使用两个临时独立 App 验证框架包和数据隔离。`npm run framework:pack` 生成内部验证包，尚未发布 npm；已验证源环境及已安装 App 的 macOS 导出，跨平台导出仍待完成。
+`npm test`、`npm run build`、`npm run test:desktop`、`npm run test:packaged` 验证框架与 App。`npm run test:framework` 使用两个临时独立 App 验证框架包和数据隔离。`npm run framework:pack` 生成内部验证包，尚未发布 npm；已验证源环境及已安装 App 的 macOS 导出。业务 App 验收覆盖同一路径替换 v1→v2、读取旧数据、继续写入、重启及另一 App 数据隔离；跨平台导出仍待完成。
+
+框架升级验收使用两个真实打包版本。先保留旧版 `.app`，构建新版后执行 `DREAMEDGE_PREVIOUS_APP=/绝对路径/旧版/DreamEdge.app npm run test:upgrade`；可通过 `DREAMEDGE_NEXT_APP` 指定新版路径。脚本只替换临时安装目录，使用独立测试配置和模拟模型，验证工程/源码、模型文件、会话、Git 提交、业务数据及升级后继续编辑；旧版必须低于新版，不能以同版本重启代替升级。构建前校验根包、应用描述、SDK、桌面运行时、CLI 及依赖锁版本一致。
 
 构建使用固定可信编译器与受控 npm 浏览器依赖，准确版本和归档完整性锁定在工程描述中。已有完整缓存可离线重建；不运行安装脚本，不支持私有/Git/本地依赖、原生平台包或任意生成 Node.js 服务。AI 可改写或删除已读取源码、创建新文件，并查询 npm 版本、声明完整直接依赖列表；依赖新增、升级、移除和源码变更统一构建后自动应用。仅修改依赖也会构建，仍被源码引用的依赖不能直接移除。差异记录显示文件删除与依赖变化，Git 提交和恢复涵盖源码及依赖锁定。模型会话中断后重新发送，完整跨进程工具续跑、更多协议及逐字回复界面尚未完成；思考摘要和模型说明目前按完整文本段更新。
 

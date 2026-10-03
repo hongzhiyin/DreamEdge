@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, readdir, rm, access } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createRequire } from 'node:module';
+import { exportProject, replaceApp, appExecutable } from './export-acceptance.e2e.mjs';
 import { _electron as electron } from 'playwright';
 import electronPath from 'electron';
 
@@ -12,12 +12,12 @@ const id = `io.example.export${Date.now()}`; const exported = []; const apps = [
 const sdkSource = value => `import {storage} from '@dreamedge/sdk';document.getElementById('root')!.textContent='Hello ${value}';\nconst b=document.createElement('button');b.textContent='保存';b.onclick=async()=>{await storage.put('check','same-key','${value}');b.textContent='已保存';};document.body.append(b);`;
 async function launchApp(path) {
   const env = { ...process.env }; for (const key of ['ELECTRON_RUN_AS_NODE', 'DREAMEDGE_DATA_DIR']) delete env[key];
-  const app = await electron.launch({ executablePath: join(path, 'Contents/MacOS', path.split('/').at(-1).slice(0, -4)), args: [], env });
+  const app = await electron.launch({ executablePath: appExecutable(path), args: [], env });
   apps.push(app); const page = await app.firstWindow(); page.setDefaultTimeout(20000); await page.locator('iframe').waitFor();
   const manifest = await page.evaluate(() => window.dreamEdge.info()); profiles.push(await app.evaluate(({ app }) => app.getPath('userData')));
   assert.equal(await page.getByRole('button', { name: '打开开发侧栏' }).count(), 0);
   await assert.rejects(page.evaluate(id => window.dreamEdge.exportApp({ operation: 'current', projectId: id }), 'foreign'), /未启用 App 导出/);
-  return { app, page, manifest };
+  return { app, page, manifest, profile: profiles.at(-1) };
 }
 try {
   const env = { ...process.env, DREAMEDGE_DATA_DIR: profile }; delete env.ELECTRON_RUN_AS_NODE;
@@ -50,42 +50,48 @@ try {
     assert.equal(saved.rootDirectory, project.rootDirectory);
     assert.ok((await framework.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle())).includes(project.definition.name));
     await page.frameLocator('iframe').getByText(`Hello ${label}`, { exact: true }).waitFor();
-    await framework.evaluate(({ dialog }, output) => { dialog.showSaveDialog = async (_parent, options) => {
-      if (options.defaultPath !== `Export ${output.endsWith('Alpha') ? 'Alpha' : 'Beta'}-导出`) throw new Error('Wrong application name');
-      if (options.buttonLabel !== '导出') throw new Error('Wrong export dialog'); return { canceled: false, filePath: output };
-    }; }, output);
-    await panel.getByRole('button', { name: '导出 macOS App' }).click();
-    const deadline = Date.now() + 180000; let record;
-    while (Date.now() < deadline) {
-      record = (await page.evaluate(id => window.dreamEdge.exportApp({ operation: 'current', projectId: id }), project.definition.id)).record;
-      if (record && record.status !== 'running') break; await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    assert.equal(record?.status, 'succeeded', record?.error ?? 'Export timed out');
-    await panel.getByText('业务 App 已导出。', { exact: true }).waitFor();
-    const files = await readdir(output); const app = files.find(name => name.endsWith('.app')); assert.ok(app && files.some(name => name.endsWith('.zip')));
-    const descriptor = JSON.parse(await readFile(join(output, '工程/.dreamedge/project.json'), 'utf8'));
-    assert.equal(app, `Export ${label}.app`);
-    assert.equal(descriptor.name, project.definition.name); assert.equal(descriptor.appName, `Export ${label}`);
-    assert.notEqual(descriptor.id, project.definition.id); assert.equal(descriptor.appId, `${id}${label.toLowerCase()}`);
-    for (const file of ['.dreamedge/model.json', '.git', 'data', 'sessions']) await assert.rejects(access(join(output, '工程', file)));
-    const asar = createRequire(import.meta.url)('@electron/asar'); const archive = join(output, app, 'Contents/Resources/app.asar');
-    const entries = asar.listPackage(archive); assert.ok(!entries.some(path => /model\.json|records\.sqlite|session\.json/.test(path)));
-    assert.ok(!asar.extractFile(archive, 'dist/app.json').toString().includes('fixture-export-secret'));
-    exported.push(join(output, app));
+    exported.push(await exportProject(framework, page, saved, output));
     await mkdir('artifacts', { recursive: true }); await page.screenshot({ path: `artifacts/dreamedge-export-${label.toLowerCase()}.png` });
     await page.getByRole('button', { name: '返回 AI 对话' }).click();
   }
-  await framework.close(); framework = undefined;
-  for (const label of ['Alpha', 'Beta']) await rm(join(root, `source-${label}`), { recursive: true, force: true });
-  const a = await launchApp(exported[0]); const b = await launchApp(exported[1]); assert.notEqual(a.manifest.appId, b.manifest.appId); assert.notEqual(profiles[0], profiles[1]);
+  const installed = join(root, 'Applications', 'Export Alpha.app');
+  await replaceApp(exported[0], installed);
+  const a = await launchApp(installed); const b = await launchApp(exported[1]);
+  assert.notEqual(a.manifest.appId, b.manifest.appId); assert.notEqual(a.profile, b.profile);
+  assert.equal(a.manifest.version, '1.2.3');
+  const readData = target => target.page.evaluate(id => window.dreamEdge.storage(id, { operation: 'list', collection: 'check' }), target.manifest.id);
   for (const [target, label] of [[a, 'Alpha'], [b, 'Beta']]) {
     await target.page.frameLocator('iframe').getByText(`Hello ${label}`, { exact: true }).waitFor();
-    await target.page.frameLocator('iframe').getByRole('button', { name: '保存', exact: true }).click(); await target.page.frameLocator('iframe').getByRole('button', { name: '已保存', exact: true }).waitFor();
-    assert.equal(await target.page.evaluate(async id => (await window.dreamEdge.storage(id, { operation: 'list', collection: 'check' }))[0].value, target.manifest.id), label);
+    await target.page.frameLocator('iframe').getByRole('button', { name: '保存', exact: true }).click();
+    await target.page.frameLocator('iframe').getByRole('button', { name: '已保存', exact: true }).waitFor();
+    assert.deepEqual(await readData(target), [{ id: 'same-key', value: label }]);
   }
-  await a.app.close(); apps.splice(apps.indexOf(a.app), 1); const reopened = await launchApp(exported[0]);
-  assert.equal(await reopened.page.evaluate(async id => (await window.dreamEdge.storage(id, { operation: 'list', collection: 'check' }))[0].value, reopened.manifest.id), 'Alpha');
-  assert.deepEqual(errors, []); console.log('PASS: in-app settings/export, standalone signed apps and ZIP, secret/data exclusion, SDK storage, two simultaneous independent identities and restart persistence.');
+  await a.app.close(); apps.splice(apps.indexOf(a.app), 1);
+  const upgradedProject = await page.evaluate(async ({ directory, content }) => {
+    await window.dreamEdge.workspace({ operation: 'close' });
+    const project = await window.dreamEdge.workspace({ operation: 'open', directory }); const projectId = project.definition.id;
+    const before = await window.dreamEdge.workspace({ operation: 'readFile', projectId, path: 'main.ts' });
+    await window.dreamEdge.workspace({ operation: 'writeFile', projectId, path: 'main.ts', content, expectedHash: before.hash });
+    return window.dreamEdge.workspace({ operation: 'save', projectId, version: '1.2.4' });
+  }, { directory: join(root, 'source-Alpha'), content: sdkSource('Alpha v2') });
+  await page.getByRole('button', { name: '打开工程设置' }).click(); await page.getByRole('tab', { name: '应用与导出' }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('label')].some(label => label.textContent === '应用版本' && label.querySelector('input')?.value === '1.2.4'));
+  const v2 = await exportProject(framework, page, upgradedProject, join(root, 'export-Alpha-v2'));
+  await page.screenshot({ path: 'artifacts/dreamedge-export-upgrade.png' });
+  await framework.close(); framework = undefined;
+  for (const label of ['Alpha', 'Beta']) await rm(join(root, `source-${label}`), { recursive: true, force: true });
+  await replaceApp(v2, installed); const upgraded = await launchApp(installed);
+  assert.equal(upgraded.manifest.version, '1.2.4'); assert.equal(upgraded.manifest.id, a.manifest.id);
+  assert.equal(upgraded.manifest.appId, a.manifest.appId); assert.equal(upgraded.profile, a.profile);
+  await upgraded.page.frameLocator('iframe').getByText('Hello Alpha v2', { exact: true }).waitFor();
+  assert.deepEqual(await readData(upgraded), [{ id: 'same-key', value: 'Alpha' }]);
+  assert.deepEqual(await readData(b), [{ id: 'same-key', value: 'Beta' }]);
+  await upgraded.page.frameLocator('iframe').getByRole('button', { name: '保存', exact: true }).click();
+  await upgraded.page.frameLocator('iframe').getByRole('button', { name: '已保存', exact: true }).waitFor();
+  await upgraded.page.screenshot({ path: 'artifacts/dreamedge-business-v2.png' });
+  await upgraded.app.close(); apps.splice(apps.indexOf(upgraded.app), 1);
+  const reopened = await launchApp(installed); assert.deepEqual(await readData(reopened), [{ id: 'same-key', value: 'Alpha v2' }]);
+  assert.deepEqual(errors, []); console.log('PASS: signed App/ZIP export, separate names, private-data exclusion, v1→v2 replacement at the same installed path, old-data retention, independent App isolation and v2 restart persistence.');
 } catch (error) {
   if (framework) { const page = framework.windows()[0]; console.error(await page?.getByRole('region', { name: '应用与导出' }).textContent().catch(() => 'No export panel')); }
   throw error;

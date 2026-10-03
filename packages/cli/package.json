@@ -1,10 +1,10 @@
 {
   "name": "@dreamedge/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "bin": { "dreamedge": "bin/cli.mjs" },
   "files": ["bin", "build"],
   "dependencies": { "vite": "8.3.2" },
-  "peerDependencies": { "@dreamedge/desktop": "0.1.1" },
+  "peerDependencies": { "@dreamedge/desktop": "0.1.2" },
   "license": "UNLICENSED"
 }

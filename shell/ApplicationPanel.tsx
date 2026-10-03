@@ -21,6 +21,7 @@ export function ApplicationPanel({ projectId }: { projectId: string }) {
     </form>
     <div className="ai-candidate">
       <h3>导出业务 App</h3><p className="ai-hint">生成本机 macOS App、ZIP 和源码工程；模型配置、会话、原 Git 历史与业务数据不会复制。</p>
+      <p className="ai-hint">更新已有 App：保持应用标识不变、提高版本，再次导出。退出旧 App 后用新版 .app 替换旧版；业务数据保存在 App 外。当前需手动替换。</p>
       {output.supported === false && <p className="ai-hint">当前只支持 macOS 本机架构导出。</p>}
       {settings.dirty && <p className="ai-hint">先保存应用信息，再导出。</p>}
       <div className="ai-buttons">
