@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ProjectDefinition, WorkspaceProject, WorkspaceStatus } from '../shared/contracts';
+import { definitionRevision as revision } from './project-settings';
 
 export interface ApplicationFields { appName: string; appId: string; version: string }
 const fields = (definition: ProjectDefinition): ApplicationFields => ({ appName: definition.appName ?? definition.name, appId: definition.appId, version: definition.version });
-async function revision(definition: ProjectDefinition) {
-  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(definition))))).map(byte => byte.toString(16).padStart(2, '0')).join('');
-}
 export function useApplicationSettings(projectId: string) {
   const [draft, setDraft] = useState<ApplicationFields>({ appName: '', appId: '', version: '' });
   const [state, setState] = useState<{ fields: ApplicationFields; revision: string }>();

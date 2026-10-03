@@ -1,5 +1,5 @@
 import { app, dialog, shell, type BrowserWindow } from 'electron';
-import { basename, join } from 'node:path';
+import { basename } from 'node:path';
 import type { ProjectAction, ProjectWindow } from '../../shared/contracts';
 import { ProjectWindows } from './controller';
 import type { WindowContext } from './context';
@@ -26,8 +26,8 @@ export class ProjectActions {
       if (operation === 'new') return await this.windows.openFromAction({ operation }, parent);
       if (operation === 'createProject') {
         const options: Electron.SaveDialogOptions = { title: '新建工程', buttonLabel: '创建工程',
-          defaultPath: join(app.getPath('documents'), 'DreamEdge工程'), nameFieldLabel: '工程名称：', showsTagField: false,
-          message: '输入工程名称并选择存放位置，将创建同名工程文件夹。' };
+          defaultPath: app.getPath('documents'), nameFieldLabel: '新工程文件夹名称：', showsTagField: false,
+          message: '请填写工程名称，位置选择其父目录。名称会同时用于新文件夹、窗口标题和初始应用名称。' };
         const chosen = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options);
         assertParent();
         if (chosen.canceled || !chosen.filePath) return null;

@@ -7,6 +7,7 @@ import { ApplicationPanel } from './ApplicationPanel';
 import { ProjectActions } from './ProjectActions';
 import { AiConversation } from './AiConversation';
 import { useProjectGit } from './useProjectGit';
+import { ProjectNamePanel } from './ProjectNamePanel';
 
 const tabs = ['模型连接', 'Git 历史', '应用与导出', '工程管理'] as const;
 export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, run, directory }: {
@@ -43,6 +44,7 @@ export function WorkspaceSidebar({ projectId, settingsOpen, openSettings, busy, 
         </div>
         <div role="tabpanel" id="settings-panel-3" aria-labelledby="settings-tab-3" hidden={tab !== 3}>
           <h2>工程管理</h2><p className="ai-hint">每个工程拥有独立的源码、模型连接和 Git 历史。</p>
+          <ProjectNamePanel projectId={projectId} locked={running || !!git.busy || busy !== null} />
           <p className="ai-hint" style={{ overflowWrap: 'anywhere' }}>{directory}</p>
           <button className="ai-button" disabled={busy !== null} onClick={() => { void run('revealProject'); }}>在 Finder 中查看工程</button>
           <ProjectActions busy={busy} run={run} />

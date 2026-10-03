@@ -43,7 +43,7 @@ try {
   await application.evaluate(({ dialog }, filePath) => {
     dialog.showSaveDialog = async (...args) => {
       const options = args.at(-1);
-      if (options.buttonLabel !== '创建工程' || options.nameFieldLabel !== '工程名称：') throw new Error('Invalid create dialog');
+      if (options.buttonLabel !== '创建工程' || options.nameFieldLabel !== '新工程文件夹名称：' || options.defaultPath.endsWith('DreamEdge工程')) throw new Error('Invalid create dialog');
       return { canceled: false, filePath };
     };
     dialog.showMessageBox = async () => { throw new Error('Unexpected project error dialog'); };

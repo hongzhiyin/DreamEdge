@@ -1,6 +1,6 @@
 {
   "name": "dreamedge",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "description": "A framework for independently installable, AI-editable business apps",
   "author": "hongzhiyin",
@@ -16,7 +16,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "npm run build && npm run test:desktop",
     "package": "npm run build && electron-builder --publish never",
-    "test:desktop": "node tests/desktop.e2e.mjs && node tests/multi-window.e2e.mjs && node tests/project-menu.e2e.mjs && node tests/sidebar.e2e.mjs && node --import tsx tests/dependency-sidebar.e2e.mjs && node tests/ai-sidebar.e2e.mjs && node --import tsx tests/chat-layout.e2e.mjs && node --import tsx tests/ai-structure.e2e.mjs && node tests/timeline.e2e.mjs && node --import tsx tests/chat-markdown.e2e.mjs && node tests/git-sidebar.e2e.mjs && node tests/project-root-ai.e2e.mjs && node tests/agent-git.e2e.mjs && node tests/export-app.e2e.mjs",
+    "test:desktop": "node tests/desktop.e2e.mjs && node tests/multi-window.e2e.mjs && node tests/project-menu.e2e.mjs && node tests/project-name.e2e.mjs && node tests/sidebar.e2e.mjs && node --import tsx tests/dependency-sidebar.e2e.mjs && node tests/ai-sidebar.e2e.mjs && node --import tsx tests/chat-layout.e2e.mjs && node --import tsx tests/ai-structure.e2e.mjs && node tests/timeline.e2e.mjs && node --import tsx tests/chat-markdown.e2e.mjs && node tests/git-sidebar.e2e.mjs && node tests/project-root-ai.e2e.mjs && node tests/agent-git.e2e.mjs && node tests/export-app.e2e.mjs",
     "test:packaged": "node scripts/test-packaged.mjs",
     "build:mobile": "npm run typecheck && node scripts/build-mobile.mjs",
     "ios:sync": "npm run build:mobile && cap sync ios && node scripts/configure-ios.mjs",
