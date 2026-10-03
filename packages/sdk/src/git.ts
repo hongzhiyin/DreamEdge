@@ -1,7 +1,7 @@
 export interface GitCommit { id: string; message: string; createdAt: string; parents?: string[]; remoteState?: 'pushed' | 'local' | 'unknown' }
 export interface GitRemote { name: string; url: string; branch: string; tracking: boolean; exists: boolean; ahead: number; behind: number }
 export interface GitStatus {
-  head: string | null; branch: string; changed: string[]; otherChanged: string[]; stateHash: string; commits: GitCommit[];
+  head: string | null; branch: string; changed: string[]; stateHash: string; commits: GitCommit[];
   remotes: { name: string; url: string }[]; remote: GitRemote | null; remoteCommits: GitCommit[]; fetchedAt: string | null;
 }
 export type GitRequest =

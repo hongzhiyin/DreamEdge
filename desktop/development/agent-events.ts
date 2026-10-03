@@ -3,7 +3,8 @@ import type { DevelopmentEvent, AgentActivity } from '../../shared/contracts';
 import type { ModelAccess } from './model';
 
 const labels: Record<string, string> = { list_files: '查看目录', read_file: '读取文件', search_files: '搜索源码',
-  resolve_dependency: '查询依赖', set_dependencies: '声明依赖', propose_changes: '提交修改', git_commit: '准备 Git 提交' };
+  resolve_dependency: '查询依赖', set_dependencies: '声明依赖', propose_changes: '提交修改', git_commit: '准备 Git 提交',
+  git_status: '查看 Git 状态', git_log: '查看 Git 历史', git_diff: '查看 Git 差异', git_restore: '准备历史恢复' };
 export function agentEvents(access: ModelAccess, guard: (value: unknown) => void) {
   let request = 0; const details = new Map<string, string>();
   const emit = async (event: DevelopmentEvent) => { guard(event); await access.event?.(event); };
@@ -31,7 +32,7 @@ export function agentEvents(access: ModelAccess, guard: (value: unknown) => void
     if (event.type === 'tool_execution_start') {
       guard(event.args); const args = event.args as Record<string, unknown>;
       const path = typeof args.name === 'string' ? args.name : event.toolName === 'set_dependencies' ? '完整依赖声明'
-        : typeof args.path === 'string' ? args.path : typeof args.directory === 'string' ? args.directory : '';
+        : typeof args.path === 'string' ? args.path : typeof args.commitId === 'string' ? args.commitId.slice(0, 8) : typeof args.directory === 'string' ? args.directory : '';
       details.set(event.toolCallId, path.slice(0, 200) || (event.toolName === 'propose_changes' ? '候选修改' : '工程目录'));
       await emit({ id: `tool-${event.toolCallId}`, kind: 'tool', tool: event.toolName, label: labels[event.toolName],
         status: 'running', detail: details.get(event.toolCallId), input: JSON.stringify(event.args, null, 2) });

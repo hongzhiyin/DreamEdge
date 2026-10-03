@@ -37,23 +37,24 @@ test('remote Git publishes the first branch, fetches counts/history and fast-for
     assert.equal((await git(f.server, ['rev-parse', 'refs/heads/main'])).trim(), (await f.status()).head);
   } finally { await f.cleanupAll(); }
 });
-test('discard restores managed staged/deleted/new source but preserves unrelated stages, ignored files, key and data', async () => {
+test('discard restores the whole repository including staged root files while preserving ignored files, key and data', async () => {
   const f = await repository();
   try {
     await writeFile(join(f.root, 'project/.dreamedge/model.json'), 'secret'); await writeFile(join(f.project.dataDirectory, 'data'), 'keep-data');
-    await writeFile(join(f.root, 'project/manual.txt'), 'manual'); await git(f.root + '/project', ['add', '--', 'manual.txt']);
     await writeFile(join(f.root, 'project/.gitignore'), (await readFile(join(f.root, 'project/.gitignore'), 'utf8')) + '/src/private.txt\n'); await f.run('commit');
+    await writeFile(join(f.root, 'project/manual.txt'), 'manual'); await git(f.root + '/project', ['add', '--', 'manual.txt']);
     await writeFile(join(f.project.sourceDirectory, 'private.txt'), 'keep ignored');
     await writeFile(join(f.project.sourceDirectory, 'main.ts'), 'Uncommitted');
     await writeFile(join(f.project.sourceDirectory, 'new.ts'), 'New file'); await git(f.project.rootDirectory, ['add', '--', 'src']);
     const before = await f.status(); await f.run('discard'); const after = await f.status();
-    assert.equal(after.head, before.head); assert.equal(after.changed.length, 0); assert.equal(after.otherChanged[0], 'manual.txt');
+    assert.equal(after.head, before.head); assert.equal(after.changed.length, 0);
+    await assert.rejects(readFile(join(f.project.rootDirectory, 'manual.txt')), { code: 'ENOENT' });
     assert.match(await readFile(join(f.project.sourceDirectory, 'main.ts'), 'utf8'), /HelloWorld/);
     await assert.rejects(readFile(join(f.project.sourceDirectory, 'new.ts')), { code: 'ENOENT' });
     assert.equal(await readFile(join(f.project.sourceDirectory, 'private.txt'), 'utf8'), 'keep ignored');
     assert.equal(await readFile(join(f.root, 'project/.dreamedge/model.json'), 'utf8'), 'secret');
     assert.equal(await readFile(join(f.project.dataDirectory, 'data'), 'utf8'), 'keep-data');
-    assert.equal((await git(f.project.rootDirectory, ['diff', '--cached', '--name-only'])).trim(), 'manual.txt');
+    assert.equal((await git(f.project.rootDirectory, ['diff', '--cached', '--name-only'])).trim(), '');
   } finally { await f.cleanupAll(); }
 });
 test('pull and push refuse divergence and dirty/stale state without changing source or HEAD', async () => {

@@ -9,6 +9,8 @@ import { ProjectAccess } from './project-access';
 import type { AutomaticEdits } from './apply';
 import { recordEvent, finishEvents } from './timeline';
 import { settleInterruptedTurn } from './settlement';
+import { gitIntent } from './git-intent';
+import { finishTurnGit } from './finish-turn-git';
 
 interface Job { controller: AbortController; done: Promise<void> }
 export class DevelopmentApi {
@@ -88,11 +90,13 @@ export class DevelopmentApi {
     const timer = setTimeout(() => job.controller.abort(new Error('模型请求超时；源码未被修改。')), this.timeoutMs);
     let aborted: (() => void) | undefined;
     try {
-      const access = new ProjectAccess(this.workspace, project.definition.id, context, commit);
+      const intent = gitIntent(turn.prompt, commit);
+      const access = new ProjectAccess(this.workspace, project.definition.id, context, intent.commit, intent.restore);
+      if (intent.commit || intent.restore) await this.workspace.withProject(project.definition.id, project => access.git.capture(project));
       const result = await Promise.race([
         this.provider.generate({ prompt: turn.prompt, context, history: session.turns.slice(0, -1)
           .filter(previous => previous.status === 'completed').slice(-4)
-          .map(({ prompt, summary, changes, dependencies }) => ({ prompt, summary, changes, dependencies })), commit }, signal, {
+          .map(({ prompt, summary, changes, dependencies }) => ({ prompt, summary, changes, dependencies })), commit: intent.commit, restore: intent.restore }, signal, {
             event: event => this.event(project.definition.id, session, turn, event, signal),
             execute: (...args) => access.execute(...args),
             activity: event => this.workspace.withProject(project.definition.id, async current => {
@@ -110,11 +114,15 @@ export class DevelopmentApi {
       ]);
       await this.workspace.withProject(project.definition.id, async current => {
         signal.throwIfAborted();
-        const proposal = await validateProposal(current, context, { ...(result as object), dependencies: access.dependencies ?? (result as { dependencies?: unknown })?.dependencies });
+        if (access.git.restore && ((result as { files?: unknown[] }).files?.length || access.dependencies !== undefined)) throw new ModelFailure('历史恢复不能和新修改混在同一轮。');
+        const restore = access.git.restore;
+        const proposal = await validateProposal(current, context, { ...(result as object),
+          files: restore?.files ?? (result as { files?: unknown }).files, dependencies: restore?.dependencies ?? access.dependencies ?? (result as { dependencies?: unknown })?.dependencies });
         signal.throwIfAborted();
         turn.context = context.files.map(({ path, hash }) => ({ path, hash }));
         await this.store.saveContext(current, session.id, turn.id, context);
         turn.summary = proposal.summary; turn.changes = proposal.changes; turn.dependencies = proposal.dependencies;
+        if (restore) turn.gitRestoreCommitId = restore.commitId;
         await this.store.stage(current, session.id, turn);
         signal.throwIfAborted();
         await this.store.save(current, session);
@@ -123,19 +131,16 @@ export class DevelopmentApi {
         const applied = await this.edits.apply(project.definition.id, { sessionId: session.id, turnId: turn.id }, signal, async (phase, buildId) => {
           turn.phase = phase; if (buildId) turn.buildId = buildId;
           await this.workspace.withProject(project.definition.id, current => this.store.save(current, session));
-        }, event => this.event(project.definition.id, session, turn, event, signal));
+        }, event => this.event(project.definition.id, session, turn, event, signal), access.git.plan, async id => {
+          turn.checkpointCommitId = id;
+          recordEvent(turn, { id: 'git-checkpoint', kind: 'commit', label: '备份恢复前修改', status: 'completed', output: id });
+          await this.store.save(project, session);
+        });
         turn.applied = true; turn.buildId = applied.buildId;
         recordEvent(turn, { id: 'apply', kind: 'apply', label: '应用修改并刷新', status: 'completed' });
       }
-      if (this.edits && commit && !signal.aborted) {
-        try {
-          await this.event(project.definition.id, session, turn, { id: 'git-commit', kind: 'commit', label: '提交 Git', status: 'running' }, signal);
-          turn.commitId = await this.edits.commit(project.definition.id, access.commitMessage ?? turn.summary!);
-          recordEvent(turn, { id: 'git-commit', kind: 'commit', label: '提交 Git', status: 'completed', output: turn.commitId ?? '没有需要提交的修改' });
-          await this.event(project.definition.id, session, turn, turn.events!.find(event => event.id === 'git-commit')!, signal).catch(() => {});
-        }
-        catch (error) { turn.warning = error instanceof Error ? error.message : '修改已应用，但 Git 提交失败。'; recordEvent(turn, { id: 'git-commit', kind: 'commit', label: '提交 Git', status: 'failed', output: turn.warning }); }
-      }
+      if (this.edits && intent.commit && !signal.aborted) await finishTurnGit(project.definition.id, turn, access, this.edits, signal,
+        event => this.event(project.definition.id, session, turn, event, signal));
       turn.status = 'completed'; turn.phase = 'complete'; turn.finishedAt = new Date().toISOString(); session.updatedAt = turn.finishedAt;
       await this.workspace.exclusive(() => this.store.save(project, session)); this.jobs.delete(session.id);
     } catch (error) {

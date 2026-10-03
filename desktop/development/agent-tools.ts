@@ -2,9 +2,10 @@ import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { Type, type TSchema } from 'typebox';
 import { Check } from 'typebox/value';
 import { proposalSchema, type ModelAccess } from './model';
+import { gitToolDefinitions } from './git-tool-definitions';
 
 export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExpose: (value: unknown) => void,
-  submitted: (proposal: Record<string, unknown>) => void, commitAllowed = false): AgentTool[] {
+  submitted: (proposal: Record<string, unknown>) => void, commitAllowed = false, restoreAllowed = false): AgentTool[] {
   const directory = Type.String({ maxLength: 1024, description: 'Directory relative to the business project root; empty string for the project root.' });
   const definitions: { name: string; label: string; description: string; parameters: TSchema }[] = [
     { name: 'list_files', label: '查看目录', description: 'List ordinary file paths relative to the business project root, 100 per page. No file contents.',
@@ -20,8 +21,7 @@ export function projectTools(access: ModelAccess, signal: AbortSignal, beforeExp
     { name: 'propose_changes', label: '提交候选修改', description: 'Finish this turn by submitting a summary and complete candidate project file contents. Read existing files first. Set content: null to delete a read file. Use files: [] for dependency-only changes or a reply without edits. This stages a proposal, never saves source.',
       parameters: Type.Unsafe(proposalSchema) },
   ];
-  if (commitAllowed) definitions.push({ name: 'git_commit', label: '提交 Git', description: 'Queue a Git commit after this turn is successfully built and applied. Provide a concise message, then finish using propose_changes. No remote push.',
-    parameters: Type.Object({ message: Type.String({ minLength: 1, maxLength: 500 }) }, { additionalProperties: false }) });
+  definitions.push(...gitToolDefinitions(commitAllowed, restoreAllowed));
   return definitions.map(tool => ({ ...tool, constrainedSampling: { type: 'json_schema' as const, strict: 'require' as const },
     prepareArguments: args => {
       if (!Check(tool.parameters, args)) throw new Error('工具参数不符合声明的格式，请按 schema 重新提交。');

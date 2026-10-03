@@ -12,7 +12,6 @@ export function GitPanel({ git, locked }: { git: ProjectGit; locked: boolean }) 
     <p className="ai-hint">远程状态基于最近一次查询{status?.fetchedAt ? `（${new Date(status.fetchedAt).toLocaleString()}）` : ''}。提交、撤销、拉取和推送在对话页操作。</p>
     <div className="ai-buttons"><button className="ai-button" disabled={disabled} onClick={() => { void git.load(); }}>刷新 Git 状态</button>
       {!!status?.remote && <button className="ai-button" disabled={disabled} onClick={() => { void git.run('fetch'); }}>{busy === 'fetch' ? '查询中…' : '查询远程状态'}</button>}</div>
-    {!!status?.otherChanged.length && <p className="ai-hint">其他文件有 {status.otherChanged.length} 项未提交修改；框架不会自动提交或撤销这些文件。</p>}
     {!!status?.remoteCommits.length && <><h3>远程待拉取记录</h3><GitHistory commits={status.remoteCommits} remote /></>}
     <h3>最近提交</h3>
     {status && <GitHistory commits={status.commits} head={status.head} />}

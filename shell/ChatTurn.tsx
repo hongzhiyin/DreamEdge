@@ -15,6 +15,8 @@ export function ChatTurn({ turn, index, projectId, sessionId, expanded, expand, 
       {turn.summary && <MarkdownMessage className="chat-reply" content={turn.summary} />}
       {turn.applied && <p className="chat-result"><Check size={14} aria-hidden="true" />修改已应用，页面已自动刷新。</p>}
       {turn.commitId && <p className="ai-hint">已提交 Git：{turn.commitId.slice(0, 8)}</p>}
+      {turn.checkpointCommitId && <p className="ai-hint">恢复前修改已备份到 Git：{turn.checkpointCommitId.slice(0, 8)}</p>}
+      {turn.gitRestoreCommitId && turn.applied && <p className="ai-hint">已恢复 {turn.gitRestoreCommitId.slice(0, 8)} 的内容，提交历史保持不变。</p>}
       {turn.warning && <p role="status" className="ai-hint">{turn.warning}</p>}
       {turn.error && <p role="alert" className="sidebar-error">{turn.error}</p>}
       {turn.status === 'running' && <p role="status" className="chat-progress">

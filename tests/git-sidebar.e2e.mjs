@@ -51,11 +51,10 @@ try {
   await bar.getByText('未提交的工程修改已撤销，页面已刷新。', { exact: true }).waitFor();
   await page.frameLocator('iframe').getByText('Hello Git', { exact: true }).waitFor();
   assert.equal(await runGit(directory, 'rev-parse', 'HEAD'), saved);
-  assert.equal(await runGit(directory, 'diff', '--cached', '--name-only'), 'manual.txt');
+  assert.equal(await runGit(directory, 'diff', '--cached', '--name-only'), '');
+  await assert.rejects(readFile(join(directory, 'manual.txt')), { code: 'ENOENT' });
   assert.equal(await readFile(modelFile, 'utf8'), '{"private":"fixture-key"}');
   await assert.rejects(readFile(join(directory, 'src/new.ts')), { code: 'ENOENT' });
-  // Clear only this fixture's unrelated file before the clean-tree pull acceptance.
-  await runGit(directory, 'reset', '--', 'manual.txt'); await rm(join(directory, 'manual.txt'));
   const server = join(root, 'server.git'); await mkdir(server); await runGit(server, 'init', '--bare', '--initial-branch=main');
   await runGit(directory, 'remote', 'add', 'origin', server); await bar.getByRole('button', { name: '刷新 Git 状态' }).click();
   await bar.getByRole('button', { name: '推送', exact: true }).click(); await bar.getByText('本地提交已推送。', { exact: true }).waitFor();
@@ -103,5 +102,5 @@ try {
   const composer = await page.locator('.chat-composer').boundingBox(); assert.ok(composer.y >= 0 && composer.y + composer.height <= 480);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   assert.deepEqual(errors, []);
-  console.log('PASS: live Git bar, one-click commit, confirmed discard, unrelated stages/key preservation, first push, remote query, pull/refresh, dated history and compact layout.');
+  console.log('PASS: live Git bar, one-click commit, confirmed discard, whole-repository discard/ignored key preservation, first push, remote query, pull/refresh, dated history and compact layout.');
 } finally { if (application) await application.close(); await rm(root, { recursive: true, force: true }); }

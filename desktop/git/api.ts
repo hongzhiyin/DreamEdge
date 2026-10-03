@@ -1,12 +1,11 @@
 import type { GitRequest, GitResult } from '../../packages/sdk/src/git';
 import { WorkspaceApi } from '../workspace/api';
 import { currentVersionState } from '../changes/current';
-import { applyBuild, applyState } from '../changes/apply';
+import { applyBuild } from '../changes/apply';
 import { shortText } from '../development/context';
 import { commitGit } from './repository';
-import { gitSnapshot } from './history';
 import { projectGitStatus, repositoryState } from './state';
-import { discardGit } from './discard';
+import { restoreRepository } from './discard';
 import { syncGit } from './sync';
 
 export class ProjectGitApi {
@@ -28,14 +27,13 @@ export class ProjectGitApi {
         if (request.expectedStateHash !== status.stateHash) throw new Error('工程状态已变化，请刷新 Git 状态后操作。');
         if (request.operation === 'commit') return { applied: true as const,
           commitId: await commitGit(project.rootDirectory, shortText(request.message, 'Git 提交说明', 500), controller.signal) };
-        if (request.operation === 'discard') { await discardGit(project, this.profile, status.head, current.stateHash, status.stateHash, controller.signal); return { applied: true as const }; }
+        if (request.operation === 'discard') { await restoreRepository(project, this.profile, status.head, current.stateHash, status.stateHash, controller.signal, true); return { applied: true as const }; }
         if (['fetch', 'pull', 'push'].includes(request.operation)) {
           await syncGit(project, request.operation as 'fetch' | 'pull' | 'push', request.expectedStateHash, controller.signal); return { applied: true as const };
         }
         if (request.operation !== 'restore') throw new Error('不支持的 Git 操作。');
         if (status.changed.length) throw new Error('工程有未提交的修改，请先提交后再恢复历史内容。');
-        const snapshot = await gitSnapshot(project, request.commitId);
-        await applyState(project, this.profile, snapshot.files, snapshot.definition, current.stateHash, controller.signal);
+        await restoreRepository(project, this.profile, request.commitId, current.stateHash, status.stateHash, controller.signal, false);
         return { applied: true as const };
       });
       if (['restore', 'discard', 'pull', 'applyBuild'].includes(request.operation)) this.changed(request.operation === 'applyBuild' ? request.buildId : undefined);

@@ -9,7 +9,7 @@ import { applyState } from '../desktop/changes/apply';
 import { currentVersionState } from '../desktop/changes/current';
 import { fixture, proposal } from './development-fixture';
 
-test('project Git history commits managed source and restores it without touching credentials, data or HEAD', async () => {
+test('project Git history commits the whole repository and restores it without touching ignored credentials, data or HEAD', async () => {
   const f = await fixture(async () => proposal); const api = new ProjectGitApi(f.workspace, f.profile);
   try {
     const before = await api.execute({ operation: 'status', projectId: f.project.definition.id }) as GitStatus;
@@ -22,13 +22,14 @@ test('project Git history commits managed source and restores it without touchin
     await api.execute({ operation: 'commit', projectId: f.project.definition.id, message: 'Git update', expectedStateHash: changed.stateHash });
     const saved = await api.execute({ operation: 'status', projectId: f.project.definition.id }) as GitStatus;
     assert.equal(saved.commits.length, 2); assert.equal(saved.changed.length, 0);
-    assert.equal((await git(f.project.rootDirectory, ['diff', '--cached', '--name-only', '--', 'manual.txt'])).trim(), 'manual.txt');
-    assert.equal(await git(f.project.rootDirectory, ['ls-tree', 'HEAD', '--', 'manual.txt']), '');
+    assert.equal((await git(f.project.rootDirectory, ['diff', '--cached', '--name-only', '--', 'manual.txt'])).trim(), '');
+    assert.match(await git(f.project.rootDirectory, ['ls-tree', 'HEAD', '--', 'manual.txt']), /manual.txt/);
     assert.equal(await git(f.project.rootDirectory, ['ls-files', '--', '.dreamedge/model.json']), '');
     await api.execute({ operation: 'restore', projectId: f.project.definition.id, commitId: before.head!, expectedStateHash: saved.stateHash });
     const restored = await api.execute({ operation: 'status', projectId: f.project.definition.id }) as GitStatus;
     assert.equal(restored.head, saved.head); assert.ok(restored.changed.length);
     assert.match(await readFile(join(f.project.sourceDirectory, 'main.ts'), 'utf8'), /HelloWorld/);
+    await assert.rejects(readFile(join(f.project.rootDirectory, 'manual.txt')), { code: 'ENOENT' });
     assert.equal(await readFile(join(f.project.rootDirectory, '.dreamedge/model.json'), 'utf8'), 'private-key-file');
     assert.equal(await readFile(join(f.project.dataDirectory, 'value'), 'utf8'), 'Business data');
   } finally { await api.dispose(); await f.cleanup(); }

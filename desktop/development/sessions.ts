@@ -20,6 +20,7 @@ function validateTurn(value: DevelopmentTurn, id: string): DevelopmentTurn {
     throw new Error('会话轮次记录无效。');
   }
   validateEvents(value.events);
+  for (const hash of [value.checkpointCommitId, value.gitRestoreCommitId]) if (hash !== undefined && !/^[a-f0-9]{40,64}$/.test(hash)) throw new Error('会话 Git 身份无效。');
   shortText(value.prompt, '会话请求', 8192);
   if (value.phase !== undefined && !['thinking', 'building', 'applying', 'complete'].includes(value.phase)) throw new Error('会话阶段无效。');
   if (value.activity !== undefined && (!Array.isArray(value.activity) || value.activity.length > 48 || value.activity.some(event =>

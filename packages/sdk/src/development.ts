@@ -25,6 +25,7 @@ export interface DevelopmentTurn {
   activity?: AgentActivity[]; events?: DevelopmentEvent[];
   phase?: 'thinking' | 'building' | 'applying' | 'complete';
   applied?: boolean; buildId?: string; commitId?: string | null; warning?: string;
+  checkpointCommitId?: string; gitRestoreCommitId?: string;
 }
 export interface DevelopmentSessionSummary { id: string; title: string; updatedAt: string; turnCount: number }
 export interface DevelopmentSession {

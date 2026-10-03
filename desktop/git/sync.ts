@@ -10,7 +10,7 @@ export async function syncGit(project: WorkspaceProject, operation: 'fetch' | 'p
   let state = await inspect(); const root = project.rootDirectory;
   if (state.stateHash !== expected) throw new Error('工程状态已变化，请刷新 Git 状态后操作。');
   if (!state.remote) throw new Error(state.branch === 'HEAD' ? '当前为 detached HEAD，请先切换分支。' : state.remotes.length ? '请为当前分支配置跟踪远程仓库。' : '当前工程未配置远程仓库。');
-  if (operation === 'pull' && (state.changed.length || state.otherChanged.length)) throw new Error('请先提交或处理工程中的未提交修改，再拉取远程仓库。');
+  if (operation === 'pull' && state.changed.length) throw new Error('请先提交或处理工程中的未提交修改，再拉取远程仓库。');
   await fetchRemote(root, state.remote, signal); if (operation === 'fetch') return;
   state = await inspect(); signal.throwIfAborted();
   if (state.stateHash !== expected) throw new Error('同步期间工程状态已变化，源码和 HEAD 未修改，请刷新后重试。');

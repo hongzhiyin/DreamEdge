@@ -3,7 +3,6 @@ import { promisify } from 'node:util';
 import { realpath } from 'node:fs/promises';
 
 const execute = promisify(execFile);
-export const MANAGED = ['src', '.dreamedge/project.json', '.gitignore'];
 export async function git(root: string, args: string[], signal?: AbortSignal): Promise<string> {
   const env = { ...process.env };
   for (const name of Object.keys(env)) if (name.startsWith('GIT_') || name.startsWith('DREAMEDGE_AI_') || name === 'NODE_OPTIONS') delete env[name];
