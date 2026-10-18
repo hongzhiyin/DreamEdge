@@ -44,4 +44,3 @@ test('file cards show Pi windows, limits, full expandable text, empty search and
   await page.reload(); await page.getByText('文件结果验证完成。', { exact: true }).waitFor();
   assert.equal(await page.getByTestId('tool-card').count(), 7); assert.equal(f.server.requests.length, 2); assert.equal(f.errors.length, 0);
 });
-

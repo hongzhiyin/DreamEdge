@@ -5,14 +5,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { execFileSync } from 'node:child_process';
 
-function excluded(path: string): boolean {
-  if (path === '') return false;
-  if (/\.local\.json$|\/\.env(?:\.|$)|\/node_modules\/\.(?:bin|cache)(?:\/|$)/.test(path)) return true;
-  if (path.startsWith('/node_modules/') || path === '/node_modules') return false;
-  if (['/dist', '/config', '/package.json', '/licenses'].includes(path) || path.startsWith('/licenses/')) return false;
-  if (/^\/dist\/(?:src|desktop|renderer|web|cli)(?:\/|$)/.test(path)) return false;
-  return !['/config/deepseek.example.json', '/config/credentials.example.json'].includes(path);
-}
+import { packageExcluded, packagePaths } from './package-policy.js';
 
 async function main(): Promise<void> {
   const { values } = parseArgs({ options: { out: { type: 'string', default: 'release' }, arch: { type: 'string' } } });
@@ -22,7 +15,7 @@ async function main(): Promise<void> {
   if (arch !== 'arm64' && arch !== 'x64') throw new Error('Unsupported architecture');
   const paths = await packager({ dir: resolve('.'), name: 'DreamEdge', out: values.out,
     platform, arch, electronVersion: metadata.devDependencies.electron,
-    appBundleId: 'app.dreamedge.desktop', asar: { unpack: '**/node_modules/@vscode/ripgrep-*/bin/**' }, prune: true, overwrite: true, ignore: excluded });
+    appBundleId: 'app.dreamedge.desktop', asar: { unpack: '**/node_modules/@vscode/ripgrep-*/bin/**' }, prune: true, overwrite: true, ignore: packageExcluded });
   for (const path of paths) {
     if (platform === 'darwin') {
       await writeFile(join(path, 'DreamEdge.app/Contents/MacOS/dreamedge-cli'),
@@ -42,7 +35,7 @@ async function main(): Promise<void> {
     }
     const archive = process.platform === 'darwin'
       ? join(path, 'DreamEdge.app/Contents/Resources/app.asar') : join(path, 'resources/app.asar');
-    const entries = listPackage(archive, { isPack: false });
+    const entries = packagePaths(listPackage(archive, { isPack: false }));
     if (entries.some(entry => /\.local\.json$|^\/(?:test|src|docs|desktop|renderer|scripts|\.git)(?:\/|$)|\/dist\/test(?:\/|$)/.test(entry))) {
       throw new Error('Private or development files found in application archive');
     }
