@@ -25,6 +25,10 @@ npm start
 
 数据库为数据目录下的 `sessions.sqlite`。环境变量用于宿主启动配置，不暴露给聊天页面。
 
+## Windows 配套试用
+
+Windows x64 / ARM64 构建与流光忆庭一起验证和发布；下载与配置方法见 [Windows 测试说明](docs/windows-preview.md)。Windows 使用原生标题栏，“DreamEdge → 退出 DreamEdge”可完全退出；关闭窗口仍保留后台，重新运行应用会恢复窗口。
+
 ## 本机应用包
 
 ```sh

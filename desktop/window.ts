@@ -10,7 +10,7 @@ export function showChatWindow(window: BrowserWindow): void {
 export function chatWindow(preload: string, quitting: () => boolean): BrowserWindow {
   const window = new BrowserWindow({ title: 'DreamEdge', width: 1160, height: 800,
     minWidth: 720, minHeight: 560, show: false, backgroundColor: '#edf9ff',
-    titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 16 },
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 18, y: 16 } } : {}),
     webPreferences: { preload, contextIsolation: true, sandbox: true,
       nodeIntegration: false, webviewTag: false, webSecurity: true } });
   window.on('close', event => { if (!quitting()) { event.preventDefault(); window.hide(); } });
@@ -28,6 +28,9 @@ export function chatWindow(preload: string, quitting: () => boolean): BrowserWin
     { role: 'about', label: '关于 DreamEdge' }, { type: 'separator' }, { role: 'hide', label: '隐藏 DreamEdge' },
     { role: 'hideOthers', label: '隐藏其他应用' }, { role: 'unhide', label: '显示所有应用' },
     { type: 'separator' }, { role: 'quit', label: '退出 DreamEdge' },
+  ] });
+  if (process.platform !== 'darwin') template.push({ label: 'DreamEdge', submenu: [
+    { id: 'app-quit', role: 'quit', label: '退出 DreamEdge' },
   ] });
   template.push({ label: '编辑', submenu: [
     { role: 'undo', label: '撤销' }, { role: 'redo', label: '重做' }, { type: 'separator' },
