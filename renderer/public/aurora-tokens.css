@@ -1,0 +1,32 @@
+/* Aurora glass v1.1. Shared by the renderer and the web pairing page. */
+:root {
+  color-scheme: light;
+  --surface: #f3f9fd; --canvas: #ffffff; --sidebar: #ffffff26;
+  --text: #263242; --secondary: #5e6e7e;
+  --accent: #456781; --accent-hover: #345b77; --on-accent: #ffffff;
+  --border: #bdcedb; --divider: #bdcedb70; --glass-border: #ffffffd6;
+  --muted-surface: #edf5fa; --selection: #ffffff89; --hover: #ffffffb8;
+  --error: #9d403f; --error-surface: #fff1ef; --error-border: #e8bfbc;
+  --success: #426c60; --warning: #85652b; --warning-surface: #fffaf0;
+  --ring: #35789e; --radius: 18px; --radius-control: 10px;
+  --glass: #ffffff70; --glass-input: #ffffffa3; --glass-message: #ffffffad;
+  --overlay-surface: #f4faff; --code-surface: #eef6fa; --backdrop: #34556b30;
+  --disabled-surface: #d5e4ee; --disabled-text: #667e90; --stop: #486074;
+  --quote-border: #9dc7de; --text-selection: #c3e3f5;
+  --glass-filter: blur(24px) saturate(1.25);
+  --shadow-soft: 0 4px 16px #526d7b0a;
+  --shadow-input: inset 0 1px 0 #fff, 0 8px 25px #416b8110, 0 0 0 1px #b9cedc40;
+  --shadow-overlay: 0 18px 60px #26324222, inset 0 1px 0 #fff;
+  --aurora-background:
+    radial-gradient(ellipse at 100% 100%, #f3dce680 0%, #f3dce600 40%),
+    radial-gradient(ellipse at 3% 0%, #a0d4ee7a, transparent 62%),
+    radial-gradient(ellipse at 95% 0%, #c3e9ec83, transparent 55%),
+    linear-gradient(135deg, #edf9ff, #f8fbfd);
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --sidebar: #edf7fc; --glass: #f4faff; --glass-input: #ffffff;
+    --glass-message: #ffffff; --selection: #ffffff; --glass-filter: none;
+    --aurora-background: linear-gradient(135deg, #edf9ff, #f8fbfd);
+  }
+}

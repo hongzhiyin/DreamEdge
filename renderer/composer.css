@@ -1,0 +1,18 @@
+.composer-area { padding: 12px 36px 18px; flex-shrink: 0; width: 100%; max-width: 832px; align-self: center; }
+.composer-box { border: 1px solid var(--glass-border); border-radius: var(--radius); background: var(--glass-input); padding: 15px; backdrop-filter: var(--glass-filter); box-shadow: var(--shadow-input); }
+.composer-box:focus-within { outline: 2px solid var(--ring); outline-offset: 1px; }
+.composer-box textarea { width: 100%; min-height: 52px; max-height: 180px; padding: 0; background: transparent; border: 0; outline: 0; resize: none; line-height: 1.65; color: var(--text); font-size: 15px; }
+.composer-box textarea:focus-visible { outline: none; }
+.composer-box textarea::placeholder { color: var(--secondary); }
+.composer-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 10px; }
+.model-label { color: var(--secondary); font-size: 12px; overflow-wrap: anywhere; max-width: 100%; }
+.thinking-label { color: var(--secondary); display: flex; align-items: center; gap: 3px; font-size: 12px; }
+.thinking-label select { background: transparent; border: 0; color: var(--text); cursor: pointer; min-height: 40px; padding: 4px; border-radius: 6px; }
+.send-button { margin-left: auto; width: 40px; height: 40px; flex-shrink: 0; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.send-button:hover:not(:disabled) { background: var(--accent-hover); }
+.send-button:disabled { background: var(--disabled-surface); color: var(--disabled-text); opacity: 1; }
+.send-button.stop { background: var(--stop); }
+.composer-hint { display: flex; flex-wrap: wrap; gap: 5px; justify-content: space-between; padding: 10px 4px 0; color: var(--secondary); font-size: 11px; }
+.save-status { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+.save-error { margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--error); background: var(--error-surface); padding: 12px 14px; border-radius: 10px; font-size: 12px; }
+.save-error button { margin-left: auto; white-space: nowrap; background: transparent; border: 0; color: var(--error); text-decoration: underline; min-height: 36px; }

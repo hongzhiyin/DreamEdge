@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+config/*.local.json
+.DS_Store
+/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+/release/
+
+# Local design drafts, acceptance records and native build outputs
+/draft_*_folder/
+/docs/validation/
+/docs/analysis/
+**/bin/
+**/obj/
+/test-results/
+/playwright-report/

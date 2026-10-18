@@ -1,0 +1,20 @@
+{
+  "id": "deepseek",
+  "protocol": "openai-completions",
+  "baseUrl": "https://api.deepseek.com",
+  "model": "deepseek-flash",
+  "contextWindow": 1000000,
+  "maxOutputTokens": 32768,
+  "credentialRef": "file:deepseek",
+  "thinkingLevel": "high",
+  "timeoutMs": 120000,
+  "toolCalling": {
+    "supported": true,
+    "supportedThinkingLevels": ["off", "low", "high"]
+  },
+  "reasoning": {
+    "supportedLevels": ["off", "low", "high"],
+    "format": "deepseek",
+    "effortMap": { "low": "low", "high": "high" }
+  }
+}

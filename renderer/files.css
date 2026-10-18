@@ -1,0 +1,50 @@
+.file-scope-control { position: static; margin-left: 0; flex-shrink: 0; }
+.scope-trigger { min-height: 40px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--glass-border); background: var(--glass); color: var(--text); padding: 0 12px; border-radius: 9px; font-size: 12px; }
+.scope-trigger:hover, .scope-trigger[aria-expanded="true"] { background: var(--muted-surface); }
+.scope-trigger span { color: var(--secondary); font-variant-numeric: tabular-nums; }
+.file-scope-panel { position: absolute; right: 12px; top: calc(100% + 4px); z-index: 10; width: min(440px, calc(100vw - 48px)); max-height: calc(100vh - 160px); overflow: auto; overscroll-behavior: contain; padding: 20px; border: 1px solid var(--glass-border); border-radius: 23px; background: var(--overlay-surface); box-shadow: var(--shadow-overlay); font-size: 12px; }
+.file-scope-panel > header { display: flex; align-items: center; justify-content: space-between; }
+.file-scope-panel h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.scope-context { margin: 8px 0; overflow-wrap: anywhere; color: var(--secondary); line-height: 1.6; }
+.scope-form { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.scope-fields { display: grid; gap: 12px; }
+.scope-fields label { display: grid; gap: 6px; }
+.scope-fields select, .scope-exclusions textarea { width: 100%; min-height: 40px; color: var(--text); border: 1px solid var(--border); border-radius: 9px; padding: 8px; background: var(--surface); font: inherit; }
+.scope-check { min-height: 40px; display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.scope-check input { accent-color: var(--accent); }
+.scope-help { color: var(--secondary); line-height: 1.7; margin: 8px 0; }
+.scope-exclusions summary, .scope-grant summary, .file-result summary { min-height: 40px; align-content: center; cursor: pointer; width: fit-content; }
+.scope-exclusions p, .scope-grant p { line-height: 1.7; overflow-wrap: anywhere; }
+.scope-exclusions textarea { display: block; margin-top: 6px; min-height: 70px; resize: vertical; }
+.scope-add, .scope-revoke { min-height: 40px; padding: 8px 12px; border-radius: 9px; }
+.scope-add { display: flex; align-items: center; gap: 6px; border: 0; background: var(--accent); color: var(--on-accent); margin-top: 12px; }
+.scope-add:hover:not(:disabled) { background: var(--accent-hover); }
+.scope-error { color: var(--error); background: var(--error-surface); border-radius: 9px; padding: 10px; line-height: 1.6; }
+.scope-grants { padding-top: 4px; }
+.device-access { padding: 12px 0 16px; border-bottom: 1px solid var(--border); }
+.device-heading { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.scope-grant { padding: 14px 0; border-bottom: 1px solid var(--border); color: var(--secondary); }
+.scope-grant:last-child { border-bottom: 0; padding-bottom: 0; }
+.scope-grant p { margin: 4px 0; }
+.scope-grant .scope-path { color: var(--text); font-weight: 500; }
+.scope-revoke { border: 1px solid var(--border); background: var(--surface); color: var(--error); }
+.scope-revoke:hover:not(:disabled) { background: var(--error-surface); }
+.file-result { margin-top: 10px; }
+.file-result p { margin: 5px 0; line-height: 1.65; overflow-wrap: anywhere; }
+.file-result-path { font-weight: 500; }
+.file-result-meta { color: var(--secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.file-result-notice { color: var(--error); font-size: 12px; }
+.tool-output pre { max-height: 280px; margin: 6px 0; padding: 12px; overflow: auto; background: var(--canvas); border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.tool-output img { max-width: 100%; max-height: 320px; object-fit: contain; outline: 1px solid oklch(0 0 0 / 0.1); border-radius: 8px; }
+.tool-output .text-button { min-height: 40px; }
+@media (max-width: 600px) { .file-scope-panel { width: calc(100vw - 24px); padding: 16px; } }
+
+.chat-header { position: relative; }
+.reading-control .file-scope-panel { right: 16px; top: calc(100% + 2px); }
+.reading-control { position: static; flex-shrink: 0; margin-left: auto; }
+.reading-control select { max-width: 100%; margin: 10px 0; display: block; min-height: 36px; }
+.reading-control button { min-height: 36px; }
+
+.scope-fields { min-width: 0; }
+.scope-fields select { min-width: 0; max-width: 100%; }
+.file-scope-panel > header { gap: 12px; }

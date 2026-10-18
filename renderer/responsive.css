@@ -1,0 +1,49 @@
+/* Embedded content owns its canvas, while its host owns the outer navigation. */
+.embedded .composer-area { padding: 10px 12px 14px; }
+.embedded .composer-box { padding: 12px; border-radius: 16px; }
+.embedded .messages-content { padding: 20px 16px; }
+.embedded .assistant-message, .embedded .user-message { font-size: 14px; }
+.embedded .user-message { max-width: 95%; padding: 10px 13px; }
+.embedded .launch-notice { padding: 10px 14px; font-size: 11px; }
+
+@container (max-width: 440px) {
+  .composer-controls { gap: 8px; }
+  .composer-area { padding: 10px 12px 14px; }
+  .composer-box { padding: 12px; }
+  .messages-content { padding: 20px 16px; }
+  .user-message { max-width: 95%; }
+  .composer-hint { line-height: 1.6; }
+  .model-label { font-size: 11px; }
+  .action-error { margin: 8px 12px; }
+}
+
+/* Keep the existing narrow web history strip and all navigation actions. */
+@media (max-width: 640px) {
+  .workspace { flex-direction: column; }
+  .sidebar { width: 100%; min-width: 0; max-height: 150px; padding: 8px;
+    border-right: 0; border-bottom: 1px solid var(--glass-border); }
+  .session-list { display: flex; gap: 4px; min-height: 42px; }
+  .session-item { width: auto; min-width: 120px; max-width: 190px; flex-shrink: 0; }
+  .sidebar-footer, .sidebar .brand, .sidebar-caption { display: none; }
+  .sidebar .new-chat { height: 40px; flex-shrink: 0; margin-bottom: 6px; }
+  .titlebar { height: 32px; }
+  .chat-header { padding: 8px 12px; gap: 6px; min-height: 56px; flex-wrap: wrap; }
+  .chat-title { flex: 1; min-width: 60px; }
+  .mcp-control { margin-left: auto; }
+  .file-scope-control .scope-trigger { padding: 0 8px; }
+  .file-scope-panel { position: fixed; inset: 12px; width: auto; max-height: none; }
+  .header-tag { display: none; }
+  .composer-area { padding: 10px; }
+  .messages-content { padding: 16px 14px; }
+  .composer-controls { gap: 8px; }
+  .chat-main { min-height: 0; }
+  .empty-state { padding-top: 24px; }
+  .empty-state h1 { font-size: 24px; }
+  .tool-card { padding: 12px; }
+}
+@media (pointer: coarse) {
+  button, .thinking-label select, summary { min-height: 44px; }
+  .icon-button, .send-button { min-width: 44px; height: 44px; }
+  .composer-box textarea, .mcp-form input, .mcp-form select, .mcp-form textarea,
+  .scope-fields select, .scope-exclusions textarea { font-size: 16px; }
+}
