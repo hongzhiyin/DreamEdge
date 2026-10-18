@@ -9,7 +9,7 @@ import { createWebAccess } from './web-host.js';
 import { fileOperationTools } from '../src/files/operation-tools.js';
 import { isMutationName } from '../src/files/managed-tools.js';
 import { app, dialog, shell } from 'electron';
-import { mkdirSync, rmSync, lstatSync } from 'node:fs';
+import { mkdirSync, rmSync, lstatSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConversationService, PiRuntime, SqliteSessionStore, builtInTools, scopedReadTools, readToolNames, scopedMutationTools, mutationToolNames } from '../src/index.js';
@@ -26,7 +26,9 @@ if (process.env.DREAMEDGE_DATA_DIR) {
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 else void start().catch(error => {
-  if (process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1') process.stderr.write(String(error?.stack ?? error) + '\n');
+  if (process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1') {
+    try { writeFileSync(join(app.getPath('userData'), 'launch-diagnostics.log'), String(error?.stack ?? error)); } catch { }
+  }
   if (process.env.DREAMEDGE_NO_DIALOGS !== '1') dialog.showErrorBox('DreamEdge 无法启动', '请检查模型配置和数据目录。');
   process.stderr.write('DreamEdge 初始化失败。\n'); app.exit(1);
 });

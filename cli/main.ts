@@ -36,8 +36,7 @@ async function main() {
   }
   const environment = { ...process.env }; delete environment.ELECTRON_RUN_AS_NODE;
   const executable = packaged ? process.execPath : join(root, 'node_modules/electron/dist', process.platform === 'darwin' ? 'Electron.app/Contents/MacOS/Electron' : process.platform === 'win32' ? 'electron.exe' : 'electron');
-  const child = spawn(executable, [...(packaged ? [] : [root]), '--background'], { detached: true, stdio: ['ignore', 'ignore', process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1' ? 'pipe' : 'ignore'], env: environment, windowsHide: true });
-  child.stderr?.on('data', bytes => process.stderr.write(bytes));
+  const child = spawn(executable, [...(packaged ? [] : [root]), '--background'], { detached: true, stdio: 'ignore', env: environment, windowsHide: true });
   let failed = false; child.on('error', () => { failed = true; }); child.unref();
   for (let attempt = 0; attempt < 100 && !failed; attempt++) {
     await delay(300);
