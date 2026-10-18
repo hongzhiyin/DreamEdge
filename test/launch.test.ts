@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
@@ -97,5 +97,23 @@ test('Windows client rejects a discovery directory shared with other accounts', 
   try {
     execFileSync('icacls.exe', [dir, '/grant', '*S-1-1-0:(OI)(CI)R'], { stdio: 'pipe' });
     await assert.rejects(callControl(dir, request), { code: 'UNSAFE_SOCKET' });
+  } finally { await server.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('one-shot CLI connection exits while the host remains running', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'launch-exit-'));
+  const server = await startControl(dir, async value => parseLaunchRequest(value));
+  try {
+    const code = `import { callControl } from ${JSON.stringify(new URL('../src/launch/socket.js', import.meta.url).href)};
+const reply=await callControl(${JSON.stringify(dir)},${JSON.stringify(request)});process.stdout.write(JSON.stringify(reply));`;
+    const result = await new Promise<{ code: number | null; output: string }>((accept, reject) => {
+      const child = spawn(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let output = '', errors = ''; const timer = setTimeout(() => { child.kill(); reject(new Error('CLI retained its control pipe')); }, 8000);
+      child.stdout.on('data', bytes => { output += bytes; }); child.stderr.on('data', bytes => { errors += bytes; });
+      child.on('error', error => { clearTimeout(timer); reject(error); });
+      child.on('exit', exitCode => { clearTimeout(timer); if (exitCode) reject(new Error(errors)); else accept({ code: exitCode, output }); });
+    });
+    assert.equal(result.code, 0); assert.equal(JSON.parse(result.output).ok, true);
+    assert.deepEqual(await callControl(dir, request), { ok: true, data: request });
   } finally { await server.close(); await rm(dir, { recursive: true, force: true }); }
 });

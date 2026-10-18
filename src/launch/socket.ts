@@ -38,7 +38,7 @@ export async function callControl(directory: string, request: unknown): Promise<
     socket.on('connect', () => socket.write(JSON.stringify(request) + '\n'));
     socket.on('error', reject);
     socket.on('close', () => { if (!complete) reject(new LaunchError('DISCONNECTED', '后台连接已中断。')); });
-    readLine(socket, value => { complete = true; socket.end(); accept(value); });
+    readLine(socket, value => { complete = true; socket.destroy(); accept(value); });
   });
 }
 export async function startControl(directory: string, handler: (value: unknown) => Promise<unknown>) {
@@ -51,9 +51,9 @@ export async function startControl(directory: string, handler: (value: unknown) 
   const sockets = new Set<Socket>();
   const server = createServer(socket => {
     sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.on('error', () => {});
-    readLine(socket, value => { void Promise.resolve().then(() => handler(value)).then(data => socket.end(JSON.stringify({ ok: true, data }) + '\n'), error => {
+    readLine(socket, value => { void Promise.resolve().then(() => handler(value)).then(data => socket.end(JSON.stringify({ ok: true, data }) + '\n', () => socket.destroy()), error => {
       socket.end(JSON.stringify({ ok: false, error: { code: error instanceof LaunchError ? error.code : 'LAUNCH_FAILED',
-        message: error instanceof LaunchError ? error.message : '会话启动失败。' } }) + '\n');
+        message: error instanceof LaunchError ? error.message : '会话启动失败。' } }) + '\n', () => socket.destroy());
     }); });
   });
   await new Promise<void>((accept, reject) => { server.once('error', reject); server.listen(path, () => { server.off('error', reject); accept(); }); });
