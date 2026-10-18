@@ -3,7 +3,7 @@ import { chmod, lstat, mkdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { LaunchError } from './protocol.js';
-import { secureWindowsDirectory, readWindowsPipe, newWindowsPipe, saveWindowsPipe } from './windows-control.js';
+import { secureWindowsDirectory, readWindowsPipe, newWindowsPipe, saveWindowsPipe, validateWindowsDirectory } from './windows-control.js';
 
 export function controlDirectory(data: string): string {
   if (process.platform === 'win32') return join(resolve(data), 'launch-control');
@@ -32,6 +32,7 @@ export async function callControl(directory: string, request: unknown): Promise<
   if (process.platform !== 'win32') await safeDirectory(directory);
   else { const stat = await lstat(directory); if (!stat.isDirectory() || stat.isSymbolicLink()) throw new LaunchError('UNSAFE_SOCKET', '本地控制目录无效。'); }
   const endpoint = process.platform === 'win32' ? await readWindowsPipe(directory) : join(directory, 'control.sock');
+  if (process.platform === 'win32') await validateWindowsDirectory(directory);
   return new Promise((accept, reject) => {
     const socket = createConnection(endpoint); let complete = false;
     socket.on('connect', () => socket.write(JSON.stringify(request) + '\n'));

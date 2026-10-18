@@ -36,3 +36,21 @@ export async function saveWindowsPipe(directory: string, pipe: string): Promise<
   try { await writeFile(temporary, pipe, { mode: 0o600, flag: 'wx' }); await rename(temporary, path); }
   finally { await rm(temporary, { force: true }); }
 }
+
+export async function validateWindowsDirectory(directory: string): Promise<void> {
+  const script = `$ErrorActionPreference='Stop';
+$sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value;
+$owners=@($sid,'S-1-5-18','S-1-5-32-544');$readers=@($sid,'S-1-5-18');$safe=$true;
+foreach($path in @($env:DREAMEDGE_CONTROL_DIRECTORY,(Join-Path $env:DREAMEDGE_CONTROL_DIRECTORY 'control-pipe'))){
+ $acl=Get-Acl -LiteralPath $path;
+ if($owners -notcontains $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value){$safe=$false};
+ if($path -eq $env:DREAMEDGE_CONTROL_DIRECTORY -and !$acl.AreAccessRulesProtected){$safe=$false};
+ foreach($rule in $acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier])){
+  if($rule.AccessControlType -eq 'Allow' -and $readers -notcontains $rule.IdentityReference.Value){$safe=$false}
+ }
+};if($safe){[Console]::Write('safe')}else{[Console]::Write('unsafe')}`;
+  const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    windowsHide: true, env: { ...process.env, DREAMEDGE_CONTROL_DIRECTORY: directory },
+  });
+  if (stdout.trim() !== 'safe') throw new LaunchError('UNSAFE_SOCKET', '本地控制入口并非仅当前用户可访问。');
+}

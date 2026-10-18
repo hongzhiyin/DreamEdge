@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
@@ -88,4 +89,13 @@ test('text-only session policy survives persistence and skips dynamic tool prepa
     const run = service.send({ sessionId: id, clientMessageId: 'test', text: 'hello' }); await run.done;
     assert.equal(prepared, false); assert.equal(service.getSnapshot(id).runs[0]!.status, 'completed');
   } finally { await service.dispose(); await f.service.dispose(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('Windows client rejects a discovery directory shared with other accounts', { skip: process.platform !== 'win32' }, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'launch-acl-'));
+  const server = await startControl(dir, async value => value);
+  try {
+    execFileSync('icacls.exe', [dir, '/grant', '*S-1-1-0:(OI)(CI)R'], { stdio: 'pipe' });
+    await assert.rejects(callControl(dir, request), { code: 'UNSAFE_SOCKET' });
+  } finally { await server.close(); await rm(dir, { recursive: true, force: true }); }
 });
