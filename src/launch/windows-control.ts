@@ -41,8 +41,8 @@ export async function validateWindowsDirectory(directory: string): Promise<void>
   const script = `$ErrorActionPreference='Stop';
 $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value;
 $owners=@($sid,'S-1-5-18','S-1-5-32-544');$readers=@($sid,'S-1-5-18');$safe=$true;
-foreach($path in @($env:DREAMEDGE_CONTROL_DIRECTORY,(Join-Path $env:DREAMEDGE_CONTROL_DIRECTORY 'control-pipe'))){
- $acl=Get-Acl -LiteralPath $path;
+foreach($path in @($env:DREAMEDGE_CONTROL_DIRECTORY,([System.IO.Path]::Combine($env:DREAMEDGE_CONTROL_DIRECTORY,'control-pipe')))){
+ $acl=if([System.IO.Directory]::Exists($path)){[System.IO.Directory]::GetAccessControl($path)}else{[System.IO.File]::GetAccessControl($path)};
  if($owners -notcontains $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value){$safe=$false};
  if($path -eq $env:DREAMEDGE_CONTROL_DIRECTORY -and !$acl.AreAccessRulesProtected){$safe=$false};
  foreach($rule in $acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier])){
