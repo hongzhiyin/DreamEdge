@@ -25,7 +25,8 @@ if (process.env.DREAMEDGE_DATA_DIR) {
 }
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
-else void start().catch(() => {
+else void start().catch(error => {
+  if (process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1') process.stderr.write(String(error?.stack ?? error) + '\n');
   if (process.env.DREAMEDGE_NO_DIALOGS !== '1') dialog.showErrorBox('DreamEdge 无法启动', '请检查模型配置和数据目录。');
   process.stderr.write('DreamEdge 初始化失败。\n'); app.exit(1);
 });
