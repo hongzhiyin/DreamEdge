@@ -46,9 +46,9 @@ async function main() {
   throw new LaunchError('START_TIMEOUT', '后台未就绪。请检查模型配置，或退出仍在运行的旧版 AI 应用后重试。');
 }
 void main().then(result => {
-  process.stdout.write(JSON.stringify(result) + '\n');
-  if (result && typeof result === 'object' && 'ok' in result && result.ok === false) process.exitCode = 1;
+  const code = result && typeof result === 'object' && 'ok' in result && result.ok === false ? 1 : 0;
+  process.stdout.write(JSON.stringify(result) + '\n', () => process.exit(code));
 }, error => {
   process.stdout.write(JSON.stringify({ ok: false, error: { code: error instanceof LaunchError ? error.code : 'CLI_FAILED',
-    message: error instanceof LaunchError ? error.message : '启动接口执行失败，请检查请求与本地配置。' } }) + '\n'); process.exitCode = 1;
+    message: error instanceof LaunchError ? error.message : '启动接口执行失败，请检查请求与本地配置。' } }) + '\n', () => process.exit(1));
 });
