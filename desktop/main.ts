@@ -10,7 +10,7 @@ import { createWebAccess } from './web-host.js';
 import { fileOperationTools } from '../src/files/operation-tools.js';
 import { isMutationName } from '../src/files/managed-tools.js';
 import { app, dialog, shell } from 'electron';
-import { mkdirSync, rmSync, lstatSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, rmSync, lstatSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConversationService, PiRuntime, SqliteSessionStore, builtInTools, scopedReadTools, readToolNames, scopedMutationTools, mutationToolNames } from '../src/index.js';
@@ -72,13 +72,23 @@ async function start(): Promise<void> {
   };
   const second = (_event: unknown, argv: string[]) => { if (!argv.includes('--background')) show(); };
   app.on('activate', show); app.on('second-instance', second);
-  const launch = new LaunchController(launchStore, service, config, () => web.ensure(), async (source, _destination, offer) => {
+  const trace = (phase: string) => {
+    if (process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1') {
+      try { appendFileSync(join(app.getPath('userData'), 'launch-phase-diagnostics.log'), new Date().toISOString() + ' ' + phase + '\n'); } catch { }
+    }
+  };
+  const launch = new LaunchController(launchStore, service, config, async () => {
+    trace('web-start'); const host = await web.ensure(); trace('web-ready'); return host;
+  }, async (source, _destination, offer) => {
     const response = await dialog.showMessageBox({ type: 'question', title: '外部应用会话',
       message: `允许 ${source.name} 打开 AI 会话？`,
       detail: `应用标识：${source.id}\n资料区：${source.profile}\n模型：${config.model}\n服务：${config.baseUrl}\n\n允许创建和恢复该应用的文字对话。输入的消息会发送到上述模型。${offer ? `读取范围：${offer.scope}\n只读工具：${offer.readTools.join('、')}\n普通交互：${(offer.interactionTools ?? []).join('、') || '无'}\n启动入口：${offer.transport.command}\n参数：${JSON.stringify(offer.transport.args)}\n允许这些工具按需读取并发送到上述模型，仅包含列出的读取和普通交互，不包含删除、覆盖或本机文件权限。` : '此次不授予文件或 MCP 权限。'}应用名称由本机调用方声明；控制接口仅限当前系统账户。`,
       buttons: ['允许并记住', '取消'], defaultId: 1, cancelId: 1 });
     return response.response === 0;
-  }, context.mcp, request => {
+  }, { connect: async (...args) => {
+    trace('mcp-start'); try { await context.mcp.connect(...args); trace('mcp-ready'); }
+    catch (error) { trace('mcp-error ' + String(error)); throw error; }
+  }, revoke: ids => context.mcp.revoke(ids) }, request => {
     const path = join(app.getPath('userData'), 'application-policies.json');
     const allowed = automaticApplicationAccess(path, request, config);
     if (process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1') {
@@ -87,7 +97,10 @@ async function start(): Promise<void> {
     }
     return allowed;
   });
-  const control = await startControl(controlDirectory(app.getPath('userData')), value => launch.request(value));
+  const control = await startControl(controlDirectory(app.getPath('userData')), async value => {
+    trace('request'); try { const reply = await launch.request(value); trace('reply-ready'); return reply; }
+    catch (error) { trace('request-error ' + String(error)); throw error; }
+  });
   app.on('window-all-closed', () => {});
   app.on('before-quit', event => {
     if (quitting) return;

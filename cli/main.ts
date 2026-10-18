@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,10 +46,17 @@ async function main() {
   }
   throw new LaunchError('START_TIMEOUT', '后台未就绪。请检查模型配置，或退出仍在运行的旧版 AI 应用后重试。');
 }
+function trace(phase: string) {
+  if (process.env.DREAMEDGE_LAUNCH_DIAGNOSTICS === '1') {
+    try { appendFileSync(join(launchDataDirectory(), 'launch-cli-diagnostics.log'), new Date().toISOString() + ' ' + phase + '\n'); } catch { }
+  }
+}
 void main().then(result => {
+  trace('result-ready');
   const code = result && typeof result === 'object' && 'ok' in result && result.ok === false ? 1 : 0;
-  process.stdout.write(JSON.stringify(result) + '\n', () => process.exit(code));
+  process.stdout.write(JSON.stringify(result) + '\n', () => { trace('stdout-flushed'); process.exit(code); });
 }, error => {
+  trace('error ' + String(error));
   process.stdout.write(JSON.stringify({ ok: false, error: { code: error instanceof LaunchError ? error.code : 'CLI_FAILED',
     message: error instanceof LaunchError ? error.message : '启动接口执行失败，请检查请求与本地配置。' } }) + '\n', () => process.exit(1));
 });
