@@ -27,13 +27,17 @@ export async function mutationFixture(t: TestContext, handler: Handler, hooks: M
   for (const tool of await scopedMutationTools(service.fileScopes, hooks, options.account ? options.policy ?? inspectFileMutation : undefined)) registry.register(tool);
   const sessionId = service.createSession({ connectionId: config.id }).sessionId;
   const grant = account ? service.fileScopes.roots(sessionId)[0] : await service.fileScopes.chooseDirectory(sessionId, { mode: 'read-write', remember: true });
-  t.after(async () => { await service.dispose().catch(() => {}); store.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
+  const cleanups: (() => Promise<void>)[] = [];
+  t.after(async () => { for (const cleanup of [...cleanups].reverse()) await cleanup();
+    await service.dispose().catch(() => {}); store.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const send = (id = 'one', sid = sessionId) => service.send({ sessionId: sid, clientMessageId: id, text: id });
   const approval = async (sid = sessionId): Promise<ApprovalRecord> => {
-    await waitUntil(() => service.getSnapshot(sid).runs.at(-1)?.approvals?.some(a => a.status === 'pending') ?? false);
+    // A batch may run several isolated Pi readers before preparing its approval.
+    await waitUntil(() => service.getSnapshot(sid).runs.at(-1)?.approvals?.some(a => a.status === 'pending') ?? false, 20_000);
     return service.getSnapshot(sid).runs.at(-1)!.approvals!.find(a => a.status === 'pending')!;
   };
-  return { service, registry, store, config, server, root, directory, sessionId, grant: grant!, send, approval };
+  return { service, registry, store, config, server, root, directory, sessionId, grant: grant!, send, approval,
+    beforeCleanup: (cleanup: () => Promise<void>) => { cleanups.push(cleanup); } };
 }
 export function mutationDecision(a: ApprovalRecord, decision: 'approve' | 'reject' = 'approve'): ApprovalDecisionCommand {
   return { sessionId: a.sessionId, runId: a.runId, turnId: a.turnId, toolCallId: a.toolCallId,

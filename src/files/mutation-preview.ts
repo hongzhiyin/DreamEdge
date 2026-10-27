@@ -1,6 +1,6 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { randomUUID } from 'node:crypto';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { lstat } from 'node:fs/promises';
 import { TextDecoder } from 'node:util';
 import type { JsonObject } from '@earendil-works/pi-ai';
@@ -38,7 +38,7 @@ export async function previewMutation(scopes: FileScopeService, name: MutationNa
   try { decoded = new TextDecoder('utf-8', { fatal: true }).decode(original); if (decoded.includes('\0')) throw 0; }
   catch { throw new NoFileEffectError('变更仅支持有效 UTF-8 文本。'); }
   const pi = await import('@earendil-works/pi-coding-agent'); let content: string | undefined; let patch = '';
-  const virtualPath = `/__dreamedge_preview__/${randomUUID()}/target`;
+  const virtualPath = join(binding.root, '__dreamedge_preview__', randomUUID(), 'target');
   const pathOnly = (path: string) => { if (path !== virtualPath) throw new NoFileEffectError('Pi 变更路径绑定不匹配。'); };
   const capture = async (path: string, value: string) => {
     pathOnly(path); if (value.includes('\0') || Buffer.byteLength(value) > 4 * 1024 * 1024) throw new NoFileEffectError('变更内容超过限制或含有二进制内容。');

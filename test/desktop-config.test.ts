@@ -13,7 +13,8 @@ test('packaged defaults are created outside the bundle and existing configuratio
   assert.equal(initial.config.model, 'deepseek-flash');
   assert.equal(await initial.credentials('file:deepseek', new AbortController().signal), undefined);
   const path = join(userData, 'credentials.local.json');
-  assert.equal((await stat(path)).mode & 0o777, 0o600);
+  // Windows inherits ACLs; Node's mode does not represent POSIX group/other permissions.
+  assert.equal((await stat(path)).mode & (process.platform === 'win32' ? 0o600 : 0o777), 0o600);
   await writeFile(path, JSON.stringify({ deepseek: 'local-fixture-key' }));
   const configPath = join(userData, 'connection.local.json');
   const config = JSON.parse(await readFile(configPath, 'utf8')); config.model = 'local-model';

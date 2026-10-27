@@ -48,7 +48,7 @@ export async function storageFixture(t: TestContext, checkpointMs = 20) {
     writeCount: () => writeCount, onStart: (callback: (request: RuntimeRequest) => void) => { beforeStart = callback; } };
 }
 
-export async function waitUntil(check: () => boolean): Promise<void> {
-  const deadline = Date.now() + 3000;
+export async function waitUntil(check: () => boolean, timeoutMs = 3000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
   while (!check()) { assert.ok(Date.now() < deadline, 'Condition timed out'); await delay(5); }
 }

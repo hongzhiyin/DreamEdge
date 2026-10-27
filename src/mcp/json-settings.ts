@@ -35,8 +35,10 @@ export class McpJsonSettings {
       if (entry && typeof entry.command === 'string' && !isAbsolute(entry.command)) {
         const name = entry.command;
         if (!/^[A-Za-z0-9._-]+$/.test(name)) throw new McpSettingsError('启动命令必须是程序名或绝对路径，不能填写 shell 命令。');
-        const extensions = process.platform === 'win32' ? (this.environment.PATHEXT ?? '.EXE;.CMD;.BAT').split(';') : [''];
-        const paths = (this.environment.PATH ?? '').split(delimiter).filter(p => p && isAbsolute(p));
+        const env = (key: string) => this.environment[process.platform === 'win32'
+          ? Object.keys(this.environment).sort().find(name => name.toUpperCase() === key) ?? key : key];
+        const extensions = process.platform === 'win32' ? ['', ...(env('PATHEXT') ?? '.EXE;.CMD;.BAT').split(';')] : [''];
+        const paths = (env('PATH') ?? '').split(delimiter).filter(p => p && isAbsolute(p));
         const found = paths.flatMap(p => extensions.map(ext => join(p, name + ext))).find(path => {
           try { accessSync(path, constants.X_OK); return lstatSync(path).isFile() || lstatSync(path).isSymbolicLink(); } catch { return false; }
         });

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { closeOnExit } from './helpers/dispose.js';
 import { builtInTools, SqliteSessionStore } from '../src/index.js';
 import { toolLoopFixture, toolReply } from './helpers/tool-loop.js';
 import { chatReply, deadline } from './helpers/server.js';
@@ -44,8 +45,8 @@ test('time then addition spans several native model turns and survives a SQLite 
   const messages = result.transcript!.map(entry => entry.message);
   assert.equal(messages.filter(message => message.role === 'assistant').length, 3);
   assert.equal(messages.filter(message => message.role === 'toolResult').length, 2);
-  await f.service.dispose(); const reopened = new SqliteSessionStore(f.path);
-  t.after(() => reopened.close()); assert.deepEqual(reopened.load()[0]!.runs[0], result);
+  await f.service.dispose(); using reopened = closeOnExit(new SqliteSessionStore(f.path));
+  assert.deepEqual(reopened.load()[0]!.runs[0], result);
 });
 
 test('tools within one model response execute serially after the previous result is committed', async t => {

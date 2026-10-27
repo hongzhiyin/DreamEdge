@@ -5,14 +5,14 @@ const operations = new Set(['sessions.list', 'context.get', 'page.read', 'citati
   'reader.navigate', 'reader.return', 'notes.create', 'notes.list', 'notes.get', 'notes.update', 'requests.get']);
 /** Fixed executable and operation whitelist; no shell, token reads or provider credentials in argv. */
 export class ReaderCli implements ReaderClient {
-  constructor(private readonly executable: string | undefined) {}
+  constructor(private readonly executable: string | undefined, private readonly prefixArgs: readonly string[] = []) {}
   call(operation: string, input: ReaderInput, signal: AbortSignal): Promise<ReaderReply> {
     if (!this.executable || !operations.has(operation)) return Promise.resolve(failure('UNAVAILABLE', '阅读器程序未配置或操作未开放。'));
     if (signal.aborted) return Promise.resolve(failure('CANCELLED', '阅读器请求已停止。'));
     return new Promise(resolve => {
       const env = { ...process.env }; delete env.RG_BRIDGE_CONFIG;
       if (process.env.DREAMEDGE_READER_CONFIG) env.RG_BRIDGE_CONFIG = process.env.DREAMEDGE_READER_CONFIG;
-      const child = spawn(this.executable!, ['call', operation, '--input', '-'], { stdio: ['pipe', 'pipe', 'ignore'], env });
+      const child = spawn(this.executable!, [...this.prefixArgs, 'call', operation, '--input', '-'], { stdio: ['pipe', 'pipe', 'ignore'], env, windowsHide: true });
       let result = '', ended = false;
       const finish = (reply: ReaderReply) => { if (ended) return; ended = true; clearTimeout(timer);
         signal.removeEventListener('abort', cancel); resolve(reply); };

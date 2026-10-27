@@ -4,6 +4,7 @@ import { basename, relative, matchesGlob, resolve } from 'node:path';
 import { createReadTool, createLsTool, createFindTool, createGrepTool, detectSupportedImageMimeTypeFromFile } from '@earendil-works/pi-coding-agent';
 import { cleanToolResult } from '../tools/result.js';
 import { piDetails } from './pi-json.js';
+import { containsPath } from './scope-paths.js';
 import type { ReadToolName } from './read-limits.js';
 import type { JsonObject } from '@earendil-works/pi-ai';
 
@@ -11,7 +12,7 @@ async function glob(pattern: string, root: string, options: { ignore: string[]; 
   const args = ['--no-config', '--no-ignore-parent', '--no-ignore-global', '--no-require-git', '--files', '--hidden', '-0'];
   for (const ignore of options.ignore) args.push('--glob', `!${ignore}`);
   args.push('--', root);
-  const child = spawn(process.env.DREAMEDGE_RG_BINARY!, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.env.DREAMEDGE_RG_BINARY!, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let output = Buffer.alloc(0); let failed = false;
   child.stdout.on('data', (chunk: Buffer) => { output = Buffer.concat([output, chunk]); if (output.length > 1024 * 1024) { failed = true; child.kill('SIGKILL'); } });
   child.stderr.resume();
@@ -26,7 +27,7 @@ async function main() {
   const command = JSON.parse(input) as { name: ReadToolName; args: JsonObject; root: string; target: string };
   const inSnapshot = (path: string) => {
     const value = resolve(path); const root = resolve(command.root);
-    if (value !== root && !value.startsWith(`${root}/`)) throw new Error('搜索路径无效'); return value;
+    if (!containsPath(root, value)) throw new Error('搜索路径无效'); return value;
   };
   const factory = { read: () => createReadTool(command.root, { autoResizeImages: false, operations: {
       access: path => access(inSnapshot(path)), readFile: path => readFile(inSnapshot(path)),

@@ -10,6 +10,15 @@ export const containsPath = (root: string, path: string) => {
   const part = relative(root, path); return part === '' || (!isAbsolute(part) && part !== '..' && !part.startsWith(`..${sep}`));
 };
 const denied = () => new FileScopeError('FILE_SCOPE_DENIED', '路径不在授权范围内，或无法确认文件身份。');
+/** Reject Win32 aliases/devices/streams before resolution can conceal their spelling. */
+export function checkPathSpelling(input: string): void {
+  if (process.platform !== 'win32') return;
+  if (/^[\\/]{2}[?.][\\/]/.test(input) || /^[a-z]:(?![\\/])/i.test(input)) throw denied();
+  const parts = input.replace(/^[a-z]:/i, '').split(/[\\/]/);
+  if (parts.some(part => /[<>:"|?*\x00-\x1f]/.test(part)
+    || (part !== '.' && part !== '..' && /[. ]$/.test(part))
+    || /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i.test(part))) throw denied();
+}
 export function excluded(grant: FileScopeGrant, path: string): boolean {
   const fold = (value: string) => value.normalize('NFC').toLowerCase();
   const part = fold(relative(grant.path, path)); const components = path.split(sep).map(fold);
@@ -32,8 +41,9 @@ export async function checkRoot(grant: FileScopeGrant): Promise<void> {
 }
 /** Preflight and each actual IO gate reject links. This is not a kernel sandbox. */
 export async function inspectPath(grant: FileScopeGrant, input: string, allowMissing = false) {
-  if (typeof input !== 'string' || !input || input.includes('\0') || input.includes('\\')
-    || input.split('/').includes('..') || input.startsWith('~') || input.startsWith('@')) throw denied();
+  if (typeof input !== 'string' || !input || input.includes('\0') || (sep !== '\\' && input.includes('\\'))
+    || input.split(sep === '\\' ? /[\\/]/ : '/').includes('..') || input.startsWith('~') || input.startsWith('@')) throw denied();
+  checkPathSpelling(input);
   const path = resolve(grant.path, input);
   if (!containsPath(grant.path, path) || excluded(grant, path)) throw denied();
   await checkRoot(grant);

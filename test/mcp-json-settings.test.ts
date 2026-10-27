@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { join } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { registryDisk } from './helpers/mcp-registry.js';
 import { McpJsonSettings } from '../src/mcp/json-settings.js';
@@ -36,11 +36,22 @@ test('restart does not restore revoked trust unless the user explicitly saves it
 
 test('program names resolve through host PATH; shell expansions remain rejected', async t => {
   const f = await registryDisk(t), settings = new McpJsonSettings(join(f.dir, 'mcp.json'), f.registry,
-    { PATH: process.execPath.slice(0, process.execPath.lastIndexOf('/')) });
+    { PATH: dirname(process.execPath) });
   settings.save(JSON.stringify({ mcpServers: { app: { command: 'node', args: ['--version'] } } }));
   const entry = f.registry.snapshot().servers[0]!; assert.equal(entry.config.transport.type, 'stdio');
-  assert.ok(entry.config.transport.type === 'stdio' && entry.config.transport.command.endsWith('/node'));
+  assert.ok(entry.config.transport.type === 'stdio' && basename(entry.config.transport.command).toLowerCase() === basename(process.execPath).toLowerCase());
   assert.throws(() => settings.save(JSON.stringify({ mcpServers: { app: { command: 'node && shell' } } })));
+});
+
+test('Windows PATH lookup accepts mixed-case environment names and explicit executable extensions', { skip: process.platform !== 'win32' }, async t => {
+  const f = await registryDisk(t), settings = new McpJsonSettings(join(f.dir, 'mcp.json'), f.registry,
+    { Path: dirname(process.execPath), PathExt: '.EXE' });
+  for (const command of ['node', 'node.exe']) {
+    settings.save(JSON.stringify({ mcpServers: { app: { command, args: ['--version'] } } }));
+    const entry = f.registry.snapshot().servers[0]!;
+    assert.ok(entry.config.transport.type === 'stdio');
+    assert.equal(entry.config.transport.command.toLowerCase(), process.execPath.toLowerCase());
+  }
 });
 
 test('malformed external configuration fails closed and remains editable as raw JSON', async t => {

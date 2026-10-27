@@ -40,7 +40,7 @@ test('CLI output preserves Chinese split across UTF-8 byte boundaries', async ()
   try {
     const path = join(directory, 'fixture');
     await writeFile(path, `#!/usr/bin/env node\nprocess.stdin.resume();process.stdin.on('end',()=>{const bytes=Buffer.from(JSON.stringify({ok:true,data:{title:'中文验收'}}));const cut=bytes.indexOf(Buffer.from('中'))+1;process.stdout.write(bytes.subarray(0,cut));setTimeout(()=>process.stdout.end(bytes.subarray(cut)),20);});\n`, { mode: 0o700 });
-    const result = await new ReaderCli(path).call('sessions.list', { requestId: 'fixture', params: {} }, new AbortController().signal);
+    const result = await new ReaderCli(process.execPath, [path]).call('sessions.list', { requestId: 'fixture', params: {} }, new AbortController().signal);
     assert.deepEqual(result, { ok: true, data: { title: '中文验收' } });
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

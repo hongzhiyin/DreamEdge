@@ -8,8 +8,15 @@ const result = (decision: ToolInspection['decision'], rule: string, reason: stri
   ({ decision, rule: `file-operations/v1/${rule}`, reason });
 
 export function sensitiveConfigurationPath(input: string): boolean {
-  const path = input.normalize('NFC').toLowerCase().split(sep).join('/'); const name = basename(path);
+  const path = input.normalize('NFC').toLowerCase().replaceAll('\\', '/'); const name = basename(path);
   return /^\/(?:etc|private\/etc|system|library|usr|bin|sbin)(?:\/|$)/.test(path)
+    || /^[a-z]:\/(?:windows|program files(?: \(x86\))?|programdata)(?:\/|$)/.test(path)
+    || (process.platform === 'win32' && ['SystemRoot', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramData'].some(key => {
+      const root = process.env[key]?.toLowerCase().replaceAll('\\', '/').replace(/\/$/, '');
+      return !!root && (path === root || path.startsWith(`${root}/`));
+    }))
+    || /\/microsoft\/windows\/start menu\/programs\/startup(?:\/|$)/.test(path)
+    || /\/(?:windowspowershell|powershell)\/(?:microsoft\.[^/]+_)?profile\.ps1$/.test(path)
     || /\/library\/(?:launchagents|launchdaemons)\//.test(path)
     || /\/(?:\.config\/systemd|\.config\/autostart)\//.test(path)
     || ['.zshrc', '.zprofile', '.zshenv', '.zlogin', '.zlogout', '.bashrc', '.bash_profile', '.bash_login', '.bash_logout', '.profile'].includes(name);

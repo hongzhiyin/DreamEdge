@@ -63,3 +63,18 @@ test('read-write range only binds targets; it does not write files or grant a to
   assert.equal((await f.service.fileScopes.verify(bound)).stat, undefined);
   assert.deepEqual(f.service.getSnapshot(f.session.sessionId).runs[0]!.approvals ?? [], []);
 });
+
+test('Windows native and slash paths retain identity checks and reject traversal, streams and device aliases', {
+  skip: process.platform !== 'win32',
+}, async t => {
+  const f = await scopeFixture(t); const grant = (await f.choose({ mode: 'read-write', remember: false }))!;
+  const { source } = f.start();
+  for (const input of [join(f.root, 'input.txt'), join(f.root, 'input.txt').replaceAll('\\', '/')]) {
+    const binding = await f.service.fileScopes.bind(source, grant.grantId, input, 'read');
+    assert.equal(binding.path, join(f.root, 'input.txt')); assert.ok((await f.service.fileScopes.verify(binding)).stat?.isFile());
+  }
+  for (const input of ['..\\outside\\secret.txt', 'nested/..\\input.txt', 'input.txt:stream', '.ssh.\\key',
+    'input.txt ', 'NUL.txt', 'COM¹', 'C:relative.txt', `\\\\?\\${f.root}\\input.txt`, '\\\\.\\PhysicalDrive0']) {
+    await assert.rejects(f.service.fileScopes.bind(source, grant.grantId, input, 'write'), { code: 'FILE_SCOPE_DENIED' });
+  }
+});

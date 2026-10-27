@@ -33,7 +33,7 @@ test('restart revokes temporary grants but revalidates remembered directory iden
   await assert.rejects(restored.fileScopes.bind(source, remembered.grantId, 'input.txt', 'read'));
 });
 test('scope save failure blocks access, retrySave saves without re-running selector', async t => {
-  const f = await scopeFixture(t); const db = new DatabaseSync(f.dbPath); t.after(() => db.close());
+  const f = await scopeFixture(t); using db = new DatabaseSync(f.dbPath);
   db.exec(`CREATE TRIGGER scope_failure BEFORE UPDATE ON sessions BEGIN SELECT RAISE(ABORT, 'fixture'); END`);
   await assert.rejects(f.choose(), { code: 'FILE_SCOPE_SAVE_FAILED' });
   assert.equal(f.service.getSnapshot(f.session.sessionId).saveState.status, 'failed');

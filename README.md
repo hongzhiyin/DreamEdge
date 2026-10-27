@@ -29,6 +29,8 @@ npm start
 
 Windows x64 / ARM64 构建与流光忆庭一起验证和发布；下载与配置方法见 [Windows 测试说明](docs/windows-preview.md)。Windows 使用原生标题栏，“DreamEdge → 退出 DreamEdge”可完全退出；关闭窗口仍保留后台，重新运行应用会恢复窗口。
 
+2026-10-28 完成 Windows x64 兼容性修复：核心测试 400/400、源码界面选定回归 20/20、打包版选定回归 21/21 通过。本机修复包已替换并启动，原配置及会话数据核对一致；此前发布的配套包未在此次操作中更新。失败分类、上游适配及复现命令见 [Windows 兼容性修复与验证](docs/windows-core-compatibility.md)。
+
 ## 本机应用包
 
 ```sh
@@ -366,7 +368,7 @@ npm run test:packaged
 
 真实 DeepSeek 联调通过 `npm run model:integration` 使用本机凭据执行两次请求：完整流式回复，以及收到第一段正文后取消。检查高强度思考、事件顺序、单次结算、取消延迟和部分正文保留。摘要保存到 `docs/validation/deepseek-latest.json`，不保存密钥或回复正文。可通过 `--report 路径` 指定摘要文件。该命令产生实际 API 用量。
 
-当前已验证 macOS arm64 的 `.app` 运行包。完整自动化场景覆盖异常、并发、保存和恢复；系统输入法人工验收与签名公证未执行，其他平台未验证。
+此前已验证 macOS arm64 的 `.app` 运行包，自动化场景覆盖异常、并发、保存和恢复；系统输入法人工验收与签名公证未执行。2026-10-28 的 Windows x64 修复及选定应用包回归见 [Windows 兼容性验证](docs/windows-core-compatibility.md)；本次未复测 macOS、Linux 或 Windows ARM64。
 
 工具调用验收记录位于 `docs/validation/tool-release-2026-10-14.json`：核心测试 132 项、生产包回归 24 项、真实接口场景 6 项、生产包真实接口场景 5 项通过。独立计数器测试宿主不计入生产包回归数量。
 

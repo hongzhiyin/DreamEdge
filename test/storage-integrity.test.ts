@@ -4,12 +4,13 @@ import test from 'node:test';
 import { SqliteSessionStore } from '../src/index.js';
 import { startPending } from './helpers/conversation.js';
 import { storageFixture } from './helpers/storage.js';
+import { closeOnExit } from './helpers/dispose.js';
 
 test('optimistic versions reject stale writes without overwriting newer records', async t => {
   const f = await storageFixture(t);
   const sessionId = f.service.createSession({ connectionId: 'fixture' }).sessionId;
   const stale = f.store.load()[0]!;
-  const other = new SqliteSessionStore(f.path); t.after(() => other.close());
+  using other = closeOnExit(new SqliteSessionStore(f.path));
   const latest = structuredClone(stale); latest.session.version++;
   latest.session.title = 'other writer';
   other.save(latest, stale.session.version);
@@ -56,6 +57,6 @@ test('unknown schema versions are rejected without modifying the database', asyn
   await f.service.dispose();
   f.faults.exec('PRAGMA user_version = 99');
   assert.throws(() => new SqliteSessionStore(f.path), { code: 'UNSUPPORTED_SCHEMA' });
-  const db = new DatabaseSync(f.path); t.after(() => db.close());
+  using db = new DatabaseSync(f.path);
   assert.equal(db.prepare('PRAGMA user_version').get()?.user_version, 99);
 });

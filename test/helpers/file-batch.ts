@@ -23,9 +23,9 @@ export async function reopenBatch(t: TestContext, original: Awaited<ReturnType<t
   const cache = join(original.directory, 'restored-cache'); await mkdir(cache, { recursive: true });
   for (const tool of await scopedReadTools(service.fileScopes, {}, cache, 'account')) registry.register(tool);
   for (const tool of await scopedMutationTools(service.fileScopes, hooks, inspectFileMutation)) registry.register(tool);
-  t.after(async () => { await service.dispose().catch(() => {}); store.close(); });
+  original.beforeCleanup(async () => { await service.dispose().catch(() => {}); store.close(); });
   const approval = async (): Promise<ApprovalRecord> => {
-    await waitUntil(() => service.getSnapshot(original.sessionId).runs.at(-1)?.approvals?.some(a => a.status === 'pending') ?? false);
+    await waitUntil(() => service.getSnapshot(original.sessionId).runs.at(-1)?.approvals?.some(a => a.status === 'pending') ?? false, 20_000);
     return service.getSnapshot(original.sessionId).runs.at(-1)!.approvals!.find(a => a.status === 'pending')!;
   };
   return { service, store, approval, registry };

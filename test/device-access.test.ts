@@ -53,7 +53,7 @@ test('model service changes disable old device grants and cannot inherit another
   const { source } = f.start(); await assert.rejects(f.service.fileScopes.bindRead(source, 'note.txt'), { code: 'FILE_SCOPE_DENIED' });
 });
 test('v4 migration preserves existing data while rejecting undeclared device fields', async t => {
-  const f = await deviceFixture(t); await f.service.dispose(); const db = new DatabaseSync(f.dbPath); t.after(() => db.close());
+  const f = await deviceFixture(t); await f.service.dispose(); using db = new DatabaseSync(f.dbPath);
   db.exec('PRAGMA user_version = 4'); assert.throws(() => f.open(), { code: 'INVALID_DATA' });
   assert.equal(db.prepare('PRAGMA user_version').get()?.user_version, 4);
   const row = db.prepare('SELECT record FROM sessions').get()!;

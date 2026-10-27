@@ -1,0 +1,2 @@
+# License notices must retain the upstream bytes on every checkout.
+licenses/*.txt text eol=lf

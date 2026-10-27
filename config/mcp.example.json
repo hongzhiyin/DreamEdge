@@ -1,0 +1,13 @@
+{
+  "format": "dreamedge-mcp-server/v1",
+  "serverId": "local-example",
+  "displayName": "Local MCP example",
+  "configRevision": 1,
+  "enabled": false,
+  "transport": {
+    "type": "streamable-http",
+    "url": "http://127.0.0.1:3000/mcp",
+    "auth": { "type": "none" }
+  },
+  "policy": { "connect": "ask", "tools": "ask", "resources": "ask" }
+}

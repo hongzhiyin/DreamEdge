@@ -10,7 +10,8 @@ export async function readLoopFixture(t: TestContext, handler: Handler) {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'dreamedge-read-loop-'))); const root = join(directory, 'files');
   await mkdir(root); await writeFile(join(root, 'note.txt'), 'remembered file secret\nneedle\n');
   const server = await modelServer(handler); const registry = builtInTools();
-  const config = connection(server.baseUrl, { thinkingLevel: 'high', toolCalling: { supported: true, supportedThinkingLevels: ['off', 'high'] } });
+  const config = connection(server.baseUrl, { thinkingLevel: 'high', timeoutMs: 30_000,
+    toolCalling: { supported: true, supportedThinkingLevels: ['off', 'high'] } });
   const store = new SqliteSessionStore(join(directory, 'sessions.sqlite'));
   const service = new ConversationService({ store, directoryPicker: async () => root, connection: () => config,
     tools: (config, sessionId) => registry.snapshots().filter(tool => !readToolNames.includes(tool.name as never)

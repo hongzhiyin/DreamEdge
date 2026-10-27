@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { closeOnExit } from './helpers/dispose.js';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFile, stat, symlink, writeFile } from 'node:fs/promises';
@@ -51,15 +52,15 @@ test('registry, connection approval, associations and session selection survive 
   const f = await registryDisk(t); const ref = add(f.registry); f.registry.associate('alpha', { appId: 'com.example.alpha', profileRef: 'profile-a' });
   f.registry.approveConnection(ref); f.registry.pin('chat', ref, { appId: 'com.example.alpha', profileRef: 'profile-a' });
   const before = f.registry.snapshot(); f.store.close();
-  const next = new SqliteMcpRegistryStore(f.path); t.after(() => next.close()); const restored = new McpConnectionRegistry(next, () => 1000);
+  using next = closeOnExit(new SqliteMcpRegistryStore(f.path)); const restored = new McpConnectionRegistry(next, () => 1000);
   assert.deepEqual(restored.snapshot(), before);
   const result = restored.resolve({ sessionId: 'chat', context: context({ profileRef: 'profile-a' }) });
   assert.ok(result.kind === 'selected'); assert.equal(result.candidate.connectionPermission, 'approved');
-  assert.equal((await stat(f.path)).mode & 0o777, 0o600);
+  assert.equal((await stat(f.path)).mode & (process.platform === 'win32' ? 0o600 : 0o777), 0o600);
 });
 
 test('failed save leaves no registration or approval change and can be retried explicitly', async t => {
-  const f = await registryDisk(t); const ref = add(f.registry); const before = f.registry.snapshot(); const faults = new DatabaseSync(f.path); t.after(() => faults.close());
+  const f = await registryDisk(t); const ref = add(f.registry); const before = f.registry.snapshot(); using faults = new DatabaseSync(f.path);
   faults.exec("CREATE TRIGGER fail_save BEFORE UPDATE ON mcp_registry BEGIN SELECT RAISE(ABORT, 'fixture'); END");
   assert.throws(() => f.registry.approveConnection(ref), { code: 'STORE_FAILED' }); assert.deepEqual(f.registry.snapshot(), before);
   faults.exec('DROP TRIGGER fail_save');
@@ -69,13 +70,13 @@ test('failed save leaves no registration or approval change and can be retried e
 });
 
 test('another writer cannot overwrite a newer registry revision', async t => {
-  const f = await registryDisk(t); const other = new SqliteMcpRegistryStore(f.path); t.after(() => other.close());
+  const f = await registryDisk(t); using other = closeOnExit(new SqliteMcpRegistryStore(f.path));
   const stale = structuredClone(other.load()); add(f.registry); stale.revision++;
   assert.throws(() => other.save(stale, 0), { code: 'CONFLICT' }); assert.equal(other.load().servers.length, 1);
 });
 
 test('corrupted approval identity and unknown schema refuse to load without clearing data', async t => {
-  const f = await registryDisk(t); const ref = add(f.registry); f.registry.approveConnection(ref); const faults = new DatabaseSync(f.path); t.after(() => faults.close());
+  const f = await registryDisk(t); const ref = add(f.registry); f.registry.approveConnection(ref); using faults = new DatabaseSync(f.path);
   const broken = structuredClone(f.registry.snapshot()); broken.servers[0]!.approval!.identity = { ...ref, configDigest: '0'.repeat(64) };
   faults.prepare('UPDATE mcp_registry SET record=?').run(JSON.stringify(broken));
   assert.throws(() => new SqliteMcpRegistryStore(f.path), { code: 'INVALID_REGISTRY' });

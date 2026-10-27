@@ -5,9 +5,18 @@ import { join } from 'node:path';
 import { mutationFixture, mutationDecision } from './helpers/mutation-loop.js';
 import { toolReply } from './helpers/tool-loop.js';
 import { beginSse, chatChunk, deadline } from './helpers/server.js';
+import { sensitiveConfigurationPath } from '../src/files/mutation-policy.js';
 const answer = (response: Parameters<typeof beginSse>[0]) => {
   beginSse(response); chatChunk(response, { role: 'assistant', content: 'done' }); chatChunk(response, {}, 'stop'); response.end('data: [DONE]\n\n');
 };
+
+test('Windows system directories, startup entries and PowerShell profiles require confirmation', () => {
+  for (const path of ['C:\\Windows\\System32\\drivers\\etc\\hosts', 'D:/Program Files/App/config.json',
+    'C:/ProgramData/service/config.json', 'C:/Users/user/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/start.cmd',
+    'C:/Users/user/Documents/PowerShell/Microsoft.PowerShell_profile.ps1']) assert.equal(sensitiveConfigurationPath(path), true, path);
+  assert.equal(sensitiveConfigurationPath('C:/Users/user/Documents/notes.txt'), false);
+  assert.equal(sensitiveConfigurationPath('C:/Users/user/Documents/Windows-notes.txt'), false);
+});
 
 test('account mode reads outside the base directory and automatically commits ordinary Pi creation and edit', async t => {
   let turn = 0;

@@ -20,7 +20,7 @@ test('SQLite restart restores complete native history, model parameters and comm
   const first = f.service.send(input);
   await startPending(); const native = f.calls[0]!.finish('completed', 'remember amber'); await first.done;
   assert.equal(f.service.getSnapshot(sessionId).saveState.status, 'saved');
-  assert.equal((await stat(f.path)).mode & 0o777, 0o600);
+  assert.equal((await stat(f.path)).mode & (process.platform === 'win32' ? 0o600 : 0o777), 0o600);
   await f.service.dispose();
   const reopened = f.open();
   const duplicate = reopened.service.send(input);
